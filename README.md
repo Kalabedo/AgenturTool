@@ -3,7 +3,7 @@
 Eigene Rechnungssoftware — selbst gehostet, unabhängig von externen
 Rechnungsdiensten. Rechnungen erstellen, verwalten und als PDF exportieren.
 
-**Status:** Planung abgeschlossen, Implementierung noch nicht begonnen.
+**Status:** Schritt 0 und 1 umgesetzt — Monorepo, Datenbankschema, Migrationen und Seed stehen. Noch keine benutzbare Oberfläche.
 
 ## Architektur
 
@@ -12,14 +12,14 @@ Reihenfolge der Umsetzung stehen in [`docs/ARCHITEKTUR.md`](docs/ARCHITEKTUR.md)
 
 Kurzfassung des geplanten Stacks:
 
-| Bereich | Wahl |
-|---|---|
-| Monorepo | pnpm Workspaces (`apps/web`, `apps/api`, `packages/shared`, `packages/invoice-template`) |
-| Frontend | React + TypeScript + Vite + Tailwind |
-| Backend | NestJS |
-| Datenbank | SQLite via Prisma |
-| PDF | HTML/CSS-Template + Puppeteer |
-| Betrieb | lokal, deploy-fähig als Docker-Image |
+| Bereich   | Wahl                                                                                     |
+| --------- | ---------------------------------------------------------------------------------------- |
+| Monorepo  | pnpm Workspaces (`apps/web`, `apps/api`, `packages/shared`, `packages/invoice-template`) |
+| Frontend  | React + TypeScript + Vite + Tailwind                                                     |
+| Backend   | NestJS                                                                                   |
+| Datenbank | SQLite via Prisma                                                                        |
+| PDF       | HTML/CSS-Template + Puppeteer                                                            |
+| Betrieb   | lokal, deploy-fähig als Docker-Image                                                     |
 
 Die zwei prägenden Architekturprinzipien:
 
@@ -31,3 +31,36 @@ Die zwei prägenden Architekturprinzipien:
 2. **Ein Template, zwei Konsumenten.** Dieselbe Template-Komponente rendert die
    Live-Vorschau im Browser und wird serverseitig für die PDF-Erzeugung
    benutzt. Vorschau und PDF können nicht auseinanderlaufen.
+
+## Entwicklung
+
+Voraussetzungen: Node 22+, pnpm 10+.
+
+```bash
+pnpm install
+cp .env.example .env
+pnpm db:migrate      # Schema anlegen
+pnpm db:seed         # Steuerprofile und Grundeinstellungen
+pnpm dev             # API auf :3000, Web auf :5173
+```
+
+Weitere Befehle:
+
+| Befehl                         | Wirkung                                                       |
+| ------------------------------ | ------------------------------------------------------------- |
+| `pnpm test`                    | Unit- und Integrationstests                                   |
+| `pnpm lint` / `pnpm typecheck` | Statische Prüfungen                                           |
+| `pnpm build`                   | Alle Pakete und Apps bauen                                    |
+| `pnpm db:studio`               | Daten im Browser ansehen                                      |
+| `pnpm db:verify`               | Prüft, dass alle CHECK-Constraints und Trigger vorhanden sind |
+| `pnpm db:reset`                | Datenbank verwerfen und neu aufbauen                          |
+
+### Warum es `db:verify` gibt
+
+Prisma baut SQLite-Tabellen bei manchen Migrationen neu auf und erzeugt das
+`CREATE TABLE` dabei aus dem Prisma-Schema. Handgeschriebene
+`CHECK`-Constraints und Trigger — unter anderem die Sperre finalisierter
+Rechnungen — verschwinden dabei ohne Fehlermeldung. `db:verify` vergleicht die
+Datenbank gegen `apps/api/prisma/expected-constraints.ts` und läuft als Test
+mit, damit ein solcher Verlust auffällt. Wer eine Migration schreibt, die eine
+der betroffenen Tabellen anfasst, muss die Regeln dort erneut anlegen.

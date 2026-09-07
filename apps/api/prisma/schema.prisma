@@ -1,0 +1,345 @@
+// Datenmodell nach docs/ARCHITEKTUR.md Abschnitt 7.
+//
+// Konventionen:
+//   Geld          Int, in Cent            (12,34 € = 1234)
+//   Mengen        Int, in Tausendstel     (7,5 h  = 7500)
+//   Prozentsätze  Int, in Basispunkten    (19 %   = 1900)
+//   Kalenderdaten String "YYYY-MM-DD"     (D21 — kein DateTime, keine Zeitzonen)
+//   Zeitstempel   DateTime
+//   Snapshots     String mit JSON-Inhalt  (Prisma kennt auf SQLite kein Json)
+//   Enums         String + CHECK          (Prisma kennt auf SQLite keine enum)
+//
+// Die CHECK-Constraints und Trigger stehen im handverlesenen Teil der
+// Migration, nicht hier — Prisma kann sie auf SQLite nicht ausdrücken.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// Eigene Firmendaten. Singleton, per CHECK auf id = 1 festgenagelt.
+model Company {
+  id Int @id @default(1)
+
+  companyName String @default("")
+  street      String @default("")
+  postalCode  String @default("")
+  city        String @default("")
+  country     String @default("DE")
+
+  email   String?
+  website String?
+  phone   String?
+
+  vatId     String?
+  taxNumber String?
+
+  bankAccountHolder String?
+  iban              String?
+  bic               String?
+  bankName          String?
+
+  logoAssetId Int?   @unique
+  logoAsset   Asset? @relation(fields: [logoAssetId], references: [id], onDelete: SetNull)
+
+  /// Standard-Zahlungsziel in Tagen; Vorschlag für das Fälligkeitsdatum.
+  defaultPaymentTermDays Int @default(14)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Hochgeladene Datei (in V1 nur das Logo). Inhalt liegt im Dateisystem.
+model Asset {
+  id Int @id @default(autoincrement())
+
+  /// Pfad relativ zu DATA_DIR.
+  path      String @unique
+  mimeType  String
+  sizeBytes Int
+  /// SHA-256 des Inhalts, für die Integritätsprüfung im Backup.
+  sha256    String
+
+  originalFilename String?
+
+  createdAt DateTime @default(now())
+
+  company Company?
+}
+
+/// Rechnungsempfänger (Stammdaten). Auf finalisierten Rechnungen nur noch
+/// Verweis für Filter und Listen — dargestellt wird der buyerData-Snapshot.
+model Customer {
+  id Int @id @default(autoincrement())
+
+  /// Frei vergeben, optional, eindeutig wenn gesetzt (D22).
+  /// SQLite behandelt NULL in Unique-Indizes als verschieden, deshalb sind
+  /// beliebig viele Kunden ohne Nummer erlaubt.
+  customerNumber String? @unique
+
+  companyName String
+  contactName String?
+  addressLine String?
+  street      String  @default("")
+  postalCode  String  @default("")
+  city        String  @default("")
+  country     String  @default("DE")
+
+  email String?
+  vatId String?
+
+  notes String?
+
+  defaultTaxProfileId Int?
+  defaultTaxProfile   TaxProfile? @relation(fields: [defaultTaxProfileId], references: [id], onDelete: SetNull)
+
+  defaultPaymentTermDays Int?
+
+  /// Weiches Löschen: Kunden mit Rechnungshistorie werden nie hart gelöscht.
+  archivedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  invoices Invoice[]
+
+  @@index([companyName])
+  @@index([archivedAt])
+}
+
+/// Konfigurierbare Steuerkonstellation. Bewusst datengetrieben statt
+/// Steuerlogik im Code (docs/ARCHITEKTUR.md Abschnitt 10).
+model TaxProfile {
+  id Int @id @default(autoincrement())
+
+  name String @unique
+  /// STANDARD | ZERO_RATED | REVERSE_CHARGE | SMALL_BUSINESS
+  kind String
+
+  /// Vorschlag für neue Positionen, in Basispunkten.
+  defaultRateBasisPoints Int @default(0)
+
+  /// Erscheint auf der Rechnung, z. B. der Reverse-Charge-Hinweis.
+  noteText String?
+
+  showTaxColumn Boolean @default(true)
+  isDefault     Boolean @default(false)
+  sortOrder     Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  invoices  Invoice[]
+  customers Customer[]
+}
+
+/// Aussehen der Rechnung. Singleton in V1, per CHECK auf id = 1.
+model TemplateSettings {
+  id Int @id @default(1)
+
+  templateKey String @default("classic")
+  accentColor String @default("#1e293b")
+  fontFamily  String @default("Inter")
+  logoWidthMm Float  @default(40)
+
+  footerText  String?
+  paymentNote String?
+  closingNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Zählerstand der Rechnungsnummern, je Scope und Jahr.
+/// Storno teilt sich die Sequenz mit Rechnungen (D10).
+model NumberSequence {
+  id Int @id @default(autoincrement())
+
+  /// INVOICE
+  scope String
+  /// Jahr aus dem Rechnungsdatum, nicht aus now() (Abschnitt 9).
+  year  Int
+  /// Nächste zu vergebende laufende Nummer.
+  nextValue Int @default(1)
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([scope, year])
+}
+
+/// Rechnung oder Storno-Dokument.
+model Invoice {
+  id Int @id @default(autoincrement())
+
+  /// INVOICE | CANCELLATION
+  documentType String @default("INVOICE")
+  /// DRAFT | ISSUED | PAID | CANCELLED
+  status       String @default("DRAFT")
+
+  /// NULL genau dann, wenn status = DRAFT (D5, per CHECK erzwungen).
+  number     String? @unique
+  numberYear Int?
+  numberSeq  Int?
+
+  currency String @default("EUR")
+
+  customerId   Int?
+  customer     Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  taxProfileId Int?
+  taxProfile   TaxProfile? @relation(fields: [taxProfileId], references: [id], onDelete: SetNull)
+
+  /// Kalenderdaten als "YYYY-MM-DD".
+  invoiceDate   String
+  serviceDate   String
+  serviceDateTo String?
+  dueDate       String
+
+  /// Erscheint auf dem Dokument.
+  notes      String?
+  footerNote String?
+  /// Erscheint NICHT auf dem Dokument; bleibt auch nach ISSUED änderbar.
+  internalNotes String?
+
+  /// Empfängerdaten: ab dem Entwurf befüllt und editierbar, ab ISSUED
+  /// gesperrt (D9). JSON, validiert per buyerDataSchema.
+  buyerData String?
+
+  /// NULL im Entwurf, beim Finalisieren gesetzt. JSON.
+  sellerSnapshot   String?
+  taxSnapshot      String?
+  templateSnapshot String?
+  totalsSnapshot   String?
+  snapshotVersion  Int?
+
+  issuedAt    DateTime?
+  sentAt      DateTime?
+  /// Kalenderdatum: du gibst es ein, nicht das System.
+  paidAt      String?
+  cancelledAt DateTime?
+
+  /// Verweise zwischen Rechnung und ihrem Storno.
+  cancelsInvoiceId     Int?     @unique
+  cancelsInvoice       Invoice? @relation("Cancellation", fields: [cancelsInvoiceId], references: [id], onDelete: Restrict)
+  cancelledByInvoice   Invoice? @relation("Cancellation")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items     InvoiceItem[]
+  documents InvoiceDocument[]
+  events    InvoiceEvent[]
+
+  @@index([status])
+  @@index([invoiceDate])
+  @@index([customerId])
+  @@index([numberYear, numberSeq])
+}
+
+/// Rechnungsposition. Bei nicht-Entwürfen per Trigger gesperrt.
+model InvoiceItem {
+  id Int @id @default(autoincrement())
+
+  invoiceId Int
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  position    Int
+  description String
+
+  /// Tausendstel: 7,5 h = 7500
+  quantity Int    @default(1000)
+  unit     String?
+
+  unitPriceCents Int @default(0)
+
+  /// PERCENT (Basispunkte) | AMOUNT (Cent)
+  discountType  String @default("PERCENT")
+  discountValue Int    @default(0)
+
+  /// Basispunkte: 19 % = 1900
+  taxRateBasisPoints Int @default(0)
+
+  /// Ergebnisse des verbindlichen Rechenwegs (Abschnitt 7), mitgespeichert,
+  /// damit historische Zeilen nie nachträglich anders herauskommen.
+  lineDiscountCents Int @default(0)
+  lineNetCents      Int @default(0)
+
+  @@unique([invoiceId, position])
+  @@index([invoiceId])
+}
+
+/// Erzeugte PDF-Datei. Inhalt liegt im Dateisystem (D13).
+model InvoiceDocument {
+  id Int @id @default(autoincrement())
+
+  invoiceId Int
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  /// Pfad relativ zu DATA_DIR, z. B. invoices/2026/2026-001.pdf
+  path      String @unique
+  sha256    String
+  sizeBytes Int
+
+  generatedAt DateTime @default(now())
+
+  @@index([invoiceId])
+}
+
+/// Verlaufsprotokoll. Pflicht, weil "Finalisierung zurücknehmen" eine
+/// vergebene Nummer wieder freigibt — das muss nachvollziehbar bleiben.
+model InvoiceEvent {
+  id Int @id @default(autoincrement())
+
+  invoiceId Int
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  /// CREATED | FINALIZED | UNFINALIZED | CANCELLED | ...
+  type String
+  /// JSON, validiert per invoiceEventMetadataSchema.
+  metadata String?
+
+  createdAt DateTime @default(now())
+
+  @@index([invoiceId, createdAt])
+}
+
+/// Anwendungseinstellungen als Key-Value, für Kleinkram ohne eigene Tabelle.
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+/// Benutzer für die Anmeldung. Angelegt ab Schritt 13; die Tabelle entsteht
+/// jetzt, damit später keine Migration an einer unangenehmen Stelle nötig ist.
+model User {
+  id Int @id @default(autoincrement())
+
+  email        String  @unique
+  /// argon2id
+  passwordHash String
+  displayName  String?
+
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  sessions Session[]
+}
+
+/// Serverseitige Session. Kein JWT — Widerruf muss sofort wirken.
+model Session {
+  id Int @id @default(autoincrement())
+
+  /// SHA-256 des Session-Tokens, nie das Token selbst.
+  tokenHash String   @unique
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}

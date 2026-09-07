@@ -1,0 +1,15 @@
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Laufzeitdaten: Datenbank, Assets, erzeugte PDFs
+data/
+
+# Secrets
+.env
+.env.local
+
+.DS_Store
+*.log
