@@ -1,6 +1,6 @@
 # Projektplan: Eigene Rechnungssoftware ("AgenturTool")
 
-**Status:** v1.0 — Planung abgeschlossen, alle Entscheidungen getroffen.
+**Status:** v1.1 — Schritt 0 und 1 umgesetzt (Gerüst, Schema, Migrationen, Seed).
 **Repository:** `Kalabedo/AgenturTool`
 
 Dieses Dokument ist die verbindliche Architekturgrundlage. Es wird mit dem Code
@@ -9,28 +9,40 @@ sie hier korrigiert und nicht nur im Code.
 
 ### Getroffene Entscheidungen
 
-| ID | Thema | Gewählt |
-|---|---|---|
-| D1 | Betriebsmodell | **Lokal, aber deploy-fähig gebaut** (Docker-Image, `/data`-Volume, Env-Config, Auth-Modul vorhanden aber deaktiviert) |
-| D2 | Datenbank | **SQLite** (portabel gehalten für späteren Postgres-Wechsel) |
-| D3 | DB-Zugriff | **Prisma** |
-| D4 | Backend | **NestJS** |
-| D5 | Rechnungsnummer | **Erst beim Finalisieren** vergeben |
-| D6 | Nach Finalisierung | **Gesperrt + Storno**, plus eng begrenztes „Finalisierung zurücknehmen" |
-| D7 | Zahlungen | **Nur `paidAt`** (Teilzahlungen später) |
-| D8 | Historische Daten | **JSON-Snapshots auf der Rechnung** |
-| D9 | Entwurfsdaten | **Kunde kopiert** (editierbar + Refresh), **eigene Firmendaten live** bis zum Finalisieren |
-| D10 | Storno-Nummern | **Dieselbe Sequenz** wie Rechnungen |
-| D11 | Rabatt | **Je Position**, umschaltbar Prozent ⇄ Betrag; kein Gesamtrabatt |
-| D12 | Rundung | **Steuer je Steuersatzgruppe** auf Summenebene |
-| D13 | PDF-Ablage | **Dateisystem** + Metadaten/Hash in der DB |
-| D14 | Vorschau | **React-Template im iframe** (eine Implementierung, zwei Konsumenten) |
-| D15 | Template-Optionen V1 | **Mittel**: Logo/-größe, Akzentfarbe, Schrift (2–3), Fußzeile, Standardtexte |
-| D16 | Preiseingabe | **Nur netto** |
-| D17 | Auth in V1 | **Vorhanden, per `AUTH_ENABLED` deaktiviert** (folgt aus D1) |
-| D18 | Späterer Zugriff | **Tailscale + aktiver Login** |
-| D19 | Backup | Button in der App **und** Skript für Cron; Offsite optional |
-| D20 | Tooling | pnpm, kein Turborepo, Vitest, ESLint + Prettier |
+| ID  | Thema                | Gewählt                                                                                                               |
+| --- | -------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| D1  | Betriebsmodell       | **Lokal, aber deploy-fähig gebaut** (Docker-Image, `/data`-Volume, Env-Config, Auth-Modul vorhanden aber deaktiviert) |
+| D2  | Datenbank            | **SQLite** (portabel gehalten für späteren Postgres-Wechsel)                                                          |
+| D3  | DB-Zugriff           | **Prisma**                                                                                                            |
+| D4  | Backend              | **NestJS**                                                                                                            |
+| D5  | Rechnungsnummer      | **Erst beim Finalisieren** vergeben                                                                                   |
+| D6  | Nach Finalisierung   | **Gesperrt + Storno**, plus eng begrenztes „Finalisierung zurücknehmen"                                               |
+| D7  | Zahlungen            | **Nur `paidAt`** (Teilzahlungen später)                                                                               |
+| D8  | Historische Daten    | **JSON-Snapshots auf der Rechnung**                                                                                   |
+| D9  | Entwurfsdaten        | **Kunde kopiert** (editierbar + Refresh), **eigene Firmendaten live** bis zum Finalisieren                            |
+| D10 | Storno-Nummern       | **Dieselbe Sequenz** wie Rechnungen                                                                                   |
+| D11 | Rabatt               | **Je Position**, umschaltbar Prozent ⇄ Betrag; kein Gesamtrabatt                                                      |
+| D12 | Rundung              | **Steuer je Steuersatzgruppe** auf Summenebene                                                                        |
+| D13 | PDF-Ablage           | **Dateisystem** + Metadaten/Hash in der DB                                                                            |
+| D14 | Vorschau             | **React-Template im iframe** (eine Implementierung, zwei Konsumenten)                                                 |
+| D15 | Template-Optionen V1 | **Mittel**: Logo/-größe, Akzentfarbe, Schrift (2–3), Fußzeile, Standardtexte                                          |
+| D16 | Preiseingabe         | **Nur netto**                                                                                                         |
+| D17 | Auth in V1           | **Vorhanden, per `AUTH_ENABLED` deaktiviert** (folgt aus D1)                                                          |
+| D18 | Späterer Zugriff     | **Tailscale + aktiver Login**                                                                                         |
+| D19 | Backup               | Button in der App **und** Skript für Cron; Offsite optional                                                           |
+| D20 | Tooling              | pnpm, kein Turborepo, Vitest, ESLint + Prettier                                                                       |
+| D21 | Kalenderdaten        | **ISO-String `"YYYY-MM-DD"`**; echte Zeitstempel bleiben `DateTime`                                                   |
+| D22 | Kundennummer         | **Freies Feld, optional, eindeutig wenn gesetzt**                                                                     |
+| D23 | Primärschlüssel      | `Int @id @default(autoincrement())`                                                                                   |
+| D24 | Build der Pakete     | `tsup` → ESM + CJS + `.d.ts` (NestJS läuft CJS, Vite ESM)                                                             |
+
+Zu D21: Rechnungs-, Leistungs- und Fälligkeitsdatum sind Kalendertage, keine
+Zeitpunkte. Als `DateTime` müsste an jeder Grenze zwischen Browser, API und
+Datenbank auf UTC-Mitternacht normalisiert werden; ein einziges `new Date(...)`
+in lokaler Zeitzone macht aus dem 31.12. den 30.12. — und zwar genau bei
+Rechnungen zum Jahreswechsel. Als ISO-String kann das strukturell nicht
+passieren. `paidAt` ist ebenfalls ein Kalenderdatum (du gibst es ein),
+`sentAt` ein Zeitstempel (das System schreibt ihn).
 
 ---
 
@@ -146,6 +158,7 @@ agentur-tool/
 ```
 
 **Was `shared` enthält (Vertrag, keine Implementierung):**
+
 - Zod-Schemas der API-Requests/Responses → daraus abgeleitete TS-Typen
 - Domain-Enums (`InvoiceStatus`, `TaxProfileKind`, `DocumentType`)
 - Reine Funktionen: Positions-/Summen-/Steuerberechnung, Geld-Arithmetik,
@@ -153,6 +166,7 @@ agentur-tool/
 - Konstanten (Länderliste, Standard-Steuersätze als Seed-Daten)
 
 **Was `shared` ausdrücklich NICHT enthält:**
+
 - DB-/ORM-Modelle oder generierte ORM-Typen (Persistenz ≠ API-Vertrag)
 - Framework-spezifische Klassen (Nest-DTOs, Decorators, Guards)
 - Frontend-Komponenten, HTTP-Client, Backend-Services
@@ -214,8 +228,9 @@ Transaktionen) → Repository (Prisma). Domänenlogik nie im Controller,
 Prisma-Typen nie nach außen — Mapper auf die `shared`-Response-Schemas.
 
 Nest-spezifisch:
+
 - Eigene `ZodValidationPipe` statt `class-validator`/`class-transformer`.
-  Grund: die Schemas aus `packages/shared` sind dann die *einzige*
+  Grund: die Schemas aus `packages/shared` sind dann die _einzige_
   Validierungsquelle für Frontend und Backend. Zwei parallele
   Validierungssysteme (Zod im Frontend, Decorators im Backend) laufen
   garantiert auseinander.
@@ -232,19 +247,19 @@ Nest-spezifisch:
 
 ### Entitäten
 
-| Entität | Zweck | Kern |
-|---|---|---|
-| `Company` | eigene Firmendaten (Singleton, `id = 1`) | Name, Adresse, Kontakt, USt-ID, Steuernr., Kontoinhaber/IBAN/BIC, Logo-Ref, Standard-Zahlungsziel, Fußzeilentexte |
-| `Customer` | Rechnungsempfänger (Stammdaten) | Nr., Firma, Ansprechpartner, Adresse, Land, E-Mail, USt-ID, Standard-Steuerprofil, Standard-Zahlungsziel, `archivedAt` |
-| `TaxProfile` | konfigurierbare Steuerkonstellation | Name, `kind`, Standardsatz, Hinweistext, Flags |
-| `TemplateSettings` | Aussehen (Singleton in V1) | Template-Key, Akzentfarbe, Schrift, Sichtbarkeits-Flags, Footer, Standardtexte |
-| `Invoice` | Rechnungskopf + Snapshots + Status | siehe unten |
-| `InvoiceItem` | Positionen | Sortierung, Beschreibung, Menge, Einheit, Einzelpreis, Rabatt, Steuersatz, berechnete Beträge |
-| `NumberSequence` | Zählerstand je Jahr/Dokumenttyp | `scope`, `year`, `nextValue` |
-| `InvoiceDocument` | erzeugte PDF-Datei | Invoice-Ref, Pfad, SHA-256, Bytes, `generatedAt`, `kind` |
-| `Asset` | hochgeladene Dateien (Logo) | Pfad, MIME, Größe, Hash |
-| `InvoiceEvent` | Verlaufsprotokoll (**Pflicht**, siehe Undo) | Invoice-Ref, Typ, Zeitpunkt, Metadaten-JSON |
-| `AppSetting` | Key-Value-Kleinkram | Key, JSON-Wert |
+| Entität            | Zweck                                       | Kern                                                                                                                   |
+| ------------------ | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `Company`          | eigene Firmendaten (Singleton, `id = 1`)    | Name, Adresse, Kontakt, USt-ID, Steuernr., Kontoinhaber/IBAN/BIC, Logo-Ref, Standard-Zahlungsziel, Fußzeilentexte      |
+| `Customer`         | Rechnungsempfänger (Stammdaten)             | Nr., Firma, Ansprechpartner, Adresse, Land, E-Mail, USt-ID, Standard-Steuerprofil, Standard-Zahlungsziel, `archivedAt` |
+| `TaxProfile`       | konfigurierbare Steuerkonstellation         | Name, `kind`, Standardsatz, Hinweistext, Flags                                                                         |
+| `TemplateSettings` | Aussehen (Singleton in V1)                  | Template-Key, Akzentfarbe, Schrift, Sichtbarkeits-Flags, Footer, Standardtexte                                         |
+| `Invoice`          | Rechnungskopf + Snapshots + Status          | siehe unten                                                                                                            |
+| `InvoiceItem`      | Positionen                                  | Sortierung, Beschreibung, Menge, Einheit, Einzelpreis, Rabatt, Steuersatz, berechnete Beträge                          |
+| `NumberSequence`   | Zählerstand je Jahr/Dokumenttyp             | `scope`, `year`, `nextValue`                                                                                           |
+| `InvoiceDocument`  | erzeugte PDF-Datei                          | Invoice-Ref, Pfad, SHA-256, Bytes, `generatedAt`, `kind`                                                               |
+| `Asset`            | hochgeladene Dateien (Logo)                 | Pfad, MIME, Größe, Hash                                                                                                |
+| `InvoiceEvent`     | Verlaufsprotokoll (**Pflicht**, siehe Undo) | Invoice-Ref, Typ, Zeitpunkt, Metadaten-JSON                                                                            |
+| `AppSetting`       | Key-Value-Kleinkram                         | Key, JSON-Wert                                                                                                         |
 
 ### Beziehungen
 
@@ -372,13 +387,13 @@ das Frontend benutzt dieselbe Funktion nur für die sofortige Anzeige.
 
 Es gibt genau **zwei** Zustände mit klarer Regel, woher jedes Feld kommt:
 
-| Feld | Entwurf | Ab `ISSUED` |
-|---|---|---|
-| Empfängerdaten | `buyerData` — beim Kundenauswahl **kopiert**, im Formular editierbar | eingefroren (`buyerData` wird gesperrt) |
-| Eigene Firmendaten | **live** aus `Company` aufgelöst | `sellerSnapshot` |
-| Steuerprofil + Hinweistext | **live** aus `TaxProfile` aufgelöst | `taxSnapshot` |
-| Template-Einstellungen | **live** aus `TemplateSettings` | `templateSnapshot` |
-| Summen | bei jedem Speichern neu berechnet | `totalsSnapshot` |
+| Feld                       | Entwurf                                                              | Ab `ISSUED`                             |
+| -------------------------- | -------------------------------------------------------------------- | --------------------------------------- |
+| Empfängerdaten             | `buyerData` — beim Kundenauswahl **kopiert**, im Formular editierbar | eingefroren (`buyerData` wird gesperrt) |
+| Eigene Firmendaten         | **live** aus `Company` aufgelöst                                     | `sellerSnapshot`                        |
+| Steuerprofil + Hinweistext | **live** aus `TaxProfile` aufgelöst                                  | `taxSnapshot`                           |
+| Template-Einstellungen     | **live** aus `TemplateSettings`                                      | `templateSnapshot`                      |
+| Summen                     | bei jedem Speichern neu berechnet                                    | `totalsSnapshot`                        |
 
 Das ist bewusst asymmetrisch, und zwar aus einem praktischen Grund:
 
@@ -413,6 +428,16 @@ Nach `ISSUED` ist alles gesperrt **außer** einer expliziten Whitelist:
 `paidAt`, `sentAt`, interne Notizen (erscheinen nicht auf dem PDF).
 Durchgesetzt auf drei Ebenen: Service-Guard, dedizierte Endpunkte statt
 generischem PATCH, und ein DB-Trigger als letzte Absicherung.
+
+**Umgesetzt in Schritt 1**, mit einer Eigenheit, die man kennen muss: SQLite
+meldet einen Trigger-Abbruch als `SQLITE_CONSTRAINT_TRIGGER`, und Prisma
+bildet den auf **`P2003`** ab — denselben Code wie eine echte
+Fremdschlüsselverletzung, mit `constraint: null` und **ohne** den Text aus
+dem `RAISE(ABORT, ...)`. Nur bei Roh-Queries (`$executeRaw`) kommt die
+Meldung durch. Wer sich auf den Text verlässt, hält eine Sperrverletzung
+später für einen Fremdschlüsselfehler. Deshalb gibt es
+`apps/api/src/common/database-errors.ts` mit `isImmutabilityViolation()`,
+das beide Formen erkennt; ein Regressionstest sichert das ab.
 
 Korrektur einer ausgestellten Rechnung = **Storno + Neuausstellung**:
 Die Original-Rechnung bleibt unverändert und erhält `cancelledAt` +
@@ -461,10 +486,10 @@ delete             cancel               cancel
 
 - Vier gespeicherte Zustände: `DRAFT`, `ISSUED`, `PAID`, `CANCELLED`.
 - `OVERDUE` wird **nicht gespeichert**, sondern aus `status = ISSUED &&
-  dueDate < heute` berechnet — sonst bräuchte es einen Cron-Job, der Zustände
+dueDate < heute` berechnet — sonst bräuchte es einen Cron-Job, der Zustände
   umschreibt, und ein Backup vom Vortag hätte falsche Zustände.
 - „Versendet" ist kein Status, sondern das Feld `sentAt` — es ist orthogonal
-  zum Bezahlstatus (versendet *und* bezahlt, versendet *und* offen).
+  zum Bezahlstatus (versendet _und_ bezahlt, versendet _und_ offen).
 - Zahlung ist in V1 nur `paidAt` (Datum oder leer). `PAID` ist damit ein
   abgeleiteter, aber gespeicherter Status: `paidAt` setzen ⇒ `PAID`,
   `paidAt` leeren ⇒ zurück auf `ISSUED`.
@@ -491,12 +516,13 @@ einer verständlichen Liste fehl. Rechtsberatung ersetzt das nicht.
 Lücken — der häufigste Grund für unangenehme Rückfragen bei einer Prüfung.
 
 Umsetzung:
+
 - Tabelle `NumberSequence(scope, year, nextValue)`, `scope` z. B. `INVOICE`.
 - Vergabe innerhalb **einer** interaktiven Prisma-Transaktion zusammen mit
   Snapshot-Erzeugung, PDF-Erzeugung und Statuswechsel.
 - Prisma reicht auf SQLite kein `BEGIN IMMEDIATE` durch, deshalb dreifache
   Absicherung: bedingtes Update (`UPDATE NumberSequence SET nextValue = nextValue + 1
-  WHERE scope = ? AND year = ? AND nextValue = ?`, Ergebnis muss 1 Zeile sein),
+WHERE scope = ? AND year = ? AND nextValue = ?`, Ergebnis muss 1 Zeile sein),
   ein `UNIQUE`-Index auf `number`, und ein Retry bei Kollision. Bei einem
   Single-User-Tool ist echte Nebenläufigkeit ohnehin die Ausnahme — aber
   Doppelvergabe darf auch in der Ausnahme nicht passieren.
@@ -557,6 +583,7 @@ direkt; das Backend rendert dieselbe Komponente mit
 Template-Implementierung, die auseinanderlaufen könnte.
 
 Regeln für Deckungsgleichheit Vorschau ↔ PDF:
+
 - Template-CSS ist **eigenständiges Plain-CSS in mm/pt**, kein Tailwind
   (Tailwind ist rem-/viewport-basiert und für Druck ungeeignet).
 - `@page { size: A4; margin: 0 }`, Seitenränder als Padding im Dokument.
@@ -658,6 +685,7 @@ auseinanderlaufen):
    enthält); verwaiste Dateien ohne Zeile wandern nach `data/orphans/`.
 
 Weitere Regeln:
+
 - Download liefert **immer** die gespeicherte Datei, nie eine Neuerzeugung.
 - Nur Entwürfe werden bei jedem Aufruf frisch gerendert.
 - Ausgeliefert ausschließlich über authentifizierte API-Routen, nie als
@@ -724,7 +752,15 @@ Datensätzen ist Datenmenge kein Thema; der einzige echte Nachteil (ein
 Schreiber gleichzeitig) ist bei einem Single-User-Tool irrelevant.
 
 Betrieb:
-- WAL-Modus, `foreign_keys = ON`, `busy_timeout` gesetzt.
+
+- WAL-Modus, `foreign_keys = ON`, `busy_timeout` gesetzt — beim Start durch
+  `PrismaService.applyPragmas()`. Wichtig: über `$queryRaw`, **nicht** über
+  `$executeRaw`. `PRAGMA journal_mode` und `PRAGMA busy_timeout` liefern
+  ihren neuen Wert als Ergebniszeile zurück, und `$executeRaw` bricht bei
+  Statements mit Ergebnis ab ("Execute returned results, which is not
+  allowed in SQLite") — der Anwendungsstart scheitert dann vollständig.
+  Ein Regressionstest deckt das ab.
+- Zahlen aus Roh-Queries kommen als `BigInt` zurück, nicht als `number`.
 - Alle Geldbeträge als `INTEGER`, keine `REAL`-Spalten.
 - Bewusst **keine** SQLite-spezifischen Konstrukte, damit ein späterer
   Wechsel auf PostgreSQL ein Provider-Tausch bleibt und kein Rewrite.
@@ -749,6 +785,7 @@ Seed: Standard-Steuerprofile, leere Company, Default-Template-Settings.
 ## 16. Sicherheit
 
 Grundsätze unabhängig vom Betriebsmodell:
+
 - Alle Secrets ausschließlich über Environment-Variablen, `.env` gitignored,
   `.env.example` im Repo.
 - Uploads: MIME- und Magic-Byte-Prüfung, Größenlimit, Speicherung unter
@@ -825,6 +862,7 @@ unter `http://127.0.0.1:3000`. Bindung explizit an `127.0.0.1`, nicht `0.0.0.0`.
 ## 19. Mögliche spätere Online-Bereitstellung
 
 Vorbereitung, die **jetzt** fast nichts kostet und später viel spart:
+
 - Ein Docker-Image (Node + Chromium), das API und gebautes Frontend enthält.
 - Ein Volume `/data` für Datenbank, Assets und PDFs.
 - Konfiguration ausschließlich über Environment-Variablen, inkl.
@@ -851,23 +889,23 @@ und läuft als unprivilegierter Benutzer.
 
 Jeder Schritt endet mit etwas Lauffähigem.
 
-| # | Schritt | Ergebnis |
-|---|---|---|
-| 0 | Monorepo-Gerüst, TS-Configs, Lint/Format, `shared`-Skeleton | `pnpm dev` läuft |
-| 1 | DB-Schema, Migrationen, Seed | Datenbank steht |
-| 2 | Company-Einstellungen inkl. Logo-Upload | erster vertikaler Durchstich |
-| 3 | Kundenverwaltung (CRUD, Liste, Suche) | zweite Domäne, Muster etabliert |
-| 4 | Steuerprofile | Stammdaten komplett |
-| 5 | Berechnungslogik in `shared` + Unit-Tests | Kern abgesichert |
-| 6 | Rechnungs-Entwurf: API + Editor mit dynamischen Positionen | Rechnungen erfassbar |
-| 7 | `invoice-template` + Live-Vorschau im iframe | sichtbares Ergebnis |
-| 8 | PDF-Service (Puppeteer) + Entwurfs-PDF | PDF-Pipeline steht |
-| 9 | Nummernvergabe + Snapshots + Finalisieren + PDF-Ablage | **Kernfunktion fertig** |
-| 10 | Status: bezahlt/versendet, Stornieren, Duplizieren | Lebenszyklus komplett |
-| 11 | Rechnungsübersicht mit Filter/Sortierung + Dashboard | Alltagstauglich |
-| 12 | Backup-Export/Restore + Restore-Test | Datensicherheit |
-| 13 | Docker-Image + Auth-Modul (per `AUTH_ENABLED`), Tailscale-Anbindung | deploy-fähig |
-| 14 | Politur: Fehlerbehandlung, Leerzustände, Tastaturbedienung, Responsiveness | V1 |
+| #    | Schritt                                                                    | Ergebnis                        |
+| ---- | -------------------------------------------------------------------------- | ------------------------------- |
+| 0 ✅ | Monorepo-Gerüst, TS-Configs, Lint/Format, `shared`-Skeleton                | `pnpm dev` läuft                |
+| 1 ✅ | DB-Schema, Migrationen, Seed                                               | Datenbank steht                 |
+| 2    | Company-Einstellungen inkl. Logo-Upload                                    | erster vertikaler Durchstich    |
+| 3    | Kundenverwaltung (CRUD, Liste, Suche)                                      | zweite Domäne, Muster etabliert |
+| 4    | Steuerprofile                                                              | Stammdaten komplett             |
+| 5    | Berechnungslogik in `shared` + Unit-Tests                                  | Kern abgesichert                |
+| 6    | Rechnungs-Entwurf: API + Editor mit dynamischen Positionen                 | Rechnungen erfassbar            |
+| 7    | `invoice-template` + Live-Vorschau im iframe                               | sichtbares Ergebnis             |
+| 8    | PDF-Service (Puppeteer) + Entwurfs-PDF                                     | PDF-Pipeline steht              |
+| 9    | Nummernvergabe + Snapshots + Finalisieren + PDF-Ablage                     | **Kernfunktion fertig**         |
+| 10   | Status: bezahlt/versendet, Stornieren, Duplizieren                         | Lebenszyklus komplett           |
+| 11   | Rechnungsübersicht mit Filter/Sortierung + Dashboard                       | Alltagstauglich                 |
+| 12   | Backup-Export/Restore + Restore-Test                                       | Datensicherheit                 |
+| 13   | Docker-Image + Auth-Modul (per `AUTH_ENABLED`), Tailscale-Anbindung        | deploy-fähig                    |
+| 14   | Politur: Fehlerbehandlung, Leerzustände, Tastaturbedienung, Responsiveness | V1                              |
 
 Tests bewusst schmal, aber gezielt: Berechnungen und Nummernvergabe mit
 Unit-Tests, Finalisierung als Integrationstest, ein PDF-Snapshot-Test.
@@ -877,18 +915,18 @@ Kein flächendeckendes UI-Testing im MVP.
 
 ## 21. Abgrenzung MVP ↔ später
 
-| Bereich | V1 | Später |
-|---|---|---|
-| Dokumenttypen | Rechnung, Storno | Angebot, Auftragsbestätigung, Mahnung, Gutschrift |
-| Templates | 1 Template + Optionen | mehrere Templates, mehr Optionen |
-| Versand | PDF-Download | E-Mail-Versand, Anhänge, Versandprotokoll |
-| Zahlungen | bezahlt am / offen | Teilzahlungen, Zahlungserinnerungen, Mahnstufen |
-| Positionen | frei erfasst | Produkt-/Leistungskatalog, Import aus Zeiterfassung |
-| Wiederholung | Duplizieren | echte wiederkehrende Rechnungen mit Zeitplan |
-| Export | Backup-Archiv | CSV, DATEV-nah, Steuerberater-Paket |
-| Mandanten/Nutzer | einer | mehrere Unternehmen, mehrere Benutzer, Rollen |
-| Auswertung | Dashboard mit letzten Rechnungen | Umsatzübersichten, Statistiken, offene Posten |
-| E-Rechnung | nur PDF | ZUGFeRD / XRechnung (siehe unten) |
+| Bereich          | V1                               | Später                                              |
+| ---------------- | -------------------------------- | --------------------------------------------------- |
+| Dokumenttypen    | Rechnung, Storno                 | Angebot, Auftragsbestätigung, Mahnung, Gutschrift   |
+| Templates        | 1 Template + Optionen            | mehrere Templates, mehr Optionen                    |
+| Versand          | PDF-Download                     | E-Mail-Versand, Anhänge, Versandprotokoll           |
+| Zahlungen        | bezahlt am / offen               | Teilzahlungen, Zahlungserinnerungen, Mahnstufen     |
+| Positionen       | frei erfasst                     | Produkt-/Leistungskatalog, Import aus Zeiterfassung |
+| Wiederholung     | Duplizieren                      | echte wiederkehrende Rechnungen mit Zeitplan        |
+| Export           | Backup-Archiv                    | CSV, DATEV-nah, Steuerberater-Paket                 |
+| Mandanten/Nutzer | einer                            | mehrere Unternehmen, mehrere Benutzer, Rollen       |
+| Auswertung       | Dashboard mit letzten Rechnungen | Umsatzübersichten, Statistiken, offene Posten       |
+| E-Rechnung       | nur PDF                          | ZUGFeRD / XRechnung (siehe unten)                   |
 
 **Hinweis E-Rechnung (strategisch relevant):** In Deutschland läuft die
 Umstellung auf strukturierte E-Rechnungen im B2B-Bereich stufenweise; die
@@ -950,6 +988,7 @@ wenn wir dort ankommen:
 Womit wir prüfen, dass es wirklich funktioniert — nicht nur kompiliert.
 
 **Automatisiert (Vitest):**
+
 - `packages/shared`: der Rechenweg aus Abschnitt 7 mit Grenzfällen —
   gemischte Steuersätze, Prozent- und Betragsrabatt, Menge `0`, negative
   Beträge, und der Test „Storno + Original = exakt 0" für das symmetrische
@@ -967,6 +1006,7 @@ Womit wir prüfen, dass es wirklich funktioniert — nicht nur kompiliert.
   gegen eine Referenz vergleichen (Pixel-Diff mit kleiner Toleranz).
 
 **Manuell, einmal am Stück durchgespielt:**
+
 1. Firmendaten inkl. Logo speichern, Kunde anlegen, Steuerprofile prüfen.
 2. Rechnung mit drei Positionen erstellen, davon eine mit 7 % und eine mit
    Rabatt; Summen gegen eine Handrechnung prüfen.
