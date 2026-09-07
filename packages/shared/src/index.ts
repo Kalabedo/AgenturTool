@@ -4,4 +4,5 @@ export * from './money.js';
 export * from './snapshots.js';
 export * from './banking.js';
 export * from './company.js';
+export * from './customer.js';
 export * from './assets.js';

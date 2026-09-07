@@ -69,6 +69,13 @@ export const apiClient = {
       body: JSON.stringify(body),
     }),
 
+  patch: <T>(path: string, body: unknown): Promise<T> =>
+    request<T>(path, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+
   post: <T>(path: string, body: unknown): Promise<T> =>
     request<T>(path, {
       method: 'POST',

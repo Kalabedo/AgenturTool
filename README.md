@@ -3,7 +3,7 @@
 Eigene Rechnungssoftware — selbst gehostet, unabhängig von externen
 Rechnungsdiensten. Rechnungen erstellen, verwalten und als PDF exportieren.
 
-**Status:** Schritte 0 bis 2 umgesetzt — Monorepo, Datenbankschema und die Pflege der eigenen Unternehmensdaten inklusive Logo. Rechnungen selbst folgen ab Schritt 6.
+**Status:** Schritte 0 bis 3 umgesetzt — Monorepo, Datenbankschema, eigene Unternehmensdaten inklusive Logo sowie die Kundenverwaltung. Rechnungen selbst folgen ab Schritt 6.
 
 ## Architektur
 

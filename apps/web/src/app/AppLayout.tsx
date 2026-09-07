@@ -10,7 +10,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 const NAVIGATION = [
   { to: '/', label: 'Dashboard', end: true },
   { to: '/invoices', label: 'Rechnungen', disabled: true },
-  { to: '/customers', label: 'Kunden', disabled: true },
+  { to: '/customers', label: 'Kunden' },
   { to: '/settings/company', label: 'Einstellungen' },
 ];
 
