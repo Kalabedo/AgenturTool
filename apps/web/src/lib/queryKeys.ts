@@ -7,6 +7,7 @@
 export const queryKeys = {
   health: ['health'] as const,
   company: ['company'] as const,
+  templateSettings: ['template-settings'] as const,
   customers: {
     all: ['customers'] as const,
     list: (search: string, archived: string) => ['customers', 'list', search, archived] as const,

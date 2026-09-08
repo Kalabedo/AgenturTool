@@ -1,5 +1,6 @@
 import type {
   BuyerData,
+  DiscountType,
   DocumentType,
   IsoDate,
   SellerSnapshot,
@@ -33,8 +34,14 @@ export interface InvoiceRenderModel {
   items: InvoiceRenderItem[];
   notes: string | null;
   footerNote: string | null;
-  /** Logo als Data-URI, damit das PDF ohne Netzwerkzugriff rendert. */
-  logoDataUri: string | null;
+  /**
+   * Quelle des Logos.
+   *
+   * In der Live-Vorschau eine API-Adresse (`/api/assets/7`), im PDF eine
+   * Data-URI. Puppeteer rendert in einem Container ohne Zugriff auf die
+   * laufende API — ein Bild per URL bliebe dort leer, und zwar lautlos.
+   */
+  logoSrc: string | null;
 }
 
 export interface InvoiceRenderItem {
@@ -44,16 +51,26 @@ export interface InvoiceRenderItem {
   quantity: number;
   unit: string | null;
   unitPriceCents: number;
+  discountType: DiscountType;
+  /** Basispunkte bei PERCENT, Cent bei AMOUNT. */
+  discountValue: number;
+  /** Der ausgerechnete Rabatt in Cent — auch bei Prozentangaben. */
   discountCents: number;
   /** Basispunkte: 19 % = 1900 */
   taxRateBasisPoints: number;
   netCents: number;
 }
 
-/** Ein registriertes Template: Komponente plus zugehöriges CSS. */
+/**
+ * Ein registriertes Template: Komponente plus zugehöriges CSS.
+ *
+ * Das CSS liegt als String daneben und nicht als Import in der Komponente,
+ * weil es an zwei Orte muss, die kein Bundler bedient: in das <style> des
+ * Vorschau-iframes und in das HTML-Dokument für Puppeteer.
+ */
 export interface TemplateDefinition {
   key: string;
   label: string;
-  /** Wird in Schritt 7 mit der React-Komponente gefüllt. */
   css: string;
+  render: (model: InvoiceRenderModel) => JSX.Element;
 }

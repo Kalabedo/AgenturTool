@@ -150,7 +150,7 @@ model TemplateSettings {
 
   templateKey String @default("classic")
   accentColor String @default("#1e293b")
-  fontFamily  String @default("Inter")
+  fontFamily  String @default("Open Sans")
   logoWidthMm Float  @default(40)
 
   footerText  String?

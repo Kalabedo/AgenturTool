@@ -1,6 +1,7 @@
 # Projektplan: Eigene Rechnungssoftware ("AgenturTool")
 
-**Status:** v1.6 — Schritte 0 bis 6 umgesetzt; Rechnungen lassen sich als Entwurf erfassen.
+**Status:** v1.7 — Schritte 0 bis 7 umgesetzt; Rechnungen lassen sich erfassen und
+als A4-Dokument in der Live-Vorschau sehen.
 **Repository:** `Kalabedo/AgenturTool`
 
 Dieses Dokument ist die verbindliche Architekturgrundlage. Es wird mit dem Code
@@ -35,6 +36,9 @@ sie hier korrigiert und nicht nur im Code.
 | D22 | Kundennummer         | **Freies Feld, optional, eindeutig wenn gesetzt**                                                                     |
 | D23 | Primärschlüssel      | `Int @id @default(autoincrement())`                                                                                   |
 | D24 | Build der Pakete     | `tsup` → ESM + CJS + `.d.ts` (NestJS läuft CJS, Vite ESM)                                                             |
+| D29 | Schrift im Dokument  | **Open Sans, als Base64 im Paket eingebettet** — kein Netzwerkzugriff beim PDF-Rendern                                |
+| D30 | Vorschau-Einbindung  | **iframe + React-Portal** (nicht `srcdoc`): dieselbe Komponente wie im PDF, inkrementell aktualisiert                 |
+| D31 | Seitenränder         | **`@page`-Ränder im Druck**, Padding nur am Bildschirm — Padding wirkt sonst nur auf der ersten Seite                 |
 
 Zu D21: Rechnungs-, Leistungs- und Fälligkeitsdatum sind Kalendertage, keine
 Zeitpunkte. Als `DateTime` müsste an jeder Grenze zwischen Browser, API und
@@ -643,12 +647,62 @@ weitere hinzukommen können, ohne V1 zu verkomplizieren:
 
 ```
 packages/invoice-template/
+├── scripts/embed-fonts.mjs   erzeugt fonts.generated.ts aus @fontsource
 ├── src/
-│   ├── types.ts        InvoiceRenderModel, TemplateOptions
-│   ├── registry.ts     { classic: { component, css, defaults } }
-│   └── templates/classic/  Document.tsx · styles.css · sections/
-└── sample/             Beispieldaten für Storybook/Tests
+│   ├── types.ts              InvoiceRenderModel, TemplateDefinition
+│   ├── render-model.ts       buildRenderModel(quelle, eingefroreneSummen?)
+│   ├── registry.ts           löst templateKey auf, Rückfall auf classic
+│   ├── fonts.generated.ts    Open Sans 400/700 als Base64 (eingecheckt)
+│   ├── server.ts             renderInvoiceDocument() — eigener Einstiegspunkt
+│   └── templates/classic/    ClassicTemplate.tsx · styles.ts
+└── test/fixtures.ts          die Referenzrechnung als Modell
 ```
+
+**Zwei Einstiegspunkte.** `server.ts` importiert `react-dom/server` und liegt
+deshalb nicht im Haupt-Barrel: Das Frontend benutzt dieselbe Komponente, und
+ein Import in der gemeinsamen Datei zöge den Server-Renderer in das
+Browser-Bundle. Zwei Einstiegspunkte sind billiger als die Hoffnung, dass
+Tree Shaking das schon richtet — ein Test im Build prüft, dass
+`renderToStaticMarkup` nicht im Web-Bundle landet.
+
+**Das CSS ist ein String, keine `.css`-Datei.** Es muss an zwei Orte, die
+kein Bundler bedient: in ein `<style>` im Vorschau-iframe und in das
+HTML-Dokument, das Puppeteer bekommt.
+
+**Die Schrift ist eingebettet (D29).** Open Sans in Regular und Bold, als
+Data-URI im CSS, rund 49 kB. Puppeteer rendert in einem Container, der weder
+Netzwerk noch eine verlässliche Schriftauswahl hat; eine per URL eingebundene
+Schrift fiele dort still auf einen Ersatz zurück, und ein Ersatz bricht
+Zeilen anders um. Die Vorschau zeigte dann etwas anderes als das PDF —
+genau das, was die gemeinsame Komponente verhindern soll. `pnpm --filter
+@agentur-tool/invoice-template fonts` erzeugt die Datei neu; sie ist
+eingecheckt, damit der Build nicht an der Erreichbarkeit von npm hängt.
+
+**Seitenränder kommen im Druck aus `@page` (D31).** Ein Padding auf der
+Seite wirkt nur auf der ersten Druckseite — auf Folgeseiten klebte die
+Tabelle sonst am oberen Blattrand. Am Bildschirm bleibt das Padding, weil es
+dort das sichtbare Blatt erzeugt. Puppeteer muss dafür mit
+`preferCSSPageSize: true` und ohne eigene `margin`-Angabe aufgerufen werden
+(Schritt 8). Belegt: eine 34-Positionen-Rechnung ergibt drei Seiten mit
+wiederholtem Tabellenkopf, ungeteilten Zeilen und gleichen Rändern.
+
+**Die Live-Vorschau (D30)** rendert die Komponente über ein React-Portal in
+ein `about:blank`-iframe. Ein iframe, weil das Template ein eigenes
+Stylesheet mitbringt, das sich mit Tailwinds Preflight in beide Richtungen
+stören würde; ein Portal statt `srcdoc`, weil React so nur die geänderten
+Knoten aktualisiert — bei `srcdoc` würde das Dokument bei jedem Tastendruck
+neu aufgebaut, mit Flackern und verlorener Scrollposition.
+
+**Abweichungen von der Referenzrechnung**, jeweils bewusst:
+
+- Der Adresszusatz steht **über** der Straße (DIN 5008 und die Bedeutung des
+  Feldes: „z. Hd. Buchhaltung"), in der Referenz stand er darunter.
+- „PLZ Ort" ohne Komma, wie in Deutschland üblich.
+- Die Rabattspalte erscheint nur, wenn mindestens eine Position einen Rabatt
+  hat — sonst wäre es eine Spalte aus Nullen.
+- Das Land wird weggelassen, wenn es dem des Absenders entspricht.
+- Steuerzeilen im Summenblock entstehen je Steuersatz (D12); die Referenz
+  hatte durchgehend 0 % und deshalb keine.
 
 Aufbau des `classic`-Templates entsprechend der Referenzrechnung:
 Kopf (Logo, Absenderdaten, Zahlungsdetails) → Empfängerblock + Metadaten
@@ -920,12 +974,12 @@ Jeder Schritt endet mit etwas Lauffähigem.
 | ---- | -------------------------------------------------------------------------- | ------------------------------- |
 | 0 ✅ | Monorepo-Gerüst, TS-Configs, Lint/Format, `shared`-Skeleton                | `pnpm dev` läuft                |
 | 1 ✅ | DB-Schema, Migrationen, Seed                                               | Datenbank steht                 |
-| 2    | Company-Einstellungen inkl. Logo-Upload                                    | erster vertikaler Durchstich    |
-| 3    | Kundenverwaltung (CRUD, Liste, Suche)                                      | zweite Domäne, Muster etabliert |
-| 4    | Steuerprofile                                                              | Stammdaten komplett             |
-| 5    | Berechnungslogik in `shared` + Unit-Tests                                  | Kern abgesichert                |
-| 6    | Rechnungs-Entwurf: API + Editor mit dynamischen Positionen                 | Rechnungen erfassbar            |
-| 7    | `invoice-template` + Live-Vorschau im iframe                               | sichtbares Ergebnis             |
+| 2 ✅ | Company-Einstellungen inkl. Logo-Upload                                    | erster vertikaler Durchstich    |
+| 3 ✅ | Kundenverwaltung (CRUD, Liste, Suche)                                      | zweite Domäne, Muster etabliert |
+| 4 ✅ | Steuerprofile                                                              | Stammdaten komplett             |
+| 5 ✅ | Berechnungslogik in `shared` + Unit-Tests                                  | Kern abgesichert                |
+| 6 ✅ | Rechnungs-Entwurf: API + Editor mit dynamischen Positionen                 | Rechnungen erfassbar            |
+| 7 ✅ | `invoice-template` + Live-Vorschau im iframe                               | sichtbares Ergebnis             |
 | 8    | PDF-Service (Puppeteer) + Entwurfs-PDF                                     | PDF-Pipeline steht              |
 | 9    | Nummernvergabe + Snapshots + Finalisieren + PDF-Ablage                     | **Kernfunktion fertig**         |
 | 10   | Status: bezahlt/versendet, Stornieren, Duplizieren                         | Lebenszyklus komplett           |
