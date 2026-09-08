@@ -8,6 +8,7 @@ import { NewCustomerPage } from '../features/customers/NewCustomerPage';
 import { InvoiceEditorPage } from '../features/invoices/InvoiceEditorPage';
 import { InvoiceListPage } from '../features/invoices/InvoiceListPage';
 import { SettingsLayout } from '../features/settings/SettingsLayout';
+import { BackupPage } from '../features/settings/backup/BackupPage';
 import { EditTaxProfilePage } from '../features/settings/tax-profiles/EditTaxProfilePage';
 import { NewTaxProfilePage } from '../features/settings/tax-profiles/NewTaxProfilePage';
 import { TaxProfileListPage } from '../features/settings/tax-profiles/TaxProfileListPage';
@@ -33,6 +34,7 @@ export const router = createBrowserRouter([
           { path: 'tax-profiles', element: <TaxProfileListPage /> },
           { path: 'tax-profiles/new', element: <NewTaxProfilePage /> },
           { path: 'tax-profiles/:id', element: <EditTaxProfilePage /> },
+          { path: 'backup', element: <BackupPage /> },
         ],
       },
       { path: '*', element: <NotFoundPage /> },

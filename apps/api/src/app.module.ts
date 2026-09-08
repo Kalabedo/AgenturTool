@@ -8,6 +8,7 @@ import { TemplateSettingsModule } from './template-settings/template-settings.mo
 import { InvoicesModule } from './invoices/invoices.module';
 import { FilesModule } from './files/files.module';
 import { HealthModule } from './health/health.module';
+import { BackupModule } from './backup/backup.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { HealthModule } from './health/health.module';
     TaxProfilesModule,
     TemplateSettingsModule,
     InvoicesModule,
+    BackupModule,
   ],
 })
 export class AppModule {}

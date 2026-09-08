@@ -7,12 +7,14 @@
     "build": "nest build",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",
-    "db:migrate": "prisma migrate dev",
-    "db:deploy": "prisma migrate deploy",
+    "db:migrate": "tsx scripts/backup.ts --if-exists && prisma migrate dev",
+    "db:deploy": "tsx scripts/backup.ts --if-exists && prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "db:verify": "tsx prisma/verify.ts",
-    "db:reset": "prisma migrate reset --force"
+    "db:reset": "prisma migrate reset --force",
+    "backup": "tsx scripts/backup.ts",
+    "restore": "tsx scripts/restore.ts"
   },
   "dependencies": {
     "@agentur-tool/invoice-template": "workspace:*",
@@ -27,6 +29,8 @@
     "react-dom": "^18.3.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "yauzl": "^3.4.0",
+    "yazl": "^3.3.1",
     "zod": "^3.24.0"
   },
   "devDependencies": {
@@ -36,6 +40,8 @@
     "@types/multer": "^2.2.0",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
+    "@types/yauzl": "^3.4.0",
+    "@types/yazl": "^3.3.1",
     "dotenv": "^17.4.2",
     "prisma": "^6.2.0"
   }

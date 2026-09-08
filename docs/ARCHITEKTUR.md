@@ -1,8 +1,7 @@
 # Projektplan: Eigene Rechnungssoftware ("AgenturTool")
 
-**Status:** v1.11 — Schritte 0 bis 11 umgesetzt; alltagstauglich: erfassen,
-ausstellen, versenden, bezahlen, stornieren, duplizieren, und eine Übersicht
-mit Filtern, Sortierung und Blättern samt Dashboard.
+**Status:** v1.12 — Schritte 0 bis 12 umgesetzt; die Daten sind gesichert und
+der Weg zurück ist einmal wirklich gegangen worden (Abschnitt 17).
 **Repository:** `Kalabedo/AgenturTool`
 
 Dieses Dokument ist die verbindliche Architekturgrundlage. Es wird mit dem Code
@@ -41,6 +40,7 @@ sie hier korrigiert und nicht nur im Code.
 | D30 | Vorschau-Einbindung  | **iframe + React-Portal** (nicht `srcdoc`): dieselbe Komponente wie im PDF, inkrementell aktualisiert                 |
 | D31 | Seitenränder         | **`@page`-Ränder im Druck**, Padding nur am Bildschirm — Padding wirkt sonst nur auf der ersten Seite                 |
 | D32 | Puppeteer-Paket      | **`puppeteer-core` mit gefundenem Chromium** statt `puppeteer` mit eigenem Download (Abschnitt 13a)                   |
+| D33 | Backup-Format        | **ZIP** statt tar.gz — mit Bordmitteln auf Windows, macOS und iOS zu öffnen (Abschnitt 17)                            |
 
 Zu D21: Rechnungs-, Leistungs- und Fälligkeitsdatum sind Kalendertage, keine
 Zeitpunkte. Als `DateTime` müsste an jeder Grenze zwischen Browser, API und
@@ -955,6 +955,7 @@ POST   /api/invoices/preview/pdf       ungespeicherte Formulardaten → PDF
 POST   /api/invoices/:id/regenerate-pdf   PDF aus dem Snapshot neu ablegen
 
 POST   /api/backup/export              GET /api/backup/status
+GET    /api/backup/:filename           Archiv herunterladen
 ```
 
 **Die Übersicht** (umgesetzt in Schritt 11) antwortet nicht mit einem nackten
@@ -1096,6 +1097,40 @@ Stress noch versteht.
   ein ungetestetes Backup ist kein Backup.
 - Automatisches Backup zusätzlich vor jeder Migration.
 
+**Umgesetzt in Schritt 12.** Ein paar Festlegungen, die dabei anfielen:
+
+- **ZIP statt tar.gz** (D33). Das Archiv soll sich auf Windows, macOS und iOS
+  mit Bordmitteln öffnen lassen: Im Zweifel will man ein einzelnes PDF
+  herausholen, ohne die Anwendung überhaupt zu starten. Geschrieben mit
+  `yazl`, gelesen mit `yauzl` — beide streamen, was bei einigen hundert
+  Megabyte den Unterschied zwischen „läuft" und „Speicher voll" ausmacht.
+- **Aufbau des Archivs:** `manifest.json`, `database.sqlite` und
+  `files/<pfad relativ zu DATA_DIR>` für Assets, PDFs und verwaiste Dateien.
+  `data/tmp` bleibt draußen — dort liegt nur Arbeitsmaterial.
+- **Erst prüfen, dann anfassen.** Die Wiederherstellung entpackt zunächst
+  vollständig in ein temporäres Verzeichnis und vergleicht jeden Hash mit dem
+  Manifest. Erst danach werden die vorhandenen Daten beiseitegelegt. Ein
+  beschädigtes Archiv darf nicht auffallen, nachdem die alten Daten weg sind.
+- **Beiseitelegen statt löschen:** Ohne `--force` bricht die
+  Wiederherstellung ab, solange Daten da sind; mit `--force` wandern sie nach
+  `data.bak-<Zeitstempel>`. Wer im Ernstfall das falsche Archiv erwischt,
+  soll das zurücknehmen können.
+- **WAL- und SHM-Datei werden entfernt**, wenn die Datenbank ersetzt wird.
+  Bleiben sie liegen, hält SQLite sie für das Write-Ahead-Log genau dieser
+  Datei und liest Änderungen ein, die es nicht mehr gibt.
+- **Kein Restore-Knopf im Browser.** Die Wiederherstellung ersetzt das
+  Datenverzeichnis unter der laufenden Anwendung — das ist ein Skript, keine
+  Schaltfläche. Die Einstellungsseite zeigt stattdessen den Befehl.
+
+**Der Restore-Test ist durchgeführt** (Abschnitt 23, Punkt 9), zweifach: als
+automatischer Test (`apps/api/test/backup.test.ts`) und einmal von Hand am
+laufenden System — drei ausgestellte Rechnungen mit echten PDFs und
+hochgeladenem Logo, Backup über die API, dann `data/` **und** Datenbank
+gelöscht, `pnpm restore` ausgeführt, Anwendung gestartet: alle drei Rechnungen
+mit ihren Beträgen wieder da, das Logo wieder da, und die SHA-256 der drei
+PDFs identisch zu denen vor dem Verlust — auch die des über die API
+heruntergeladenen Dokuments.
+
 ---
 
 ## 18. Lokale Nutzung
@@ -1153,7 +1188,7 @@ Jeder Schritt endet mit etwas Lauffähigem.
 | 9 ✅  | Nummernvergabe + Snapshots + Finalisieren + PDF-Ablage                     | **Kernfunktion fertig**         |
 | 10 ✅ | Status: bezahlt/versendet, Stornieren, Duplizieren                         | Lebenszyklus komplett           |
 | 11 ✅ | Rechnungsübersicht mit Filter/Sortierung + Dashboard                       | Alltagstauglich                 |
-| 12    | Backup-Export/Restore + Restore-Test                                       | Datensicherheit                 |
+| 12 ✅ | Backup-Export/Restore + Restore-Test                                       | Datensicherheit                 |
 | 13    | Docker-Image + Auth-Modul (per `AUTH_ENABLED`), Tailscale-Anbindung        | deploy-fähig                    |
 | 14    | Politur: Fehlerbehandlung, Leerzustände, Tastaturbedienung, Responsiveness | V1                              |
 
@@ -1274,6 +1309,9 @@ Womit wir prüfen, dass es wirklich funktioniert — nicht nur kompiliert.
 9. Backup erzeugen, `data/` löschen, aus dem Backup wiederherstellen, alle
    Rechnungen und PDFs sind wieder da und die Hashes stimmen.
    **Dieser Test wird einmal wirklich durchgeführt, nicht nur geplant.**
+   ✅ In Schritt 12 durchgeführt — mit gelöschter Datenbank und gelöschtem
+   Datenverzeichnis, wiederhergestellt über `pnpm restore`; die Hashes der
+   PDFs stimmen vorher und nachher überein.
 
 ---
 

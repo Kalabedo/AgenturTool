@@ -3,7 +3,7 @@
 Eigene Rechnungssoftware — selbst gehostet, unabhängig von externen
 Rechnungsdiensten. Rechnungen erstellen, verwalten und als PDF exportieren.
 
-**Status:** Schritte 0 bis 11 umgesetzt — alltagstauglich. Rechnungen lassen sich erfassen und ausstellen (Nummer, eingefrorene Stammdaten, abgelegtes PDF), als versendet und bezahlt vermerken, stornieren und duplizieren; die Übersicht filtert, sortiert und blättert, das Dashboard zeigt Entwürfe, offene und überfällige Rechnungen. Als Nächstes folgt Backup-Export und -Restore (Schritt 12).
+**Status:** Schritte 0 bis 12 umgesetzt — alltagstauglich und gesichert. Rechnungen lassen sich erfassen und ausstellen (Nummer, eingefrorene Stammdaten, abgelegtes PDF), als versendet und bezahlt vermerken, stornieren und duplizieren; die Übersicht filtert, sortiert und blättert, das Dashboard zeigt Entwürfe, offene und überfällige Rechnungen. Ein Backup umfasst Datenbank, Logos und alle PDFs in einer ZIP-Datei; der Weg zurück ist einmal wirklich getestet. Als Nächstes folgt das Docker-Image mit Auth-Modul (Schritt 13).
 
 ## Architektur
 
@@ -49,14 +49,16 @@ pnpm dev             # API auf :3000, Web auf :5173
 
 Weitere Befehle:
 
-| Befehl                         | Wirkung                                                       |
-| ------------------------------ | ------------------------------------------------------------- |
-| `pnpm test`                    | Unit- und Integrationstests                                   |
-| `pnpm lint` / `pnpm typecheck` | Statische Prüfungen                                           |
-| `pnpm build`                   | Alle Pakete und Apps bauen                                    |
-| `pnpm db:studio`               | Daten im Browser ansehen                                      |
-| `pnpm db:verify`               | Prüft, dass alle CHECK-Constraints und Trigger vorhanden sind |
-| `pnpm db:reset`                | Datenbank verwerfen und neu aufbauen                          |
+| Befehl                          | Wirkung                                                       |
+| ------------------------------- | ------------------------------------------------------------- |
+| `pnpm test`                     | Unit- und Integrationstests                                   |
+| `pnpm lint` / `pnpm typecheck`  | Statische Prüfungen                                           |
+| `pnpm build`                    | Alle Pakete und Apps bauen                                    |
+| `pnpm db:studio`                | Daten im Browser ansehen                                      |
+| `pnpm db:verify`                | Prüft, dass alle CHECK-Constraints und Trigger vorhanden sind |
+| `pnpm db:reset`                 | Datenbank verwerfen und neu aufbauen                          |
+| `pnpm backup`                   | Archiv unter `data/backups/` erzeugen                         |
+| `pnpm restore <archiv> --force` | Datenbank und `data/` aus einem Archiv wiederherstellen       |
 
 ### Warum es `db:verify` gibt
 

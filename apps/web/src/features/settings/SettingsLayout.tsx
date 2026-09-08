@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 const TABS = [
   { to: '/settings/company', label: 'Unternehmensdaten' },
   { to: '/settings/tax-profiles', label: 'Steuerprofile' },
+  { to: '/settings/backup', label: 'Backup' },
 ];
 
 export function SettingsLayout(): JSX.Element {
