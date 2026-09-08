@@ -1,20 +1,9 @@
-import {
-  DISCOUNT_TYPE,
-  calculateInvoice,
-  parseCents,
-  parsePercentToBasisPoints,
-  parseQuantity,
-  type InvoiceCalculation,
-} from '@agentur-tool/shared';
+import { calculateInvoice, type InvoiceCalculation } from '@agentur-tool/shared';
 import type { InvoiceItemFormValues } from './invoiceFormValues.js';
+import { toCalculationItems } from './toCalculationItems.js';
 
 /**
  * Berechnet die Summen aus den aktuellen Formularwerten.
- *
- * Bewusst nachsichtig: Während des Tippens steht in einem Feld
- * zwischenzeitlich „12," oder gar nichts. Solche Zwischenstände werden als 0
- * gewertet, statt die Anzeige durch eine Fehlermeldung zu ersetzen — die
- * Validierung greift erst beim Absenden.
  *
  * Maßgeblich sind diese Zahlen nicht: Der Server rechnet mit derselben
  * Funktion neu, und seine Werte werden gespeichert. Hier geht es nur darum,
@@ -27,16 +16,5 @@ import type { InvoiceItemFormValues } from './invoiceFormValues.js';
  * sind ein paar Array-Operationen und kostet nichts.
  */
 export function useInvoiceTotals(items: InvoiceItemFormValues[]): InvoiceCalculation {
-  return calculateInvoice(
-    items.map((item) => ({
-      quantity: parseQuantity(item.quantity ?? '') ?? 0,
-      unitPriceCents: parseCents(item.unitPriceCents ?? '') ?? 0,
-      discountType: item.discountType,
-      discountValue:
-        (item.discountType === DISCOUNT_TYPE.PERCENT
-          ? parsePercentToBasisPoints(item.discountValue ?? '')
-          : parseCents(item.discountValue ?? '')) ?? 0,
-      taxRateBasisPoints: parsePercentToBasisPoints(item.taxRateBasisPoints ?? '') ?? 0,
-    })),
-  );
+  return calculateInvoice(toCalculationItems(items));
 }

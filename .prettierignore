@@ -1,0 +1,10 @@
+# Von Werkzeugen erzeugt — eine Formatierung von Hand würde beim nächsten
+# Lauf wieder verworfen.
+pnpm-lock.yaml
+packages/invoice-template/src/fonts.generated.ts
+
+# Build-Ergebnisse und lokale Daten
+dist/
+**/dist/
+data/
+coverage/

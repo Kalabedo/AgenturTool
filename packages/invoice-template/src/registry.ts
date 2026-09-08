@@ -1,14 +1,18 @@
+import { ClassicTemplate } from './templates/classic/ClassicTemplate.js';
+import { CLASSIC_CSS } from './templates/classic/styles.js';
 import type { TemplateDefinition } from './types.js';
 
 /**
  * Registry der verfügbaren Templates.
  *
- * V1 liefert genau ein Template ("classic", Schritt 7). Die Registry
- * existiert trotzdem schon, weil der `templateKey` im templateSnapshot
- * jeder finalisierten Rechnung steht: Ein Template, das einmal benutzt
- * wurde, muss auffindbar bleiben, auch wenn es längst nicht mehr die
- * Voreinstellung ist.
+ * V1 liefert genau eines. Die Registry existiert trotzdem, weil der
+ * `templateKey` im templateSnapshot jeder finalisierten Rechnung steht: Ein
+ * Template, das einmal benutzt wurde, muss auffindbar bleiben, auch wenn es
+ * längst nicht mehr die Voreinstellung ist.
  */
+
+export const DEFAULT_TEMPLATE_KEY = 'classic';
+
 const templates = new Map<string, TemplateDefinition>();
 
 export function registerTemplate(definition: TemplateDefinition): void {
@@ -23,4 +27,24 @@ export function listTemplates(): TemplateDefinition[] {
   return [...templates.values()];
 }
 
-export const DEFAULT_TEMPLATE_KEY = 'classic';
+/**
+ * Liefert das gewünschte Template und fällt auf „classic" zurück.
+ *
+ * Der Rückfall ist Absicht: Lieber druckt eine alte Rechnung mit einem
+ * anderen Layout, als dass ihr PDF gar nicht mehr entsteht. Die Beträge und
+ * Texte stammen ohnehin aus dem Snapshot und bleiben unverändert.
+ */
+export function resolveTemplate(key: string): TemplateDefinition {
+  const found = templates.get(key) ?? templates.get(DEFAULT_TEMPLATE_KEY);
+  if (found === undefined) {
+    throw new Error(`Kein Template registriert (gesucht: "${key}").`);
+  }
+  return found;
+}
+
+registerTemplate({
+  key: DEFAULT_TEMPLATE_KEY,
+  label: 'Klassisch',
+  css: CLASSIC_CSS,
+  render: (model) => ClassicTemplate({ model }),
+});

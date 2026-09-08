@@ -30,7 +30,7 @@ async function main(): Promise<void> {
       id: 1,
       templateKey: 'classic',
       accentColor: '#1e293b',
-      fontFamily: 'Inter',
+      fontFamily: 'Open Sans',
       logoWidthMm: 40,
       paymentNote: 'Bitte überweisen Sie den Rechnungsbetrag bis zum Fälligkeitsdatum.',
       closingNote: 'Vielen Dank für die gute Zusammenarbeit.',
