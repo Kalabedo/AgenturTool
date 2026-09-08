@@ -8,6 +8,7 @@ import {
   invoiceDisplayName,
   invoiceDraftInputSchema,
   invoiceItemInputSchema,
+  invoiceListQuerySchema,
   isCancellable,
   isEditable,
   isOverdue,
@@ -332,5 +333,28 @@ describe('cancellationNote', () => {
     expect(cancellationNote('2026-013', toIsoDate('2026-03-01'))).toBe(
       'Storno zur Rechnung 2026-013 vom 01.03.2026.',
     );
+  });
+});
+
+describe('invoiceListQuerySchema', () => {
+  it('setzt Sortierung, Richtung und Seite vor', () => {
+    expect(invoiceListQuerySchema.parse({})).toMatchObject({
+      sort: 'invoiceDate',
+      order: 'desc',
+      page: 1,
+      overdue: false,
+    });
+  });
+
+  it('liest den Überfällig-Filter aus der Abfragezeichenkette', () => {
+    // In einer URL steht "true", nicht ein Wahrheitswert.
+    expect(invoiceListQuerySchema.parse({ overdue: 'true' }).overdue).toBe(true);
+    expect(invoiceListQuerySchema.parse({ overdue: 'false' }).overdue).toBe(false);
+    expect(invoiceListQuerySchema.parse({}).overdue).toBe(false);
+  });
+
+  it('lehnt ein unbekanntes Sortierfeld ab, statt es zu ignorieren', () => {
+    // Sonst käme der Feldname ungeprüft in die Datenbankabfrage.
+    expect(invoiceListQuerySchema.safeParse({ sort: 'grossCents' }).success).toBe(false);
   });
 });

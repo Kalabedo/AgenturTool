@@ -21,6 +21,7 @@ import {
   invoiceSentInputSchema,
   type InvoiceDraftPayload,
   type InvoiceListQuery,
+  type InvoiceListResponse,
   type InvoicePaymentPayload,
   type InvoiceResponse,
   type InvoiceSentPayload,
@@ -69,7 +70,7 @@ export class InvoicesController {
   @Get()
   list(
     @Query(new ZodValidationPipe(invoiceListQuerySchema)) query: InvoiceListQuery,
-  ): Promise<InvoiceResponse[]> {
+  ): Promise<InvoiceListResponse> {
     return this.invoices.list(query);
   }
 

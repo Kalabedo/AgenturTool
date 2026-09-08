@@ -14,6 +14,7 @@ import { addDays, formatDateDe, isoDateSchema, todayIso, type IsoDate } from './
 import { parseCents, parsePercentToBasisPoints, parseQuantity } from './money.js';
 import { CURRENT_SNAPSHOT_VERSION, type BuyerData, type TotalsSnapshot } from './snapshots.js';
 import type { CustomerResponse } from './customer.js';
+import { pageQuerySchema, type PaginatedResponse } from './pagination.js';
 
 /**
  * Verträge für Rechnungen — in diesem Schritt ausschließlich für Entwürfe.
@@ -333,13 +334,57 @@ export interface InvoiceResponse {
   updatedAt: string;
 }
 
-export const invoiceListQuerySchema = z.object({
+/**
+ * Wonach sich die Übersicht sortieren lässt.
+ *
+ * Bewusst nur drei Felder, und alle drei sind Spalten in der Datenbank: Nach
+ * dem Betrag zu sortieren klingt naheliegend, hieße aber, alle Rechnungen zu
+ * laden und im Speicher zu sortieren — die Summe steht je nach Zustand in
+ * einem JSON-Snapshot oder wird berechnet. Das wäre eine Sortierung, die bei
+ * tausend Rechnungen langsam wird, für eine Frage, die man selten stellt.
+ */
+export const INVOICE_SORT_FIELD = {
+  INVOICE_DATE: 'invoiceDate',
+  DUE_DATE: 'dueDate',
+  NUMBER: 'number',
+} as const;
+export type InvoiceSortField = (typeof INVOICE_SORT_FIELD)[keyof typeof INVOICE_SORT_FIELD];
+export const INVOICE_SORT_FIELD_VALUES = Object.values(INVOICE_SORT_FIELD);
+
+export const INVOICE_SORT_LABELS: Record<InvoiceSortField, string> = {
+  invoiceDate: 'Rechnungsdatum',
+  dueDate: 'Fälligkeit',
+  number: 'Nummer',
+};
+
+export const SORT_ORDER = { ASC: 'asc', DESC: 'desc' } as const;
+export type SortOrder = (typeof SORT_ORDER)[keyof typeof SORT_ORDER];
+
+export const invoiceListQuerySchema = pageQuerySchema.extend({
   q: z.string().trim().max(200).optional(),
   status: z.enum(INVOICE_STATUS_VALUES as [InvoiceStatus, ...InvoiceStatus[]]).optional(),
+  documentType: z.enum(DOCUMENT_TYPE_VALUES as [DocumentType, ...DocumentType[]]).optional(),
   customerId: z.coerce.number().int().positive().optional(),
   year: z.coerce.number().int().min(1900).max(9999).optional(),
+
+  /**
+   * Nur überfällige: ausgestellt und Fälligkeitsdatum vorbei.
+   *
+   * Als Filter und nicht als Status, weil „überfällig" nichts ist, was
+   * gespeichert wird — es ergibt sich aus dem heutigen Datum (Abschnitt 8).
+   */
+  overdue: z
+    .union([z.boolean(), z.string()])
+    .optional()
+    .transform((value) => value === true || value === 'true' || value === '1'),
+
+  sort: z
+    .enum(INVOICE_SORT_FIELD_VALUES as [InvoiceSortField, ...InvoiceSortField[]])
+    .default(INVOICE_SORT_FIELD.INVOICE_DATE),
+  order: z.enum(['asc', 'desc']).default('desc'),
 });
 export type InvoiceListQuery = z.output<typeof invoiceListQuerySchema>;
+export type InvoiceListResponse = PaginatedResponse<InvoiceResponse>;
 
 /**
  * Kopiert die Kundendaten in die Rechnung (D9).

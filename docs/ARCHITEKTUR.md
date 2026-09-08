@@ -1,8 +1,8 @@
 # Projektplan: Eigene Rechnungssoftware ("AgenturTool")
 
-**Status:** v1.10 — Schritte 0 bis 10 umgesetzt; der Lebenszyklus einer
-Rechnung ist vollständig: erfassen, ausstellen, versenden, bezahlen,
-stornieren, duplizieren.
+**Status:** v1.11 — Schritte 0 bis 11 umgesetzt; alltagstauglich: erfassen,
+ausstellen, versenden, bezahlen, stornieren, duplizieren, und eine Übersicht
+mit Filtern, Sortierung und Blättern samt Dashboard.
 **Repository:** `Kalabedo/AgenturTool`
 
 Dieses Dokument ist die verbindliche Architekturgrundlage. Es wird mit dem Code
@@ -882,6 +882,15 @@ das PDF entsteht nicht.
 ausdrücklich gesetzt ist — vorgesehen für den Container, in dem der Prozess
 ohnehin isoliert und unprivilegiert läuft (Abschnitt 16).
 
+**Chromium bekommt kein Netz.** Neben den Flags gegen Hintergrundverbindungen
+(`--disable-background-networking` und Verwandte) läuft der Browser mit
+`--host-resolver-rules=MAP * ~NOTFOUND`: Namensauflösung schlägt darin
+grundsätzlich fehl. Der Anlass war eine Messung — trotz der Flags ging beim
+Rendern eine Anfrage nach draußen. Das Dokument braucht kein Netz, es trägt
+Schrift und Logo als Data-URI in sich; also soll es auch keines bekommen
+können. Nebeneffekt: Baut ein Template je eine externe Adresse ein, fällt das
+sofort auf, statt still ein Bild im PDF fehlen zu lassen.
+
 **Die Fußzeile mit der Seitenzahl** kommt aus `renderInvoiceFooterTemplate()`
 im Template-Paket, nicht aus dem Backend: Sie muss den Seitenrand kennen und
 in den Platz passen, den `@page` unten frei lässt. Chromium rendert dieses
@@ -929,7 +938,8 @@ PATCH  /api/tax-profiles/:id           DELETE /api/tax-profiles/:id
 
 GET    /api/template-settings          PUT  /api/template-settings
 
-GET    /api/invoices?status=&year=&customerId=&q=&page=&sort=
+GET    /api/invoices?status=&documentType=&year=&customerId=&q=&overdue=
+                     &sort=&order=&page=&pageSize=
 POST   /api/invoices                   Entwurf anlegen
 GET    /api/invoices/:id
 PATCH  /api/invoices/:id               nur DRAFT → sonst 409
@@ -946,6 +956,33 @@ POST   /api/invoices/:id/regenerate-pdf   PDF aus dem Snapshot neu ablegen
 
 POST   /api/backup/export              GET /api/backup/status
 ```
+
+**Die Übersicht** (umgesetzt in Schritt 11) antwortet nicht mit einem nackten
+Array, sondern mit `{ items, total, page, pageSize, pageCount }`: „87
+Rechnungen, Seite 2 von 4" lässt sich sonst nicht anzeigen, und ein Zähler,
+den das Frontend schätzt, ist falsch, sobald gefiltert wird. Dazu:
+
+- Sortierbar nach `invoiceDate`, `dueDate` und `number` — alles Spalten.
+  Nach dem Betrag zu sortieren hieße, alle Rechnungen zu laden und im
+  Speicher zu sortieren, weil die Summe je nach Zustand aus einem
+  JSON-Snapshot kommt oder berechnet wird. Ein unbekanntes Sortierfeld wird
+  abgewiesen, nicht ignoriert: Sonst käme ein Feldname ungeprüft in die
+  Datenbankabfrage.
+- Die `id` ist immer zweites Sortierkriterium. Ohne sie wäre die Reihenfolge
+  zweier Rechnungen mit gleichem Datum offen, und beim Blättern könnte
+  dieselbe Rechnung auf zwei Seiten stehen oder ganz fehlen.
+- `overdue=true` ist ein Filter und kein Status: „überfällig" ergibt sich aus
+  `status = ISSUED` und `dueDate < heute` (Abschnitt 8).
+
+**Das Dashboard hat bewusst keinen eigenen Endpunkt.** Es stellt dieselbe
+Übersichtsabfrage dreimal mit kleinem `pageSize` und liest `total` — Entwürfe,
+offene, überfällige. Ein Statistik-Endpunkt müsste dieselben Filter ein
+zweites Mal ausdrücken, und die beiden Ausdrücke liefen irgendwann
+auseinander. Gezeigt werden diese drei Zahlen und die letzten Rechnungen;
+Umsatzübersichten und offene Posten mit Altersstruktur bleiben ausdrücklich
+einer späteren Version vorbehalten (Abschnitt 21). Die Filter der Übersicht
+stehen in der Adresszeile, damit das Dashboard direkt auf „überfällig"
+verlinken kann und eine Auswahl teilbar ist.
 
 Fehler einheitlich als `{ error: { code, message, details? } }`;
 Domänenverletzungen als `409 Conflict` mit sprechendem `code`
@@ -1115,7 +1152,7 @@ Jeder Schritt endet mit etwas Lauffähigem.
 | 8 ✅  | PDF-Service (Puppeteer) + Entwurfs-PDF                                     | PDF-Pipeline steht              |
 | 9 ✅  | Nummernvergabe + Snapshots + Finalisieren + PDF-Ablage                     | **Kernfunktion fertig**         |
 | 10 ✅ | Status: bezahlt/versendet, Stornieren, Duplizieren                         | Lebenszyklus komplett           |
-| 11    | Rechnungsübersicht mit Filter/Sortierung + Dashboard                       | Alltagstauglich                 |
+| 11 ✅ | Rechnungsübersicht mit Filter/Sortierung + Dashboard                       | Alltagstauglich                 |
 | 12    | Backup-Export/Restore + Restore-Test                                       | Datensicherheit                 |
 | 13    | Docker-Image + Auth-Modul (per `AUTH_ENABLED`), Tailscale-Anbindung        | deploy-fähig                    |
 | 14    | Politur: Fehlerbehandlung, Leerzustände, Tastaturbedienung, Responsiveness | V1                              |

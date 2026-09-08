@@ -4,6 +4,8 @@ import {
   DOCUMENT_TYPE,
   INVOICE_EVENT_TYPE,
   INVOICE_STATUS,
+  paginate,
+  todayIso,
   unfinalizeBlocker,
   buyerDataSchema,
   calculateInvoice,
@@ -18,6 +20,7 @@ import {
   type DocumentType,
   type InvoiceDraftPayload,
   type InvoiceListQuery,
+  type InvoiceListResponse,
   type InvoicePaymentPayload,
   type InvoiceSentPayload,
   type InvoiceResponse,
@@ -60,10 +63,43 @@ export class InvoicesService {
     private readonly documents: InvoiceDocumentsService,
   ) {}
 
-  async list(query: InvoiceListQuery): Promise<InvoiceResponse[]> {
+  /**
+   * Die Übersicht: filtern, sortieren, blättern.
+   *
+   * Alle Filter arbeiten auf Spalten, nicht auf berechneten Werten — auch
+   * „überfällig", das sich aus Status und Fälligkeitsdatum ergibt und
+   * deshalb ein Vergleich mit dem heutigen Tag ist statt eines gespeicherten
+   * Zustands (Abschnitt 8).
+   */
+  async list(query: InvoiceListQuery): Promise<InvoiceListResponse> {
+    const where = this.buildWhere(query);
+
+    const [total, invoices] = await this.prisma.$transaction([
+      this.prisma.invoice.count({ where }),
+      this.prisma.invoice.findMany({
+        where,
+        orderBy: this.buildOrder(query),
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+        ...WITH_ITEMS,
+      }),
+    ]);
+
+    const nextValues = await this.numbers.allNextValues();
+
+    return paginate(
+      invoices.map((invoice) => this.toResponse(invoice, nextValues)),
+      total,
+      query.page,
+      query.pageSize,
+    );
+  }
+
+  private buildWhere(query: InvoiceListQuery): Prisma.InvoiceWhereInput {
     const where: Prisma.InvoiceWhereInput = {};
 
     if (query.status !== undefined) where.status = query.status;
+    if (query.documentType !== undefined) where.documentType = query.documentType;
     if (query.customerId !== undefined) where.customerId = query.customerId;
     if (query.year !== undefined) {
       // Kalenderdaten liegen als ISO-Strings, deshalb Präfixvergleich statt
@@ -71,21 +107,31 @@ export class InvoicesService {
       where.invoiceDate = { startsWith: String(query.year) };
     }
 
+    if (query.overdue) {
+      // Bezahlte und stornierte Rechnungen sind nie überfällig, ein Entwurf
+      // erst recht nicht — überfällig ist genau eine offene ausgestellte
+      // Rechnung, deren Fälligkeitsdatum vorbei ist.
+      where.status = INVOICE_STATUS.ISSUED;
+      where.dueDate = { lt: todayIso() };
+    }
+
     const term = query.q?.trim();
     if (term !== undefined && term !== '') {
       where.OR = [{ number: { contains: term } }, { buyerData: { contains: term } }];
     }
 
-    const invoices = await this.prisma.invoice.findMany({
-      where,
-      // Entwürfe zuerst, danach absteigend nach Datum — was offen ist, sieht
-      // man zuerst.
-      orderBy: [{ invoiceDate: 'desc' }, { id: 'desc' }],
-      ...WITH_ITEMS,
-    });
+    return where;
+  }
 
-    const nextValues = await this.numbers.allNextValues();
-    return invoices.map((invoice) => this.toResponse(invoice, nextValues));
+  /**
+   * Die Sortierung, immer mit `id` als letztem Kriterium.
+   *
+   * Ohne dieses zweite Kriterium wäre die Reihenfolge zweier Rechnungen mit
+   * demselben Datum nicht festgelegt — beim Blättern könnte dieselbe
+   * Rechnung dann auf Seite 1 und auf Seite 2 auftauchen oder ganz fehlen.
+   */
+  private buildOrder(query: InvoiceListQuery): Prisma.InvoiceOrderByWithRelationInput[] {
+    return [{ [query.sort]: query.order }, { id: query.order }];
   }
 
   async findById(id: number): Promise<InvoiceResponse> {

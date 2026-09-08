@@ -3,7 +3,7 @@
 Eigene Rechnungssoftware — selbst gehostet, unabhängig von externen
 Rechnungsdiensten. Rechnungen erstellen, verwalten und als PDF exportieren.
 
-**Status:** Schritte 0 bis 10 umgesetzt — der Lebenszyklus einer Rechnung ist vollständig. Rechnungen lassen sich erfassen und ausstellen (Nummer, eingefrorene Stammdaten, abgelegtes PDF), als versendet und bezahlt vermerken, stornieren und duplizieren. Als Nächstes folgen Übersicht mit Filtern und Dashboard (Schritt 11).
+**Status:** Schritte 0 bis 11 umgesetzt — alltagstauglich. Rechnungen lassen sich erfassen und ausstellen (Nummer, eingefrorene Stammdaten, abgelegtes PDF), als versendet und bezahlt vermerken, stornieren und duplizieren; die Übersicht filtert, sortiert und blättert, das Dashboard zeigt Entwürfe, offene und überfällige Rechnungen. Als Nächstes folgt Backup-Export und -Restore (Schritt 12).
 
 ## Architektur
 

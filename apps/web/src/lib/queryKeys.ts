@@ -20,7 +20,10 @@ export const queryKeys = {
   },
   invoices: {
     all: ['invoices'] as const,
-    list: (search: string, status: string) => ['invoices', 'list', search, status] as const,
+    // Die vollständige Abfragezeichenkette als Schlüssel: Filter, Sortierung
+    // und Seite stecken darin, und jede Kombination bekommt so ihren eigenen
+    // Zwischenspeicher.
+    list: (queryString: string) => ['invoices', 'list', queryString] as const,
     byId: (id: number) => ['invoices', 'detail', id] as const,
   },
 };

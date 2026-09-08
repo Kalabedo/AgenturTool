@@ -9,6 +9,7 @@ export * from './tax-profile.js';
 export * from './template-settings.js';
 export * from './snapshot-mapping.js';
 export * from './invoice-calculation.js';
+export * from './pagination.js';
 export * from './invoice.js';
 export * from './invoice-number.js';
 export * from './finalization.js';

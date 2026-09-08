@@ -140,6 +140,14 @@ export class PdfService implements OnModuleDestroy {
         '--disable-component-update',
         '--no-first-run',
         '--no-default-browser-check',
+        // Und dann noch der Riegel davor: Namensauflösung schlägt in diesem
+        // Browser grundsätzlich fehl. Die Flags oben schalten das ab, was
+        // dokumentiert ist — beim Messen ging trotzdem eine Anfrage nach
+        // draußen. Das Dokument braucht kein Netz (Schrift und Logo stecken
+        // als Data-URI darin), also kann es hier auch keines geben. Sollte
+        // ein Template je eine externe Adresse einbauen, fällt es sofort auf
+        // statt still im PDF zu fehlen.
+        '--host-resolver-rules=MAP * ~NOTFOUND',
         ...(this.config.disableSandbox ? ['--no-sandbox', '--disable-setuid-sandbox'] : []),
       ],
     });
