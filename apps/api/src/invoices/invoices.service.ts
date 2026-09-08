@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, type Invoice, type InvoiceItem } from '@prisma/client';
 import {
+  DOCUMENT_TYPE,
   INVOICE_EVENT_TYPE,
+  INVOICE_STATUS,
   unfinalizeBlocker,
   buyerDataSchema,
   calculateInvoice,
@@ -16,6 +18,8 @@ import {
   type DocumentType,
   type InvoiceDraftPayload,
   type InvoiceListQuery,
+  type InvoicePaymentPayload,
+  type InvoiceSentPayload,
   type InvoiceResponse,
   type InvoiceStatus,
   type TotalsSnapshot,
@@ -256,6 +260,167 @@ export class InvoicesService {
     return this.respond(invoice);
   }
 
+  /**
+   * „Bezahlt am" setzen oder entfernen (D7).
+   *
+   * `PAID` ist ein gespeicherter Status, aber ein abgeleiteter: Datum
+   * gesetzt heißt bezahlt, Datum leer heißt wieder offen. Deshalb gibt es
+   * keinen eigenen Endpunkt „als bezahlt markieren" — es gibt nur dieses
+   * eine Feld, und der Status folgt ihm.
+   */
+  async setPayment(id: number, payload: InvoicePaymentPayload): Promise<InvoiceResponse> {
+    const existing = await this.load(id);
+
+    if (existing.status === INVOICE_STATUS.DRAFT) {
+      throw ApiError.validation('Ein Entwurf ist noch nicht gestellt und kann nicht bezahlt sein.');
+    }
+    if (existing.status === INVOICE_STATUS.CANCELLED) {
+      throw ApiError.invoiceNotEditable(
+        'Diese Rechnung ist storniert; eine Zahlung lässt sich darauf nicht mehr vermerken.',
+      );
+    }
+
+    const invoice = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.invoice.update({
+        where: { id },
+        data: {
+          paidAt: payload.paidAt,
+          status: payload.paidAt === null ? INVOICE_STATUS.ISSUED : INVOICE_STATUS.PAID,
+        },
+        ...WITH_ITEMS,
+      });
+
+      await tx.invoiceEvent.create({
+        data: {
+          invoiceId: id,
+          type:
+            payload.paidAt === null
+              ? INVOICE_EVENT_TYPE.PAYMENT_CLEARED
+              : INVOICE_EVENT_TYPE.PAYMENT_SET,
+          metadata: JSON.stringify({ paidAt: payload.paidAt }),
+        },
+      });
+
+      return updated;
+    });
+
+    return this.respond(invoice);
+  }
+
+  /**
+   * „Versendet" setzen oder entfernen.
+   *
+   * Kein Status, sondern ein Zeitstempel: Versendet und bezahlt sind
+   * unabhängig voneinander, und eine versendete Rechnung ist weiterhin offen
+   * oder bezahlt — nicht „versendet".
+   */
+  async setSent(id: number, payload: InvoiceSentPayload): Promise<InvoiceResponse> {
+    const existing = await this.load(id);
+
+    if (existing.status === INVOICE_STATUS.DRAFT) {
+      throw ApiError.validation(
+        'Ein Entwurf hat noch keine Nummer und wird nicht versendet. Zuerst ausstellen.',
+      );
+    }
+
+    const invoice = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.invoice.update({
+        where: { id },
+        data: { sentAt: payload.sentAt === null ? null : new Date(payload.sentAt) },
+        ...WITH_ITEMS,
+      });
+
+      await tx.invoiceEvent.create({
+        data: {
+          invoiceId: id,
+          type: INVOICE_EVENT_TYPE.SENT_MARKED,
+          metadata: JSON.stringify({ note: payload.sentAt ?? 'zurückgenommen' }),
+        },
+      });
+
+      return updated;
+    });
+
+    return this.respond(invoice);
+  }
+
+  /**
+   * Legt einen neuen Entwurf mit den Inhalten dieser Rechnung an.
+   *
+   * Der Weg für wiederkehrende Leistungen und für die Korrektur nach einem
+   * Storno. Kopiert werden Empfänger, Positionen und Texte; **nicht**
+   * kopiert werden Nummer, Snapshots, Zahlungs- und Versandvermerke sowie
+   * die interne Notiz — sie gehören zu dem Vorgang, der abgeschlossen ist.
+   * Die Daten werden neu gesetzt: Ein Duplikat ist eine Rechnung von heute.
+   */
+  async duplicate(id: number): Promise<InvoiceResponse> {
+    const source = await this.load(id);
+
+    if (source.documentType === DOCUMENT_TYPE.CANCELLATION) {
+      throw ApiError.validation(
+        'Ein Storno lässt sich nicht duplizieren. Für eine Neuausstellung wird die ursprüngliche Rechnung dupliziert.',
+      );
+    }
+
+    const company = await this.company.get();
+    const customer =
+      source.customerId === null
+        ? null
+        : await this.prisma.customer.findUnique({ where: { id: source.customerId } });
+
+    const dates = defaultInvoiceDates(
+      resolvePaymentTermDays(
+        customer?.defaultPaymentTermDays ?? null,
+        company.defaultPaymentTermDays,
+      ),
+    );
+
+    const invoice = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.invoice.create({
+        data: {
+          customerId: source.customerId,
+          taxProfileId: source.taxProfileId,
+          currency: source.currency,
+          buyerData: source.buyerData,
+          invoiceDate: dates.invoiceDate,
+          serviceDate: dates.serviceDate,
+          dueDate: dates.dueDate,
+          notes: source.notes,
+          footerNote: source.footerNote,
+          items: {
+            create: source.items.map((item) => ({
+              position: item.position,
+              description: item.description,
+              quantity: item.quantity,
+              unit: item.unit,
+              unitPriceCents: item.unitPriceCents,
+              discountType: item.discountType,
+              discountValue: item.discountValue,
+              taxRateBasisPoints: item.taxRateBasisPoints,
+              lineDiscountCents: item.lineDiscountCents,
+              lineNetCents: item.lineNetCents,
+            })),
+          },
+        },
+        ...WITH_ITEMS,
+      });
+
+      await tx.invoiceEvent.create({
+        data: {
+          invoiceId: created.id,
+          type: INVOICE_EVENT_TYPE.CREATED,
+          metadata: JSON.stringify({
+            note: `Dupliziert aus ${source.number ?? `Entwurf #${source.id}`}`,
+          }),
+        },
+      });
+
+      return created;
+    });
+
+    return this.respond(invoice);
+  }
+
   async deleteDraft(id: number): Promise<void> {
     const existing = await this.load(id);
     this.assertEditable(existing);
@@ -372,6 +537,9 @@ export class InvoicesService {
         lineNetCents: item.lineNetCents,
       })),
       totals,
+      cancelsInvoiceId: invoice.cancelsInvoiceId,
+      cancelledByInvoiceId: invoice.cancelledByInvoice?.id ?? null,
+
       hasDocument: invoice.documents.length > 0,
       // Ein Blick ins Dateisystem je Rechnung. Ein `stat` ist billig, und
       // die Alternative wäre, dem Benutzer eine Datei anzubieten, die es

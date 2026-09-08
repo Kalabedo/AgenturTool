@@ -1,7 +1,8 @@
 # Projektplan: Eigene Rechnungssoftware ("AgenturTool")
 
-**Status:** v1.9 — Schritte 0 bis 9 umgesetzt; Rechnungen lassen sich erfassen,
-ausstellen und als PDF ablegen. Die Kernfunktion steht.
+**Status:** v1.10 — Schritte 0 bis 10 umgesetzt; der Lebenszyklus einer
+Rechnung ist vollständig: erfassen, ausstellen, versenden, bezahlen,
+stornieren, duplizieren.
 **Repository:** `Kalabedo/AgenturTool`
 
 Dieses Dokument ist die verbindliche Architekturgrundlage. Es wird mit dem Code
@@ -478,6 +479,30 @@ negativen Beträgen; anschließend kann per „Duplizieren" eine korrigierte
 Rechnung erstellt werden. Das entspricht der üblichen Erwartung an
 GoBD-konforme Belegführung, ohne dass wir Buchhaltungslogik nachbauen.
 
+**Umgesetzt in Schritt 10.** Das Storno geht durch dieselbe Maschinerie wie
+das Finalisieren — Nummer aus derselben Sequenz (D10), eigenes PDF, eigener
+`InvoiceDocument`-Datensatz — und markiert die Originalrechnung **in
+derselben Transaktion**. Sonst gäbe es einen Moment mit einem Storno zu einer
+Rechnung, die nichts davon weiß.
+
+Zwei Festlegungen, die dabei anfielen:
+
+- Das Storno übernimmt die **Snapshots der Originalrechnung**, nicht die
+  heutigen Stammdaten. Es hebt ein bestimmtes Dokument auf und muss deshalb
+  dieselbe Anschrift, dasselbe Steuerprofil und dasselbe Aussehen tragen. Nur
+  die Summen entstehen neu — aus den umgekehrten Mengen, und dank des
+  symmetrischen Rundens ergeben Original und Storno exakt null. Ein Test
+  prüft genau diese Summe am erzeugten Dokument.
+- Ein **Storno auf ein Storno** gibt es nicht: Das wäre eine
+  Wiederherstellung. Wer die Leistung doch abrechnen will, dupliziert die
+  Originalrechnung und stellt sie neu aus. `isCancellable()` im geteilten
+  Paket ist die eine Stelle, an der diese Frage beantwortet wird.
+
+**Duplizieren** kopiert Empfänger, Positionen und Texte, nicht aber Nummer,
+Snapshots, Zahlungs- und Versandvermerke oder die interne Notiz — die gehören
+zu einem abgeschlossenen Vorgang. Die Daten werden neu gesetzt: Ein Duplikat
+ist eine Rechnung von heute, kein Abzug von damals.
+
 ### „Finalisierung zurücknehmen" (eng begrenztes Undo)
 
 Für den Fall „Tippfehler zehn Sekunden nach dem Klick". Erlaubt **nur**, wenn
@@ -531,7 +556,11 @@ dueDate < heute` berechnet — sonst bräuchte es einen Cron-Job, der Zustände
   zum Bezahlstatus (versendet _und_ bezahlt, versendet _und_ offen).
 - Zahlung ist in V1 nur `paidAt` (Datum oder leer). `PAID` ist damit ein
   abgeleiteter, aber gespeicherter Status: `paidAt` setzen ⇒ `PAID`,
-  `paidAt` leeren ⇒ zurück auf `ISSUED`.
+  `paidAt` leeren ⇒ zurück auf `ISSUED`. **Umgesetzt in Schritt 10** als
+  `POST /api/invoices/:id/payment` — es gibt bewusst keinen zusätzlichen
+  Endpunkt „als bezahlt markieren", sonst gäbe es zwei Wege zu einem Feld.
+  Auf einer stornierten Rechnung wird keine Zahlung mehr vermerkt, auf einem
+  Entwurf gar keine.
 - **Teilzahlungen später:** die Migration ist klein — eine `Payment`-Tabelle
   ergänzen, bestehende `paidAt` als je einen Vollzahlungs-Datensatz
   übernehmen, den Status daraus berechnen. Deshalb ist der schmale Start
@@ -1073,23 +1102,23 @@ und läuft als unprivilegierter Benutzer.
 
 Jeder Schritt endet mit etwas Lauffähigem.
 
-| #    | Schritt                                                                    | Ergebnis                        |
-| ---- | -------------------------------------------------------------------------- | ------------------------------- |
-| 0 ✅ | Monorepo-Gerüst, TS-Configs, Lint/Format, `shared`-Skeleton                | `pnpm dev` läuft                |
-| 1 ✅ | DB-Schema, Migrationen, Seed                                               | Datenbank steht                 |
-| 2 ✅ | Company-Einstellungen inkl. Logo-Upload                                    | erster vertikaler Durchstich    |
-| 3 ✅ | Kundenverwaltung (CRUD, Liste, Suche)                                      | zweite Domäne, Muster etabliert |
-| 4 ✅ | Steuerprofile                                                              | Stammdaten komplett             |
-| 5 ✅ | Berechnungslogik in `shared` + Unit-Tests                                  | Kern abgesichert                |
-| 6 ✅ | Rechnungs-Entwurf: API + Editor mit dynamischen Positionen                 | Rechnungen erfassbar            |
-| 7 ✅ | `invoice-template` + Live-Vorschau im iframe                               | sichtbares Ergebnis             |
-| 8 ✅ | PDF-Service (Puppeteer) + Entwurfs-PDF                                     | PDF-Pipeline steht              |
-| 9 ✅ | Nummernvergabe + Snapshots + Finalisieren + PDF-Ablage                     | **Kernfunktion fertig**         |
-| 10   | Status: bezahlt/versendet, Stornieren, Duplizieren                         | Lebenszyklus komplett           |
-| 11   | Rechnungsübersicht mit Filter/Sortierung + Dashboard                       | Alltagstauglich                 |
-| 12   | Backup-Export/Restore + Restore-Test                                       | Datensicherheit                 |
-| 13   | Docker-Image + Auth-Modul (per `AUTH_ENABLED`), Tailscale-Anbindung        | deploy-fähig                    |
-| 14   | Politur: Fehlerbehandlung, Leerzustände, Tastaturbedienung, Responsiveness | V1                              |
+| #     | Schritt                                                                    | Ergebnis                        |
+| ----- | -------------------------------------------------------------------------- | ------------------------------- |
+| 0 ✅  | Monorepo-Gerüst, TS-Configs, Lint/Format, `shared`-Skeleton                | `pnpm dev` läuft                |
+| 1 ✅  | DB-Schema, Migrationen, Seed                                               | Datenbank steht                 |
+| 2 ✅  | Company-Einstellungen inkl. Logo-Upload                                    | erster vertikaler Durchstich    |
+| 3 ✅  | Kundenverwaltung (CRUD, Liste, Suche)                                      | zweite Domäne, Muster etabliert |
+| 4 ✅  | Steuerprofile                                                              | Stammdaten komplett             |
+| 5 ✅  | Berechnungslogik in `shared` + Unit-Tests                                  | Kern abgesichert                |
+| 6 ✅  | Rechnungs-Entwurf: API + Editor mit dynamischen Positionen                 | Rechnungen erfassbar            |
+| 7 ✅  | `invoice-template` + Live-Vorschau im iframe                               | sichtbares Ergebnis             |
+| 8 ✅  | PDF-Service (Puppeteer) + Entwurfs-PDF                                     | PDF-Pipeline steht              |
+| 9 ✅  | Nummernvergabe + Snapshots + Finalisieren + PDF-Ablage                     | **Kernfunktion fertig**         |
+| 10 ✅ | Status: bezahlt/versendet, Stornieren, Duplizieren                         | Lebenszyklus komplett           |
+| 11    | Rechnungsübersicht mit Filter/Sortierung + Dashboard                       | Alltagstauglich                 |
+| 12    | Backup-Export/Restore + Restore-Test                                       | Datensicherheit                 |
+| 13    | Docker-Image + Auth-Modul (per `AUTH_ENABLED`), Tailscale-Anbindung        | deploy-fähig                    |
+| 14    | Politur: Fehlerbehandlung, Leerzustände, Tastaturbedienung, Responsiveness | V1                              |
 
 Tests bewusst schmal, aber gezielt: Berechnungen und Nummernvergabe mit
 Unit-Tests, Finalisierung als Integrationstest, ein PDF-Snapshot-Test.

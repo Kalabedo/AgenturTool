@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import {
+  DOCUMENT_TYPE,
   INVOICE_STATUS,
   INVOICE_STATUS_LABELS,
   formatCents,
@@ -176,6 +177,11 @@ export function InvoiceListPage(): JSX.Element {
                     >
                       {INVOICE_STATUS_LABELS[invoice.status]}
                     </span>
+                    {invoice.documentType === DOCUMENT_TYPE.CANCELLATION && (
+                      <span className="ml-1 rounded bg-slate-200 px-1.5 py-0.5 text-xs text-slate-700">
+                        Storno
+                      </span>
+                    )}
                     {isOverdue(invoice) && (
                       <span className="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800">
                         überfällig

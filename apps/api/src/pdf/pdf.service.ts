@@ -131,6 +131,15 @@ export class PdfService implements OnModuleDestroy {
         // Ohne Hinting fällt der Textsatz auf jeder Maschine gleich aus.
         // Das PDF soll unabhängig davon sein, wo es erzeugt wurde.
         '--font-render-hinting=none',
+        // Chromium fragt beim Start von sich aus im Netz nach (Komponenten,
+        // Verfügbarkeitsprüfung). Das Dokument braucht davon nichts — es
+        // trägt Schrift und Logo in sich —, und in einem Werkzeug mit
+        // Kundendaten ist jede Verbindung nach draußen eine, die man
+        // erklären können muss.
+        '--disable-background-networking',
+        '--disable-component-update',
+        '--no-first-run',
+        '--no-default-browser-check',
         ...(this.config.disableSandbox ? ['--no-sandbox', '--disable-setuid-sandbox'] : []),
       ],
     });

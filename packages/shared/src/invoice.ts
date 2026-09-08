@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   DISCOUNT_TYPE,
   DISCOUNT_TYPE_VALUES,
+  DOCUMENT_TYPE,
   DOCUMENT_TYPE_VALUES,
   INVOICE_STATUS,
   INVOICE_STATUS_VALUES,
@@ -9,7 +10,7 @@ import {
   type DocumentType,
   type InvoiceStatus,
 } from './enums.js';
-import { addDays, isoDateSchema, todayIso, type IsoDate } from './date.js';
+import { addDays, formatDateDe, isoDateSchema, todayIso, type IsoDate } from './date.js';
 import { parseCents, parsePercentToBasisPoints, parseQuantity } from './money.js';
 import { CURRENT_SNAPSHOT_VERSION, type BuyerData, type TotalsSnapshot } from './snapshots.js';
 import type { CustomerResponse } from './customer.js';
@@ -229,6 +230,40 @@ export const invoiceDraftInputSchema = z
     }
   });
 
+/**
+ * „Bezahlt am" setzen oder entfernen.
+ *
+ * Ein Kalendertag, kein Zeitstempel: Wann das Geld da war, steht auf dem
+ * Kontoauszug als Datum — und `PAID` ist in V1 genau dieses eine Feld (D7).
+ */
+export const invoicePaymentInputSchema = z.object({
+  paidAt: z
+    .union([z.string().trim(), z.null()])
+    .transform((value) => (value === null || value === '' ? null : value))
+    .pipe(isoDateSchema.nullable()),
+});
+export type InvoicePaymentPayload = z.output<typeof invoicePaymentInputSchema>;
+
+/**
+ * „Versendet" setzen oder entfernen.
+ *
+ * Anders als das Zahldatum ein echter Zeitstempel — er hält fest, wann die
+ * Rechnung das Haus verlassen hat. Fehlt die Angabe, gilt „jetzt": Der
+ * übliche Fall ist der Klick unmittelbar nach dem Versenden.
+ */
+export const invoiceSentInputSchema = z.object({
+  sentAt: z
+    .union([z.string().trim(), z.null()])
+    .optional()
+    .transform((value) => {
+      if (value === null) return null;
+      if (value === undefined || value === '') return new Date().toISOString();
+      return value;
+    })
+    .pipe(z.string().datetime().nullable()),
+});
+export type InvoiceSentPayload = z.output<typeof invoiceSentInputSchema>;
+
 export type InvoiceDraftInput = z.input<typeof invoiceDraftInputSchema>;
 export type InvoiceDraftPayload = z.output<typeof invoiceDraftInputSchema>;
 
@@ -271,6 +306,11 @@ export interface InvoiceResponse {
   items: InvoiceItemResponse[];
   /** Vom Server berechnet — maßgeblich, auch wenn das Formular mitrechnet. */
   totals: TotalsSnapshot;
+
+  /** Bei einem Storno: die Rechnung, die es aufhebt. */
+  cancelsInvoiceId: number | null;
+  /** Bei einer stornierten Rechnung: das Storno-Dokument dazu. */
+  cancelledByInvoiceId: number | null;
 
   /** Ob ein gespeichertes PDF vorliegt (entsteht beim Finalisieren). */
   hasDocument: boolean;
@@ -391,6 +431,29 @@ export function isOverdue(
   today: IsoDate = todayIso(),
 ): boolean {
   return invoice.status === INVOICE_STATUS.ISSUED && invoice.dueDate < today;
+}
+
+/**
+ * Ob zu dieser Rechnung ein Storno erzeugt werden darf.
+ *
+ * Ausgestellt oder bezahlt, noch nicht storniert, und selbst kein Storno:
+ * Ein Storno auf ein Storno wäre eine Wiederherstellung, und die gibt es
+ * bewusst nicht — wer die Leistung doch abrechnen will, dupliziert die
+ * Originalrechnung und stellt sie neu aus.
+ */
+export function isCancellable(
+  invoice: Pick<InvoiceResponse, 'status' | 'documentType' | 'cancelledByInvoiceId'>,
+): boolean {
+  return (
+    invoice.documentType === DOCUMENT_TYPE.INVOICE &&
+    (invoice.status === INVOICE_STATUS.ISSUED || invoice.status === INVOICE_STATUS.PAID) &&
+    invoice.cancelledByInvoiceId === null
+  );
+}
+
+/** Der Hinweistext, der auf dem Storno-Dokument steht. */
+export function cancellationNote(number: string, invoiceDate: IsoDate): string {
+  return `Storno zur Rechnung ${number} vom ${formatDateDe(invoiceDate)}.`;
 }
 
 export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {

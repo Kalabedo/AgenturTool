@@ -22,6 +22,7 @@ import { Input } from '../../components/ui/Input.js';
 import { Select } from '../../components/ui/Select.js';
 import { Textarea } from '../../components/ui/Textarea.js';
 import { saveFile } from './saveFile.js';
+import { InvoiceLifecycleCard } from './InvoiceLifecycleCard.js';
 import { InvoiceItemsTable } from './InvoiceItemsTable.js';
 import { InvoicePreview } from './InvoicePreview.js';
 import { useInvoiceTotals } from './useInvoiceTotals.js';
@@ -315,6 +316,8 @@ export function InvoiceEditorPage(): JSX.Element {
             </div>
           </div>
         )}
+
+        {!editable && <InvoiceLifecycleCard invoice={data} />}
 
         {data.documentMissing && (
           <div className="rounded-lg border border-rose-200 bg-rose-50 p-4">

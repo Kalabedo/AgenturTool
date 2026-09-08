@@ -17,9 +17,13 @@ import { z } from 'zod';
 import {
   invoiceDraftInputSchema,
   invoiceListQuerySchema,
+  invoicePaymentInputSchema,
+  invoiceSentInputSchema,
   type InvoiceDraftPayload,
   type InvoiceListQuery,
+  type InvoicePaymentPayload,
   type InvoiceResponse,
+  type InvoiceSentPayload,
 } from '@agentur-tool/shared';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { InvoicePdfService, type RenderedInvoicePdf } from '../pdf/invoice-pdf.service';
@@ -128,6 +132,46 @@ export class InvoicesController {
   async unfinalize(@Param('id', ParseIntPipe) id: number): Promise<InvoiceResponse> {
     await this.finalizer.unfinalize(id);
     return this.invoices.findById(id);
+  }
+
+  /**
+   * Storniert die Rechnung und liefert das entstandene Storno-Dokument.
+   *
+   * Bewusst das Storno und nicht die Originalrechnung: Der nächste Blick
+   * gilt dem neuen Beleg — die Originalrechnung ist unverändert und trägt
+   * nur noch den Verweis.
+   */
+  @Post(':id/cancel')
+  @HttpCode(HttpStatus.OK)
+  async cancel(@Param('id', ParseIntPipe) id: number): Promise<InvoiceResponse> {
+    return this.invoices.findById(await this.finalizer.cancel(id));
+  }
+
+  /** Legt einen neuen Entwurf mit denselben Inhalten an. */
+  @Post(':id/duplicate')
+  @HttpCode(HttpStatus.CREATED)
+  duplicate(@Param('id', ParseIntPipe) id: number): Promise<InvoiceResponse> {
+    return this.invoices.duplicate(id);
+  }
+
+  /** Zahldatum setzen oder entfernen; der Status folgt dem Feld (D7). */
+  @Post(':id/payment')
+  @HttpCode(HttpStatus.OK)
+  setPayment(
+    @Param('id', ParseIntPipe) id: number,
+    @Body(new ZodValidationPipe(invoicePaymentInputSchema)) payload: InvoicePaymentPayload,
+  ): Promise<InvoiceResponse> {
+    return this.invoices.setPayment(id, payload);
+  }
+
+  /** Versandvermerk setzen oder entfernen; ohne Angabe gilt „jetzt". */
+  @Post(':id/sent')
+  @HttpCode(HttpStatus.OK)
+  setSent(
+    @Param('id', ParseIntPipe) id: number,
+    @Body(new ZodValidationPipe(invoiceSentInputSchema)) payload: InvoiceSentPayload,
+  ): Promise<InvoiceResponse> {
+    return this.invoices.setSent(id, payload);
   }
 
   /** Erzeugt das gespeicherte PDF aus den Snapshots neu (Reparaturweg). */
