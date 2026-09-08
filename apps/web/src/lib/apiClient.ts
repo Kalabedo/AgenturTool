@@ -33,7 +33,21 @@ export class ApiRequestError extends Error {
   }
 }
 
+/**
+ * Meldet dem Rest der Anwendung, dass die Sitzung abgelaufen ist.
+ *
+ * Der Client kennt weder React noch den Query-Zwischenspeicher, deshalb der
+ * Umweg über ein Fensterereignis: Wer sich dafür interessiert — der
+ * AuthGate — hört zu und fragt die Sitzung neu ab. Ohne das bliebe nach dem
+ * Ablauf eine Oberfläche stehen, in der jede Aktion still fehlschlägt.
+ */
+export const SESSION_EXPIRED_EVENT = 'agentur-tool:session-expired';
+
 async function toError(response: Response): Promise<ApiRequestError> {
+  if (response.status === 401) {
+    window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+  }
+
   let code = 'INTERNAL_ERROR';
   let message = `Die Anfrage ist fehlgeschlagen (HTTP ${response.status}).`;
   let details: ApiErrorDetail[] | undefined;

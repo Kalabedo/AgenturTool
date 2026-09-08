@@ -17,6 +17,9 @@ export const API_ERROR_CODE = {
   FINALIZE_VALIDATION_FAILED: 'FINALIZE_VALIDATION_FAILED',
   NUMBER_SEQUENCE_CONFLICT: 'NUMBER_SEQUENCE_CONFLICT',
   UNFINALIZE_NOT_ALLOWED: 'UNFINALIZE_NOT_ALLOWED',
+  UNAUTHENTICATED: 'UNAUTHENTICATED',
+  INVALID_CREDENTIALS: 'INVALID_CREDENTIALS',
+  TOO_MANY_ATTEMPTS: 'TOO_MANY_ATTEMPTS',
   INTERNAL_ERROR: 'INTERNAL_ERROR',
 } as const;
 export type ApiErrorCode = (typeof API_ERROR_CODE)[keyof typeof API_ERROR_CODE];
@@ -58,6 +61,25 @@ export class ApiError extends HttpException {
 
   static fileTooLarge(message: string): ApiError {
     return new ApiError(API_ERROR_CODE.FILE_TOO_LARGE, message, HttpStatus.PAYLOAD_TOO_LARGE);
+  }
+
+  /** Keine gültige Sitzung — die Oberfläche zeigt daraufhin die Anmeldung. */
+  static unauthenticated(message: string): ApiError {
+    return new ApiError(API_ERROR_CODE.UNAUTHENTICATED, message, HttpStatus.UNAUTHORIZED);
+  }
+
+  /**
+   * Anmeldedaten stimmen nicht.
+   *
+   * Bewusst dieselbe Meldung für „Adresse unbekannt" und „Passwort falsch":
+   * Alles andere verriete, welche Adressen es gibt.
+   */
+  static invalidCredentials(message: string): ApiError {
+    return new ApiError(API_ERROR_CODE.INVALID_CREDENTIALS, message, HttpStatus.UNAUTHORIZED);
+  }
+
+  static tooManyAttempts(message: string): ApiError {
+    return new ApiError(API_ERROR_CODE.TOO_MANY_ATTEMPTS, message, HttpStatus.TOO_MANY_REQUESTS);
   }
 
   /**

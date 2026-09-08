@@ -9,11 +9,14 @@ import { InvoicesModule } from './invoices/invoices.module';
 import { FilesModule } from './files/files.module';
 import { HealthModule } from './health/health.module';
 import { BackupModule } from './backup/backup.module';
+import { AuthModule } from './auth/auth.module';
+import { WebModule } from './web/web.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: ['../../.env'] }),
     PrismaModule,
+    AuthModule,
     FilesModule,
     HealthModule,
     CompanyModule,
@@ -22,6 +25,9 @@ import { BackupModule } from './backup/backup.module';
     TemplateSettingsModule,
     InvoicesModule,
     BackupModule,
+    // Zuletzt: Der statische Ausliefer-Zweig darf erst greifen, wenn keine
+    // API-Route gepasst hat.
+    WebModule.forRoot(),
   ],
 })
 export class AppModule {}

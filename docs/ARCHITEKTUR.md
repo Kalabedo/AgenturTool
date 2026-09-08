@@ -1076,6 +1076,111 @@ sich dafür nicht — der Login ist ja bereits aktiv.
 
 ---
 
+## 16a. Anmeldung und Betrieb im Container (Schritt 13)
+
+Umgesetzt ist beides zusammen, weil es zusammengehört: Das Image macht die
+Anwendung erreichbar, die Anmeldung entscheidet, wer hineinkommt.
+
+### Der Schalter
+
+`AUTH_ENABLED` ist keine halbe Anmeldung, sondern eine ganze, die abgeschaltet
+werden kann. Derselbe Code läuft in beiden Fällen; nur der globale Wächter
+(`AuthGuard`, per `APP_GUARD` an alle Routen gebunden) gibt bei
+`AUTH_ENABLED=false` sofort frei. Das ist der lokale Betrieb aus D1 — der
+Server hört dort ohnehin nur auf `127.0.0.1`.
+
+Öffentlich bleiben in jedem Fall drei Routen, ausgezeichnet mit `@Public()`:
+`GET /api/health`, `POST /api/auth/login` und `POST /api/auth/logout`. Dazu
+`GET /api/auth/session`, denn das Frontend muss vor der Anmeldung fragen
+dürfen, ob es überhaupt eine gibt. Die Antwort verrät nichts:
+`{ enabled, user }`, und `user` ist ohne gültige Sitzung `null`.
+
+### Passwörter und Sitzungen
+
+- **argon2id** über `@node-rs/argon2` mit den Voreinstellungen der Bibliothek
+  (19 MiB, 2 Durchläufe). Kein bcrypt: Argon2 ist speicherhart, und genau das
+  macht Angriffe mit Grafikkarten teuer.
+- **Serverseitige Sitzungen**, kein JWT. Abmelden muss sofort wirken; bei
+  einem JWT hieße das warten oder eine Sperrliste führen — und eine Sperrliste
+  ist eine Sitzungstabelle mit Umwegen.
+- In der Tabelle steht nie das Token, sondern sein **SHA-256**. Wer die
+  Datenbank in die Hände bekommt — Backup, Kopie, Fehlersuche —, kann sich
+  damit nicht anmelden. Ein zweiter Hash-Durchlauf mit Argon2 wäre hier
+  unnötig: Das Token ist 32 zufällige Bytes, es gibt nichts zu raten.
+- Cookie: `httpOnly` (kein Skript kommt heran), `SameSite=Lax` (eine fremde
+  Seite kann keine Anfrage im Namen des Angemeldeten stellen — CSRF ist damit
+  erledigt, ohne ein zweites Token einzuführen), `Secure`, sobald
+  `AUTH_ENABLED` gesetzt ist. `COOKIE_SECURE=false` ist der bewusste Ausweg
+  für den Betrieb ohne HTTPS-Terminierung im Tailnet.
+- Laufzeit `SESSION_TTL_DAYS` (30). Abgelaufene Sitzungen räumt jede Anmeldung
+  mit weg; ein eigener Aufräumlauf wäre für eine Tabelle mit einer Handvoll
+  Zeilen zu viel Apparat.
+
+### Was ein Angreifer nicht erfährt
+
+Falsches Passwort und unbekannte Adresse ergeben dieselbe Meldung und dieselbe
+Antwortzeit: Gibt es den Benutzer nicht, wird gegen einen fest hinterlegten
+Dummy-Hash geprüft, statt sofort zurückzukehren. Sonst ließe sich an der
+Antwortzeit ablesen, welche Adresse existiert. Ein Test hält beides fest.
+
+Dazu eine Sperre nach `LOGIN_MAX_ATTEMPTS` Fehlversuchen je Absender innerhalb
+von `LOGIN_WINDOW_MINUTES`. Sie liegt im Arbeitsspeicher, nicht in der
+Datenbank: Es gibt einen Prozess und einen Benutzer. Nach einem Neustart ist
+die Zählung weg — das ist die Schwäche, und hinter Tailscale ist sie
+hinnehmbar.
+
+### Kein Registrierungsweg
+
+Benutzer entstehen auf der Kommandozeile: `pnpm user:set <e-mail>`. Ein
+Registrierungsformular wäre genau die Tür, die die Anmeldung zumachen soll.
+Das Passwort wird eingegeben, nicht als Argument übergeben — was auf der
+Kommandozeile steht, landet in der Prozessliste und in der Shell-Historie. Wird
+ein Passwort geändert, werden alle bestehenden Sitzungen dieses Benutzers
+verworfen: Ein Passwortwechsel nach einem verlorenen Gerät wäre sonst wirkungslos.
+
+### Das Frontend liefert der Server mit
+
+`ServeStaticModule` reicht `apps/web/dist` aus, mit `exclude: ['/api/(.*)']` —
+ohne diese Ausnahme beantwortete der statische Server einen vertippten
+API-Pfad mit der `index.html`, und ein 404 sähe im Frontend aus wie kaputtes
+JSON. Existiert das Verzeichnis nicht (Entwicklung, dort übernimmt Vite),
+hält sich das Modul heraus, statt beim Start zu stolpern.
+
+Vor der Anwendung steht der `AuthGate`: Er fragt `/api/auth/session` und zeigt
+das Anmeldeformular nur, wenn der Server sagt, dass es eine Anmeldung gibt und
+niemand angemeldet ist. Aus einem 401 zu raten wäre unzuverlässig — es gäbe
+einen Moment, in dem die Anwendung schon steht und ihre Daten nicht. Läuft die
+Sitzung während der Arbeit ab, meldet der HTTP-Client das über ein
+Fensterereignis, und der Gate fragt nach.
+
+### Das Image
+
+Ein Dockerfile in zwei Stufen, ein Compose-Dienst, ein Volume.
+
+- Basis **Debian slim**, nicht Alpine: Prisma und `@node-rs/argon2` liefern
+  ihre Binärdateien gegen glibc aus; auf musl müsste beides aus den Quellen
+  gebaut werden.
+- **Chromium aus dem Paketmanager**, nicht aus Puppeteers Download (D32). So
+  kommen die Sicherheitsaktualisierungen der Distribution mit, und das Image
+  bleibt kleiner. `PUPPETEER_EXECUTABLE_PATH` zeigt darauf.
+- Der Prozess läuft als **`node`**, unprivilegiert. Chromiums eigene Sandbox
+  ist damit abgeschaltet (`PUPPETEER_NO_SANDBOX=true`) — vertretbar genau
+  hier, wo der Container die Isolation übernimmt und der Benutzer keine Rechte
+  hat, die zu missbrauchen sich lohnte.
+- **tini als PID 1**: Chromium hinterlässt Kindprozesse, und ohne einen
+  init-Prozess sammeln sich Zombies an.
+- Migrationen laufen im Entrypoint, nicht beim Bauen: Erst zur Laufzeit ist die
+  Datenbank aus dem Volume überhaupt da. `prisma migrate deploy` wendet nur an,
+  was fehlt, und ist bei jedem Neustart unbedenklich.
+- Der Port wird an `127.0.0.1` des Hosts gebunden, nicht an alle Adressen.
+  Erreichbar wird die Anwendung durch `tailscale serve`, nicht dadurch, dass
+  ein Port im Internet steht.
+- Der gesamte Zustand — Datenbank, Assets, PDFs, Sicherungen — liegt im Volume
+  unter `/data`, ausdrücklich außerhalb des Images: Sonst wäre er beim nächsten
+  Neubau weg.
+
+---
+
 ## 17. Backup
 
 Ziel: eine Datei, die alles enthält, und ein Weg zurück, den man auch unter
@@ -1189,7 +1294,7 @@ Jeder Schritt endet mit etwas Lauffähigem.
 | 10 ✅ | Status: bezahlt/versendet, Stornieren, Duplizieren                         | Lebenszyklus komplett           |
 | 11 ✅ | Rechnungsübersicht mit Filter/Sortierung + Dashboard                       | Alltagstauglich                 |
 | 12 ✅ | Backup-Export/Restore + Restore-Test                                       | Datensicherheit                 |
-| 13    | Docker-Image + Auth-Modul (per `AUTH_ENABLED`), Tailscale-Anbindung        | deploy-fähig                    |
+| 13 ✅ | Docker-Image + Auth-Modul (per `AUTH_ENABLED`), Tailscale-Anbindung        | deploy-fähig                    |
 | 14    | Politur: Fehlerbehandlung, Leerzustände, Tastaturbedienung, Responsiveness | V1                              |
 
 Tests bewusst schmal, aber gezielt: Berechnungen und Nummernvergabe mit

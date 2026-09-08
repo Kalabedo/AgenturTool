@@ -15,3 +15,4 @@ export * from './invoice-number.js';
 export * from './finalization.js';
 export * from './assets.js';
 export * from './backup.js';
+export * from './auth.js';

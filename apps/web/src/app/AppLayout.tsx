@@ -1,5 +1,7 @@
 import { NavLink, Outlet, useMatch } from 'react-router-dom';
 
+import { LogoutButton } from '../features/auth/LogoutButton.js';
+
 const NAVIGATION = [
   { to: '/', label: 'Dashboard', end: true },
   { to: '/invoices', label: 'Rechnungen' },
@@ -48,6 +50,7 @@ export function AppLayout(): JSX.Element {
               </NavLink>
             ))}
           </nav>
+          <LogoutButton />
         </div>
       </header>
 
