@@ -1,6 +1,6 @@
 # Projektplan: Eigene Rechnungssoftware ("AgenturTool")
 
-**Status:** v1.1 — Schritt 0 und 1 umgesetzt (Gerüst, Schema, Migrationen, Seed).
+**Status:** v1.6 — Schritte 0 bis 6 umgesetzt; Rechnungen lassen sich als Entwurf erfassen.
 **Repository:** `Kalabedo/AgenturTool`
 
 Dieses Dokument ist die verbindliche Architekturgrundlage. Es wird mit dem Code
@@ -379,6 +379,26 @@ Sämtliche Rechenlogik liegt ausschließlich in `packages/shared`. Das Backend
 rechnet bei jedem Speichern und beim Finalisieren neu und ist autoritativ;
 das Frontend benutzt dieselbe Funktion nur für die sofortige Anzeige.
 
+**Umgesetzt in Schritt 5** als `packages/shared/src/invoice-calculation.ts`:
+
+- `calculateItem` und `calculateInvoice` bilden die Schritte 1 bis 6 ab.
+- `negateInvoiceItems` erzeugt die Storno-Gegenposition. Umgekehrt wird die
+  **Menge**, nicht der Einzelpreis — so bleibt auf dem Storno erkennbar, zu
+  welchem Preis ursprünglich abgerechnet wurde. Ein absoluter Rabatt wird
+  mitgedreht, ein prozentualer nicht: Der Satz gilt unverändert, nur die
+  Bezugsgröße ist negativ.
+- `itemGrossForDisplay` liefert den Bruttobetrag einer Zeile **nur für die
+  Anzeige**. Die Summe dieser Werte ist nicht der Rechnungsbetrag; ein Test
+  hält den Unterschied fest, damit die Falle dokumentiert bleibt.
+- Die Funktion rechnet und bewertet nicht: Ob ein Rabatt größer als die
+  Position ist, prüfen die Schemas und die Finalisierung. Hier würde eine
+  solche Regel den Storno unmöglich machen, der legitimerweise mit negativen
+  Beträgen arbeitet.
+- `roundHalfAwayFromZero` bricht ab, sobald ein Ergebnis jenseits von
+  `Number.MAX_SAFE_INTEGER` läge. Dort rechnet JavaScript still ungenau
+  weiter; bei Geldbeträgen ist ein Abbruch besser als ein Ergebnis, das
+  plausibel aussieht und um Cents danebenliegt.
+
 ---
 
 ## 8. Snapshots und finalisierte Rechnungen
@@ -406,6 +426,13 @@ Das ist bewusst asymmetrisch, und zwar aus einem praktischen Grund:
   Entwürfe automatisch die neue tragen — ein Entwurf mit veralteter
   Bankverbindung, der irgendwann finalisiert wird, wäre ein echter Fehler.
   Deine eigenen Daten willst du praktisch nie pro Rechnung abweichend haben.
+
+**Umgesetzt in Schritt 6:** Das Formular führt die Empfängeradresse flach —
+vier nebeneinanderliegende Felder sind einfacher zu bedienen als eine
+verschachtelte Gruppe. Die Umwandlung in die verschachtelte Snapshot-Form
+passiert im geteilten Schema, nicht im Service und nicht im Formular, damit
+sie nur an einer Stelle existiert. `POST /api/invoices/:id/refresh-customer`
+holt den aktuellen Stammdatenstand nach.
 
 Technisch: `buyerData` ist ab dem Entwurf befüllt, die übrigen Snapshot-Spalten
 sind `NULL`, bis finalisiert wird. Beim Rendern gilt: `sellerSnapshot ?? live

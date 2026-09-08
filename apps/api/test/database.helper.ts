@@ -96,3 +96,27 @@ export async function applyPragmas(prisma: PrismaClient): Promise<void> {
     await prisma.$queryRawUnsafe(`PRAGMA ${pragma}`);
   }
 }
+
+/**
+ * Räumt alle Rechnungen samt Positionen ab.
+ *
+ * Nicht so trivial, wie es aussieht: Die Trigger blockieren das Löschen von
+ * Positionen und Rechnungen, sobald diese ausgestellt sind. Der Aufräum-Code
+ * muss deshalb denselben Weg gehen wie „Finalisierung zurücknehmen" — genau
+ * die Form, die der Trigger als Ausnahme durchlässt.
+ */
+export async function resetInvoices(prisma: PrismaClient): Promise<void> {
+  await prisma.$executeRawUnsafe(
+    `UPDATE "Invoice"
+        SET "status" = 'DRAFT',
+            "number" = NULL,
+            "numberYear" = NULL,
+            "numberSeq" = NULL,
+            "issuedAt" = NULL
+      WHERE "status" <> 'DRAFT'`,
+  );
+  await prisma.invoiceItem.deleteMany();
+  await prisma.invoiceEvent.deleteMany();
+  await prisma.invoiceDocument.deleteMany();
+  await prisma.invoice.deleteMany();
+}

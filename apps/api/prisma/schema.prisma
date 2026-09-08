@@ -130,11 +130,18 @@ model TaxProfile {
   isDefault     Boolean @default(false)
   sortOrder     Int     @default(0)
 
+  /// Archiviert statt gelöscht, sobald Rechnungen oder Kunden darauf verweisen.
+  /// Ein archiviertes Profil erscheint nicht mehr in der Auswahl, bleibt aber
+  /// auflösbar — Entwürfe und Kundenvorgaben zeigen sonst ins Leere.
+  archivedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   invoices  Invoice[]
   customers Customer[]
+
+  @@index([archivedAt])
 }
 
 /// Aussehen der Rechnung. Singleton in V1, per CHECK auf id = 1.

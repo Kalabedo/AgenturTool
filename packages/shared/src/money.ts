@@ -26,7 +26,21 @@ export function roundHalfAwayFromZero(value: number): number {
   if (!Number.isFinite(value)) {
     throw new RangeError(`Nicht rundbarer Wert: ${value}`);
   }
-  return value < 0 ? -Math.round(-value) : Math.round(value);
+
+  const rounded = value < 0 ? -Math.round(-value) : Math.round(value);
+
+  // Jenseits von Number.MAX_SAFE_INTEGER rechnet JavaScript still ungenau
+  // weiter. Bei Geldbeträgen ist ein Abbruch besser als ein Ergebnis, das
+  // plausibel aussieht und um Cents danebenliegt. Die Grenze liegt bei rund
+  // 90 Billionen Euro — wer sie reißt, hat einen Datenfehler, keinen Umsatz.
+  if (!Number.isSafeInteger(rounded)) {
+    throw new RangeError(
+      `Betrag außerhalb des sicher darstellbaren Bereichs: ${value}. ` +
+        'Wahrscheinlich stimmt eine Menge oder ein Einzelpreis nicht.',
+    );
+  }
+
+  return rounded;
 }
 
 /** Menge (Tausendstel) mal Einzelpreis (Cent) -> Betrag in Cent. */
@@ -88,4 +102,59 @@ export function parseCents(input: string): number | null {
   if (!Number.isFinite(asNumber)) return null;
 
   return roundHalfAwayFromZero(asNumber * CENTS_PER_EURO);
+}
+
+/**
+ * Liest eine Prozenteingabe und liefert Basispunkte.
+ *
+ * Nimmt "19", "7,5" und "7.5" gleichermaßen — beim Steuersatz tippt man je
+ * nach Tastaturgewohnheit das eine oder das andere. Gibt `null` zurück, wenn
+ * die Eingabe kein Prozentsatz ist.
+ */
+export function parsePercentToBasisPoints(input: string): number | null {
+  const normalised = input.trim().replace(',', '.');
+  if (normalised === '') return null;
+  if (!/^\d*(\.\d*)?$/.test(normalised) || normalised === '.') return null;
+
+  const percent = Number(normalised);
+  if (!Number.isFinite(percent) || percent < 0 || percent > 100) return null;
+
+  return roundHalfAwayFromZero(percent * (BASIS_POINTS_SCALE / 100));
+}
+
+/** Basispunkte als reine Zahl für ein Eingabefeld: 1900 -> "19", 750 -> "7,5" */
+export function basisPointsToPercentInput(basisPoints: number): string {
+  const percent = basisPoints / (BASIS_POINTS_SCALE / 100);
+  return Number.isInteger(percent) ? String(percent) : String(percent).replace('.', ',');
+}
+
+/**
+ * Liest eine Mengeneingabe und liefert Tausendstel.
+ *
+ * "7,5" und "7.5" ergeben beide 7500. Gibt `null` zurück, wenn die Eingabe
+ * keine Menge ist. Negative Mengen sind erlaubt — das Storno-Dokument
+ * braucht sie.
+ */
+export function parseQuantity(input: string): number | null {
+  const normalised = input.trim().replace(',', '.');
+  if (normalised === '') return null;
+  if (!/^-?\d*(\.\d*)?$/.test(normalised) || normalised === '-' || normalised === '.') {
+    return null;
+  }
+
+  const value = Number(normalised);
+  if (!Number.isFinite(value)) return null;
+
+  return roundHalfAwayFromZero(value * QUANTITY_SCALE);
+}
+
+/** Tausendstel als Eingabewert: 7500 -> "7,5", 1000 -> "1" */
+export function quantityToInput(quantityThousandths: number): string {
+  const value = quantityThousandths / QUANTITY_SCALE;
+  return Number.isInteger(value) ? String(value) : String(value).replace('.', ',');
+}
+
+/** Cent als Eingabewert für ein Betragsfeld: 12345 -> "123,45" */
+export function centsToInput(cents: number): string {
+  return (cents / CENTS_PER_EURO).toFixed(2).replace('.', ',');
 }
