@@ -59,6 +59,42 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
+/** Eine heruntergeladene Datei samt dem Namen, den der Server vorgibt. */
+export interface DownloadedFile {
+  blob: Blob;
+  filename: string;
+}
+
+/**
+ * Liest den Dateinamen aus dem Content-Disposition-Header.
+ *
+ * Bevorzugt `filename*` (RFC 5987, prozentkodiert) — nur dort kommen
+ * Umlaute unverfälscht an; `filename` ist der ASCII-Rückfall.
+ */
+function filenameFrom(header: string | null, fallback: string): string {
+  if (header === null) return fallback;
+
+  const encoded = /filename\*=UTF-8''([^;]+)/iu.exec(header);
+  if (encoded?.[1] !== undefined) return decodeURIComponent(encoded[1]);
+
+  const plain = /filename="([^"]+)"/u.exec(header);
+  return plain?.[1] ?? fallback;
+}
+
+async function requestFile(
+  path: string,
+  fallbackName: string,
+  init?: RequestInit,
+): Promise<DownloadedFile> {
+  const response = await fetch(`/api${path}`, init);
+  if (!response.ok) throw await toError(response);
+
+  return {
+    blob: await response.blob(),
+    filename: filenameFrom(response.headers.get('Content-Disposition'), fallbackName),
+  };
+}
+
 export const apiClient = {
   get: <T>(path: string): Promise<T> => request<T>(path),
 
@@ -84,6 +120,18 @@ export const apiClient = {
     }),
 
   delete: <T>(path: string): Promise<T> => request<T>(path, { method: 'DELETE' }),
+
+  /** Datei-Download: die Antwort ist ein PDF und darf nicht durch JSON.parse. */
+  download: (path: string, fallbackName: string): Promise<DownloadedFile> =>
+    requestFile(path, fallbackName),
+
+  /** Wie `download`, aber mit einer Nutzlast — für PDFs aus Formulardaten. */
+  downloadFromPost: (path: string, body: unknown, fallbackName: string): Promise<DownloadedFile> =>
+    requestFile(path, fallbackName, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
 
   /** Datei-Upload: kein Content-Type setzen, der Browser ergänzt die Boundary. */
   upload: <T>(path: string, file: File, fieldName = 'file'): Promise<T> => {

@@ -1,7 +1,7 @@
 # Projektplan: Eigene Rechnungssoftware ("AgenturTool")
 
-**Status:** v1.7 — Schritte 0 bis 7 umgesetzt; Rechnungen lassen sich erfassen und
-als A4-Dokument in der Live-Vorschau sehen.
+**Status:** v1.8 — Schritte 0 bis 8 umgesetzt; Rechnungen lassen sich erfassen,
+in der Live-Vorschau ansehen und als PDF herunterladen.
 **Repository:** `Kalabedo/AgenturTool`
 
 Dieses Dokument ist die verbindliche Architekturgrundlage. Es wird mit dem Code
@@ -39,6 +39,7 @@ sie hier korrigiert und nicht nur im Code.
 | D29 | Schrift im Dokument  | **Open Sans, als Base64 im Paket eingebettet** — kein Netzwerkzugriff beim PDF-Rendern                                |
 | D30 | Vorschau-Einbindung  | **iframe + React-Portal** (nicht `srcdoc`): dieselbe Komponente wie im PDF, inkrementell aktualisiert                 |
 | D31 | Seitenränder         | **`@page`-Ränder im Druck**, Padding nur am Bildschirm — Padding wirkt sonst nur auf der ersten Seite                 |
+| D32 | Puppeteer-Paket      | **`puppeteer-core` mit gefundenem Chromium** statt `puppeteer` mit eigenem Download (Abschnitt 13a)                   |
 
 Zu D21: Rechnungs-, Leistungs- und Fälligkeitsdatum sind Kalendertage, keine
 Zeitpunkte. Als `DateTime` müsste an jeder Grenze zwischen Browser, API und
@@ -683,8 +684,11 @@ Seite wirkt nur auf der ersten Druckseite — auf Folgeseiten klebte die
 Tabelle sonst am oberen Blattrand. Am Bildschirm bleibt das Padding, weil es
 dort das sichtbare Blatt erzeugt. Puppeteer muss dafür mit
 `preferCSSPageSize: true` und ohne eigene `margin`-Angabe aufgerufen werden
-(Schritt 8). Belegt: eine 34-Positionen-Rechnung ergibt drei Seiten mit
-wiederholtem Tabellenkopf, ungeteilten Zeilen und gleichen Rändern.
+(umgesetzt in Schritt 8). Belegt durch `apps/api/test/pdf.test.ts`: Eine
+34-Positionen-Rechnung ergibt zwei Seiten, und der bedruckbare Kasten ist auf
+beiden derselbe — 12 mm links und oben, 16 mm unten für die Fußzeile. Der
+Test liest diesen Kasten aus dem PDF; mit Padding statt `@page` stimmte er
+nur auf Seite 1.
 
 **Die Live-Vorschau (D30)** rendert die Komponente über ein React-Portal in
 ein `about:blank`-iframe. Ein iframe, weil das Template ein eigenes
@@ -692,6 +696,11 @@ Stylesheet mitbringt, das sich mit Tailwinds Preflight in beide Richtungen
 stören würde; ein Portal statt `srcdoc`, weil React so nur die geänderten
 Knoten aktualisiert — bei `srcdoc` würde das Dokument bei jedem Tastendruck
 neu aufgebaut, mit Flackern und verlorener Scrollposition.
+
+Was die Vorschau **nicht** zeigt, ist der Seitenumbruch: Sie ist eine
+fortlaufende Seite. Dafür gibt es seit Schritt 8 den Knopf „PDF
+herunterladen" im Editor — er schickt die aktuellen, auch die noch nicht
+gespeicherten Formularwerte an `POST /api/invoices/preview/pdf`.
 
 **Abweichungen von der Referenzrechnung**, jeweils bewusst:
 
@@ -774,6 +783,61 @@ Weitere Regeln:
 - Beim Backup gilt eine feste Reihenfolge: erst die Datenbank sichern, dann
   die Dateien. So kann das Backup höchstens Dateien enthalten, die die DB noch
   nicht kennt — nie umgekehrt. Ein Verifikationsschritt vergleicht die Hashes.
+
+---
+
+## 13a. Der PDF-Dienst (Schritt 8)
+
+Zwei Klassen, weil sie zwei verschiedene Dinge wissen müssen:
+
+- **`PdfService`** kennt nur Chromium: einen Browser starten, HTML drucken.
+  Er weiß nichts über Rechnungen.
+- **`InvoicePdfService`** baut das Dokument: Render-Modell aus Rechnung und
+  Stammdaten oder Snapshots, HTML über `renderInvoiceDocument`, Dateiname.
+
+Der Schnitt ist nicht kosmetisch: `buildHtml()` lässt sich ohne Browser
+prüfen, und genau dort sitzen die Fehler, die teuer wären — falscher
+Snapshot, fehlendes Logo, neu gerechnete statt eingefrorener Summen.
+
+**Ein Browser für die Laufzeit, gestartet beim ersten PDF.** Ein Kaltstart
+kostet je nach Maschine 200 bis 600 ms; wer an einer Rechnung schreibt,
+sieht sich den Umbruch mehrfach an. Wer nur Stammdaten pflegt, soll dafür
+kein Chromium im Speicher haben. Renderläufe laufen nacheinander — bei einem
+Einzelplatzwerkzeug bringt Parallelität nichts und kostet Speicher.
+
+**`puppeteer-core` statt `puppeteer` (D32).** Das große Paket lädt bei jeder
+Installation ein eigenes Chromium (~150 MB) und legte im Image ein zweites
+neben das des Paketmanagers. Der Preis dafür ist `apps/api/src/pdf/chromium.ts`:
+`PUPPETEER_EXECUTABLE_PATH`, sonst die üblichen Orte, sonst eine Meldung, die
+sagt, was zu tun ist. Fehlt Chromium, ist das ein Konfigurationsfehler beim
+Aufsetzen und kein Ausfall im Betrieb — die Anwendung startet trotzdem, nur
+das PDF entsteht nicht.
+
+**Sandbox bleibt an.** `--no-sandbox` nur, wenn `PUPPETEER_NO_SANDBOX=true`
+ausdrücklich gesetzt ist — vorgesehen für den Container, in dem der Prozess
+ohnehin isoliert und unprivilegiert läuft (Abschnitt 16).
+
+**Die Fußzeile mit der Seitenzahl** kommt aus `renderInvoiceFooterTemplate()`
+im Template-Paket, nicht aus dem Backend: Sie muss den Seitenrand kennen und
+in den Platz passen, den `@page` unten frei lässt. Chromium rendert dieses
+Fragment in einem eigenen Dokument, ohne das Stylesheet der Seite — deshalb
+steht ihr CSS inline und ihre Schrift ist eine generische.
+
+**Wege zum PDF**, beide über `Content-Disposition: inline` und `no-store`:
+
+| Route                            | Quelle                                               |
+| -------------------------------- | ---------------------------------------------------- |
+| `GET /api/invoices/:id/pdf`      | Entwurf: heutige Stammdaten · ausgestellt: Snapshots |
+| `POST /api/invoices/preview/pdf` | ungespeicherte Formulardaten, nichts wird angelegt   |
+
+`no-store` ist wichtiger, als es klingt: Ein Entwurfs-PDF sieht nach der
+nächsten Änderung anders aus, und ein Blatt aus dem Browser-Cache wäre genau
+das Missverständnis, das der Blick auf den Umbruch vermeiden soll.
+
+Ab Schritt 9 legt das Finalisieren das erzeugte PDF ab; der Download einer
+ausgestellten Rechnung liefert dann die gespeicherte Datei (Abschnitt 13).
+Bis dahin entsteht sie aus den Snapshots — dasselbe Dokument, denselben
+Weg geht später auch die Reparatur einer verlorenen Datei.
 
 ---
 
@@ -980,7 +1044,7 @@ Jeder Schritt endet mit etwas Lauffähigem.
 | 5 ✅ | Berechnungslogik in `shared` + Unit-Tests                                  | Kern abgesichert                |
 | 6 ✅ | Rechnungs-Entwurf: API + Editor mit dynamischen Positionen                 | Rechnungen erfassbar            |
 | 7 ✅ | `invoice-template` + Live-Vorschau im iframe                               | sichtbares Ergebnis             |
-| 8    | PDF-Service (Puppeteer) + Entwurfs-PDF                                     | PDF-Pipeline steht              |
+| 8 ✅ | PDF-Service (Puppeteer) + Entwurfs-PDF                                     | PDF-Pipeline steht              |
 | 9    | Nummernvergabe + Snapshots + Finalisieren + PDF-Ablage                     | **Kernfunktion fertig**         |
 | 10   | Status: bezahlt/versendet, Stornieren, Duplizieren                         | Lebenszyklus komplett           |
 | 11   | Rechnungsübersicht mit Filter/Sortierung + Dashboard                       | Alltagstauglich                 |

@@ -21,6 +21,7 @@ import { Field } from '../../components/ui/Field.js';
 import { Input } from '../../components/ui/Input.js';
 import { Select } from '../../components/ui/Select.js';
 import { Textarea } from '../../components/ui/Textarea.js';
+import { saveFile } from './saveFile.js';
 import { InvoiceItemsTable } from './InvoiceItemsTable.js';
 import { InvoicePreview } from './InvoicePreview.js';
 import { useInvoiceTotals } from './useInvoiceTotals.js';
@@ -114,6 +115,27 @@ export function InvoiceEditorPage(): JSX.Element {
       queryClient.setQueryData(queryKeys.invoices.byId(invoiceId), updated);
       form.reset(toInvoiceFormValues(updated));
     },
+  });
+
+  /**
+   * Das PDF zum aktuellen Stand.
+   *
+   * Bei einem Entwurf gehen die Werte aus dem Formular mit — auch die noch
+   * nicht gespeicherten. Sonst müsste man vor jedem Blick auf den
+   * Seitenumbruch erst speichern, und genau dafür ist der Blick da. Eine
+   * ausgestellte Rechnung liefert der Server dagegen aus ihren eingefrorenen
+   * Daten; ein Formularstand wäre dort bedeutungslos.
+   */
+  const downloadPdf = useMutation({
+    mutationFn: (values: InvoiceFormValues) =>
+      editable
+        ? apiClient.downloadFromPost(
+            '/invoices/preview/pdf',
+            toInvoicePayload(values),
+            'Rechnungsentwurf.pdf',
+          )
+        : apiClient.download(`/invoices/${invoiceId}/pdf`, `Rechnung-${invoiceId}.pdf`),
+    onSuccess: saveFile,
   });
 
   const remove = useMutation({
@@ -436,6 +458,20 @@ export function InvoiceEditorPage(): JSX.Element {
             <Button type="submit" disabled={save.isPending}>
               {save.isPending ? 'wird gespeichert …' : 'Speichern'}
             </Button>
+          )}
+          <Button
+            variant="secondary"
+            disabled={downloadPdf.isPending}
+            onClick={() => downloadPdf.mutate(form.getValues())}
+          >
+            {downloadPdf.isPending ? 'PDF wird erzeugt …' : 'PDF herunterladen'}
+          </Button>
+          {downloadPdf.error !== null && (
+            <span className="text-sm text-rose-600">
+              {downloadPdf.error instanceof ApiRequestError
+                ? downloadPdf.error.message
+                : 'Das PDF konnte nicht erzeugt werden.'}
+            </span>
           )}
           {saved && !form.formState.isDirty && (
             <span className="text-sm text-emerald-700">Gespeichert.</span>

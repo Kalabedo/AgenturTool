@@ -3,7 +3,7 @@
 Eigene Rechnungssoftware — selbst gehostet, unabhängig von externen
 Rechnungsdiensten. Rechnungen erstellen, verwalten und als PDF exportieren.
 
-**Status:** Schritte 0 bis 6 umgesetzt — Stammdaten, Berechnungslogik und der Rechnungseditor. Rechnungen lassen sich als Entwurf erfassen; das Finalisieren mit Nummernvergabe und PDF folgt ab Schritt 8.
+**Status:** Schritte 0 bis 8 umgesetzt — Stammdaten, Berechnungslogik, Rechnungseditor mit Live-Vorschau und die PDF-Erzeugung. Rechnungen lassen sich als Entwurf erfassen und als PDF herunterladen; das Finalisieren mit Nummernvergabe und dauerhafter PDF-Ablage folgt in Schritt 9.
 
 ## Architektur
 
@@ -34,7 +34,10 @@ Die zwei prägenden Architekturprinzipien:
 
 ## Entwicklung
 
-Voraussetzungen: Node 22+, pnpm 10+.
+Voraussetzungen: Node 22+, pnpm 10+ und ein Chromium für die PDF-Erzeugung
+(`chromium`, `chromium-browser` oder Google Chrome). Liegt es nicht an einem
+der üblichen Orte, zeigt `PUPPETEER_EXECUTABLE_PATH` in der `.env` darauf.
+Ohne Chromium läuft alles außer dem PDF; die Rendertests überspringen sich.
 
 ```bash
 pnpm install

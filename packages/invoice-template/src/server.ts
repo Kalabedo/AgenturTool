@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { resolveTemplate } from './registry.js';
+import { PAGE } from './templates/classic/styles.js';
 import type { InvoiceRenderModel } from './types.js';
 
 /**
@@ -56,4 +57,33 @@ export function renderInvoiceDocument(
     '</body>',
     '</html>',
   ].join('\n');
+}
+
+/**
+ * Die Fußzeile, die Puppeteer auf jede Seite setzt.
+ *
+ * Sie entsteht hier und nicht im Backend, weil sie zwei Dinge aus dem
+ * Template kennen muss: den Seitenrand (`PAGE.marginMm`), damit sie mit dem
+ * Textblock darüber fluchtet, und die Höhe des Fußbereichs, für den
+ * `@page` den Platz freihält.
+ *
+ * Chromium rendert dieses Fragment in einem eigenen Dokument — ohne das
+ * Stylesheet der Seite und ohne die eingebettete Schrift. Deshalb steht das
+ * CSS inline, deshalb eine generische Schriftfamilie, und deshalb eine feste
+ * Größe: Ohne `font-size` erbt das Fragment 0 und bleibt unsichtbar.
+ *
+ * `pageNumber` und `totalPages` sind Klassennamen, die Chromium beim Druck
+ * selbst füllt.
+ */
+export function renderInvoiceFooterTemplate(model: InvoiceRenderModel): string {
+  const label = model.number === null ? 'Entwurf' : `Rechnung ${model.number}`;
+
+  return [
+    `<div style="width:100%;box-sizing:border-box;padding:0 ${PAGE.marginMm}mm;`,
+    'font-family:Helvetica,Arial,sans-serif;font-size:7.5pt;color:#6b7280;',
+    'display:flex;justify-content:space-between;align-items:center">',
+    `<span>${escapeHtml(label)}</span>`,
+    '<span>Seite <span class="pageNumber"></span> von <span class="totalPages"></span></span>',
+    '</div>',
+  ].join('');
 }
