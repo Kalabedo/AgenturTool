@@ -89,3 +89,27 @@ export function parseCents(input: string): number | null {
 
   return roundHalfAwayFromZero(asNumber * CENTS_PER_EURO);
 }
+
+/**
+ * Liest eine Prozenteingabe und liefert Basispunkte.
+ *
+ * Nimmt "19", "7,5" und "7.5" gleichermaßen — beim Steuersatz tippt man je
+ * nach Tastaturgewohnheit das eine oder das andere. Gibt `null` zurück, wenn
+ * die Eingabe kein Prozentsatz ist.
+ */
+export function parsePercentToBasisPoints(input: string): number | null {
+  const normalised = input.trim().replace(',', '.');
+  if (normalised === '') return null;
+  if (!/^\d*(\.\d*)?$/.test(normalised) || normalised === '.') return null;
+
+  const percent = Number(normalised);
+  if (!Number.isFinite(percent) || percent < 0 || percent > 100) return null;
+
+  return roundHalfAwayFromZero(percent * (BASIS_POINTS_SCALE / 100));
+}
+
+/** Basispunkte als reine Zahl für ein Eingabefeld: 1900 -> "19", 750 -> "7,5" */
+export function basisPointsToPercentInput(basisPoints: number): string {
+  const percent = basisPoints / (BASIS_POINTS_SCALE / 100);
+  return Number.isInteger(percent) ? String(percent) : String(percent).replace('.', ',');
+}

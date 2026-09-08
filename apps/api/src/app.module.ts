@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './common/prisma.module';
 import { CompanyModule } from './company/company.module';
 import { CustomersModule } from './customers/customers.module';
+import { TaxProfilesModule } from './tax-profiles/tax-profiles.module';
 import { FilesModule } from './files/files.module';
 import { HealthModule } from './health/health.module';
 
@@ -14,6 +15,7 @@ import { HealthModule } from './health/health.module';
     HealthModule,
     CompanyModule,
     CustomersModule,
+    TaxProfilesModule,
   ],
 })
 export class AppModule {}

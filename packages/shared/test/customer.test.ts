@@ -20,6 +20,7 @@ const valid = {
   vatId: '',
   notes: '',
   defaultPaymentTermDays: '',
+  defaultTaxProfileId: '',
 };
 
 describe('customerInputSchema', () => {

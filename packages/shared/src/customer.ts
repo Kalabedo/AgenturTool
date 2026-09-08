@@ -47,6 +47,24 @@ const optionalPaymentTermDays = z
     return parsed;
   });
 
+/**
+ * Fremdschlüssel aus einem Auswahlfeld.
+ *
+ * Ein `<select>` liefert bei "keine Auswahl" den leeren String, nicht null —
+ * ohne diese Umwandlung käme im Backend NaN an.
+ */
+const optionalReference = z
+  .union([z.string().trim(), z.number(), z.null()])
+  .transform((value, ctx) => {
+    if (value === null || value === '') return null;
+    const parsed = typeof value === 'number' ? value : Number(value);
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Ungültige Auswahl' });
+      return z.NEVER;
+    }
+    return parsed;
+  });
+
 export const customerInputSchema = z.object({
   // Frei vergeben und optional; die Eindeutigkeit erzwingt die Datenbank,
   // damit auch übernommene Nummern aus einem Vorsystem passen (D22).
@@ -69,13 +87,18 @@ export const customerInputSchema = z.object({
   notes: optionalText,
 
   defaultPaymentTermDays: optionalPaymentTermDays,
+
+  /**
+   * Vorgeschlagenes Steuerprofil für Rechnungen an diesen Kunden.
+   * Leer bedeutet: das Standardprofil verwenden.
+   */
+  defaultTaxProfileId: optionalReference,
 });
 export type CustomerInput = z.input<typeof customerInputSchema>;
 export type CustomerPayload = z.output<typeof customerInputSchema>;
 
 export const customerResponseSchema = customerInputSchema.extend({
   id: z.number().int(),
-  defaultTaxProfileId: z.number().int().nullable(),
   /** Gesetzt, wenn der Kunde archiviert wurde; sonst null. */
   archivedAt: z.string().nullable(),
   /** Anzahl der Rechnungen — entscheidet, ob endgültiges Löschen erlaubt ist. */

@@ -1,11 +1,19 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQuery } from '@tanstack/react-query';
 import {
+  TAX_PROFILE_KIND_LABELS,
+  allowsRateInput,
   customerInputSchema,
+  formatBasisPoints,
   type CustomerInput,
   type CustomerPayload,
   type CustomerResponse,
+  type TaxProfileResponse,
 } from '@agentur-tool/shared';
+import { apiClient } from '../../lib/apiClient.js';
+import { queryKeys } from '../../lib/queryKeys.js';
+import { Select } from '../../components/ui/Select.js';
 import { Button } from '../../components/ui/Button.js';
 import { Card } from '../../components/ui/Card.js';
 import { Field } from '../../components/ui/Field.js';
@@ -28,6 +36,7 @@ export function emptyCustomerValues(): FormValues {
     vatId: '',
     notes: '',
     defaultPaymentTermDays: '',
+    defaultTaxProfileId: '',
   };
 }
 
@@ -46,6 +55,8 @@ export function toCustomerValues(customer: CustomerResponse): FormValues {
     notes: customer.notes ?? '',
     defaultPaymentTermDays:
       customer.defaultPaymentTermDays === null ? '' : String(customer.defaultPaymentTermDays),
+    defaultTaxProfileId:
+      customer.defaultTaxProfileId === null ? '' : String(customer.defaultTaxProfileId),
   };
 }
 
@@ -74,6 +85,21 @@ export function CustomerForm({
     resolver: zodResolver(customerInputSchema),
     defaultValues,
   });
+
+  // Nur aktive Profile zur Auswahl. Ein bereits zugeordnetes archiviertes
+  // Profil bliebe sonst unsichtbar und würde beim nächsten Speichern still
+  // verloren gehen — deshalb wird es unten ergänzt, wenn es fehlt.
+  const taxProfiles = useQuery({
+    queryKey: queryKeys.taxProfiles.list(false),
+    queryFn: () => apiClient.get<TaxProfileResponse[]>('/tax-profiles?includeArchived=false'),
+  });
+
+  const selectedProfileId = defaultValues.defaultTaxProfileId;
+  const profileOptions = taxProfiles.data ?? [];
+  const selectedIsMissing =
+    typeof selectedProfileId === 'string' &&
+    selectedProfileId !== '' &&
+    !profileOptions.some((profile) => String(profile.id) === selectedProfileId);
 
   const errors = form.formState.errors;
 
@@ -231,6 +257,34 @@ export function CustomerForm({
               invalid={errorFor('defaultPaymentTermDays') !== undefined}
               {...form.register('defaultPaymentTermDays')}
             />
+          </Field>
+
+          <Field
+            label="Standard-Steuerprofil"
+            htmlFor="defaultTaxProfileId"
+            error={errorFor('defaultTaxProfileId')}
+            hint="Wird beim Erstellen einer Rechnung vorgeschlagen. Leer lassen, um das allgemeine Standardprofil zu verwenden."
+            className="sm:col-span-6"
+          >
+            <Select
+              id="defaultTaxProfileId"
+              className="sm:max-w-md"
+              invalid={errorFor('defaultTaxProfileId') !== undefined}
+              {...form.register('defaultTaxProfileId')}
+            >
+              <option value="">Standardprofil verwenden</option>
+              {profileOptions.map((profile) => (
+                <option key={profile.id} value={profile.id}>
+                  {profile.name}
+                  {allowsRateInput(profile.kind)
+                    ? ` — ${formatBasisPoints(profile.defaultRateBasisPoints)}`
+                    : ` — ${TAX_PROFILE_KIND_LABELS[profile.kind]}`}
+                </option>
+              ))}
+              {selectedIsMissing && (
+                <option value={selectedProfileId}>Bisher zugeordnetes Profil (archiviert)</option>
+              )}
+            </Select>
           </Field>
 
           <Field

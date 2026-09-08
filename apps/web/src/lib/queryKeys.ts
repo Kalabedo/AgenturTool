@@ -12,4 +12,9 @@ export const queryKeys = {
     list: (search: string, archived: string) => ['customers', 'list', search, archived] as const,
     byId: (id: number) => ['customers', 'detail', id] as const,
   },
+  taxProfiles: {
+    all: ['tax-profiles'] as const,
+    list: (includeArchived: boolean) => ['tax-profiles', 'list', includeArchived] as const,
+    byId: (id: number) => ['tax-profiles', 'detail', id] as const,
+  },
 };

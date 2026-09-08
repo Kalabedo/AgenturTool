@@ -5,4 +5,5 @@ export * from './snapshots.js';
 export * from './banking.js';
 export * from './company.js';
 export * from './customer.js';
+export * from './tax-profile.js';
 export * from './assets.js';

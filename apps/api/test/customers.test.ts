@@ -38,6 +38,7 @@ function input(overrides: Record<string, unknown> = {}) {
     vatId: '',
     notes: '',
     defaultPaymentTermDays: '',
+    defaultTaxProfileId: '',
     ...overrides,
   });
 }

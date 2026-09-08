@@ -44,6 +44,13 @@ export class CustomersController {
     return this.customers.create(payload);
   }
 
+  /**
+   * Ersetzt den Kunden vollständig — das Schema verlangt alle Felder.
+   *
+   * Bewusst so: Würden fehlende Felder einfach übersprungen, könnte ein
+   * Aufruf, der ein neu hinzugekommenes Feld noch nicht kennt, es
+   * stillschweigend leeren. So schlägt stattdessen die Validierung an.
+   */
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,

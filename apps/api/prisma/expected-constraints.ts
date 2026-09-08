@@ -53,6 +53,8 @@ export const EXPECTED_UNIQUE_INDEXES = [
   'Customer_customerNumber_key',
   'NumberSequence_scope_year_key',
   'InvoiceItem_invoiceId_position_key',
+  // Partieller Index: höchstens ein Steuerprofil ist Standard.
+  'TaxProfile_single_default',
 ] as const;
 
 export interface VerificationResult {

@@ -1,6 +1,6 @@
 # Projektplan: Eigene Rechnungssoftware ("AgenturTool")
 
-**Status:** v1.3 — Schritte 0 bis 3 umgesetzt (Gerüst, Schema, Unternehmensdaten, Kunden).
+**Status:** v1.4 — Schritte 0 bis 4 umgesetzt; Stammdaten vollständig.
 **Repository:** `Kalabedo/AgenturTool`
 
 Dieses Dokument ist die verbindliche Architekturgrundlage. Es wird mit dem Code

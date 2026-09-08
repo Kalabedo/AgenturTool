@@ -59,6 +59,7 @@ export class CustomersService {
   }
 
   async create(payload: CustomerPayload): Promise<CustomerResponse> {
+    await this.assertTaxProfileExists(payload.defaultTaxProfileId);
     try {
       const customer = await this.prisma.customer.create({
         data: payload,
@@ -72,6 +73,7 @@ export class CustomersService {
 
   async update(id: number, payload: CustomerPayload): Promise<CustomerResponse> {
     await this.load(id);
+    await this.assertTaxProfileExists(payload.defaultTaxProfileId);
     try {
       const customer = await this.prisma.customer.update({
         where: { id },
@@ -129,6 +131,23 @@ export class CustomersService {
     }
 
     await this.prisma.customer.delete({ where: { id } });
+  }
+
+  /**
+   * Prüft das gewählte Steuerprofil, bevor gespeichert wird.
+   *
+   * Ohne das würde Prisma einen Fremdschlüsselfehler werfen, der als
+   * Serverfehler beim Benutzer ankäme — statt als Hinweis am Auswahlfeld.
+   */
+  private async assertTaxProfileExists(id: number | null): Promise<void> {
+    if (id === null) return;
+
+    const profile = await this.prisma.taxProfile.findUnique({ where: { id } });
+    if (profile === null) {
+      throw ApiError.validation('Das gewählte Steuerprofil existiert nicht.', [
+        { field: 'defaultTaxProfileId', message: 'Dieses Steuerprofil existiert nicht.' },
+      ]);
+    }
   }
 
   private async load(id: number): Promise<CustomerWithCount> {
