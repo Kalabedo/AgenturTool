@@ -1,6 +1,6 @@
 # Projektplan: Eigene Rechnungssoftware ("AgenturTool")
 
-**Status:** v1.4 — Schritte 0 bis 4 umgesetzt; Stammdaten vollständig.
+**Status:** v1.5 — Schritte 0 bis 5 umgesetzt; Stammdaten und Berechnungskern stehen.
 **Repository:** `Kalabedo/AgenturTool`
 
 Dieses Dokument ist die verbindliche Architekturgrundlage. Es wird mit dem Code
@@ -378,6 +378,26 @@ Zwei Punkte, die leicht übersehen werden:
 Sämtliche Rechenlogik liegt ausschließlich in `packages/shared`. Das Backend
 rechnet bei jedem Speichern und beim Finalisieren neu und ist autoritativ;
 das Frontend benutzt dieselbe Funktion nur für die sofortige Anzeige.
+
+**Umgesetzt in Schritt 5** als `packages/shared/src/invoice-calculation.ts`:
+
+- `calculateItem` und `calculateInvoice` bilden die Schritte 1 bis 6 ab.
+- `negateInvoiceItems` erzeugt die Storno-Gegenposition. Umgekehrt wird die
+  **Menge**, nicht der Einzelpreis — so bleibt auf dem Storno erkennbar, zu
+  welchem Preis ursprünglich abgerechnet wurde. Ein absoluter Rabatt wird
+  mitgedreht, ein prozentualer nicht: Der Satz gilt unverändert, nur die
+  Bezugsgröße ist negativ.
+- `itemGrossForDisplay` liefert den Bruttobetrag einer Zeile **nur für die
+  Anzeige**. Die Summe dieser Werte ist nicht der Rechnungsbetrag; ein Test
+  hält den Unterschied fest, damit die Falle dokumentiert bleibt.
+- Die Funktion rechnet und bewertet nicht: Ob ein Rabatt größer als die
+  Position ist, prüfen die Schemas und die Finalisierung. Hier würde eine
+  solche Regel den Storno unmöglich machen, der legitimerweise mit negativen
+  Beträgen arbeitet.
+- `roundHalfAwayFromZero` bricht ab, sobald ein Ergebnis jenseits von
+  `Number.MAX_SAFE_INTEGER` läge. Dort rechnet JavaScript still ungenau
+  weiter; bei Geldbeträgen ist ein Abbruch besser als ein Ergebnis, das
+  plausibel aussieht und um Cents danebenliegt.
 
 ---
 

@@ -26,7 +26,21 @@ export function roundHalfAwayFromZero(value: number): number {
   if (!Number.isFinite(value)) {
     throw new RangeError(`Nicht rundbarer Wert: ${value}`);
   }
-  return value < 0 ? -Math.round(-value) : Math.round(value);
+
+  const rounded = value < 0 ? -Math.round(-value) : Math.round(value);
+
+  // Jenseits von Number.MAX_SAFE_INTEGER rechnet JavaScript still ungenau
+  // weiter. Bei Geldbeträgen ist ein Abbruch besser als ein Ergebnis, das
+  // plausibel aussieht und um Cents danebenliegt. Die Grenze liegt bei rund
+  // 90 Billionen Euro — wer sie reißt, hat einen Datenfehler, keinen Umsatz.
+  if (!Number.isSafeInteger(rounded)) {
+    throw new RangeError(
+      `Betrag außerhalb des sicher darstellbaren Bereichs: ${value}. ` +
+        'Wahrscheinlich stimmt eine Menge oder ein Einzelpreis nicht.',
+    );
+  }
+
+  return rounded;
 }
 
 /** Menge (Tausendstel) mal Einzelpreis (Cent) -> Betrag in Cent. */
