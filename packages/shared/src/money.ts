@@ -127,3 +127,34 @@ export function basisPointsToPercentInput(basisPoints: number): string {
   const percent = basisPoints / (BASIS_POINTS_SCALE / 100);
   return Number.isInteger(percent) ? String(percent) : String(percent).replace('.', ',');
 }
+
+/**
+ * Liest eine Mengeneingabe und liefert Tausendstel.
+ *
+ * "7,5" und "7.5" ergeben beide 7500. Gibt `null` zurück, wenn die Eingabe
+ * keine Menge ist. Negative Mengen sind erlaubt — das Storno-Dokument
+ * braucht sie.
+ */
+export function parseQuantity(input: string): number | null {
+  const normalised = input.trim().replace(',', '.');
+  if (normalised === '') return null;
+  if (!/^-?\d*(\.\d*)?$/.test(normalised) || normalised === '-' || normalised === '.') {
+    return null;
+  }
+
+  const value = Number(normalised);
+  if (!Number.isFinite(value)) return null;
+
+  return roundHalfAwayFromZero(value * QUANTITY_SCALE);
+}
+
+/** Tausendstel als Eingabewert: 7500 -> "7,5", 1000 -> "1" */
+export function quantityToInput(quantityThousandths: number): string {
+  const value = quantityThousandths / QUANTITY_SCALE;
+  return Number.isInteger(value) ? String(value) : String(value).replace('.', ',');
+}
+
+/** Cent als Eingabewert für ein Betragsfeld: 12345 -> "123,45" */
+export function centsToInput(cents: number): string {
+  return (cents / CENTS_PER_EURO).toFixed(2).replace('.', ',');
+}

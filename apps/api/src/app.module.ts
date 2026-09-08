@@ -4,6 +4,7 @@ import { PrismaModule } from './common/prisma.module';
 import { CompanyModule } from './company/company.module';
 import { CustomersModule } from './customers/customers.module';
 import { TaxProfilesModule } from './tax-profiles/tax-profiles.module';
+import { InvoicesModule } from './invoices/invoices.module';
 import { FilesModule } from './files/files.module';
 import { HealthModule } from './health/health.module';
 
@@ -16,6 +17,7 @@ import { HealthModule } from './health/health.module';
     CompanyModule,
     CustomersModule,
     TaxProfilesModule,
+    InvoicesModule,
   ],
 })
 export class AppModule {}

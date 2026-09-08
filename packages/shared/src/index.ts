@@ -7,4 +7,5 @@ export * from './company.js';
 export * from './customer.js';
 export * from './tax-profile.js';
 export * from './invoice-calculation.js';
+export * from './invoice.js';
 export * from './assets.js';

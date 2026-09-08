@@ -14,10 +14,15 @@ import { z } from 'zod';
  * Echte Zeitstempel (createdAt, issuedAt, sentAt, cancelledAt) bleiben Date.
  */
 
-declare const isoDateBrand: unique symbol;
-
-/** Ein validierter Kalendertag im Format "YYYY-MM-DD". */
-export type IsoDate = string & { readonly [isoDateBrand]: true };
+/**
+ * Ein validierter Kalendertag im Format "YYYY-MM-DD".
+ *
+ * Die Markierung verhindert, dass ein beliebiger String als geprüftes Datum
+ * durchgereicht wird. Bewusst eine benannte Eigenschaft statt eines
+ * `unique symbol`: Ein nicht exportiertes Symbol lässt sich in den erzeugten
+ * Deklarationsdateien nicht benennen, und tsup bricht dann ab.
+ */
+export type IsoDate = string & { readonly __brand: 'IsoDate' };
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 

@@ -1,6 +1,6 @@
 # Projektplan: Eigene Rechnungssoftware ("AgenturTool")
 
-**Status:** v1.5 — Schritte 0 bis 5 umgesetzt; Stammdaten und Berechnungskern stehen.
+**Status:** v1.6 — Schritte 0 bis 6 umgesetzt; Rechnungen lassen sich als Entwurf erfassen.
 **Repository:** `Kalabedo/AgenturTool`
 
 Dieses Dokument ist die verbindliche Architekturgrundlage. Es wird mit dem Code
@@ -426,6 +426,13 @@ Das ist bewusst asymmetrisch, und zwar aus einem praktischen Grund:
   Entwürfe automatisch die neue tragen — ein Entwurf mit veralteter
   Bankverbindung, der irgendwann finalisiert wird, wäre ein echter Fehler.
   Deine eigenen Daten willst du praktisch nie pro Rechnung abweichend haben.
+
+**Umgesetzt in Schritt 6:** Das Formular führt die Empfängeradresse flach —
+vier nebeneinanderliegende Felder sind einfacher zu bedienen als eine
+verschachtelte Gruppe. Die Umwandlung in die verschachtelte Snapshot-Form
+passiert im geteilten Schema, nicht im Service und nicht im Formular, damit
+sie nur an einer Stelle existiert. `POST /api/invoices/:id/refresh-customer`
+holt den aktuellen Stammdatenstand nach.
 
 Technisch: `buyerData` ist ab dem Entwurf befüllt, die übrigen Snapshot-Spalten
 sind `NULL`, bis finalisiert wird. Beim Rendern gilt: `sellerSnapshot ?? live
