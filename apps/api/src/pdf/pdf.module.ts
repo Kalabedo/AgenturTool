@@ -4,6 +4,7 @@ import { FilesModule } from '../files/files.module';
 import { TaxProfilesModule } from '../tax-profiles/tax-profiles.module';
 import { TemplateSettingsModule } from '../template-settings/template-settings.module';
 import { ChromiumConfig } from './chromium';
+import { InvoiceDocumentsService } from './invoice-documents.service';
 import { InvoicePdfService } from './invoice-pdf.service';
 import { PdfService } from './pdf.service';
 
@@ -17,7 +18,7 @@ import { PdfService } from './pdf.service';
  */
 @Module({
   imports: [CompanyModule, TemplateSettingsModule, TaxProfilesModule, FilesModule],
-  providers: [ChromiumConfig, PdfService, InvoicePdfService],
-  exports: [PdfService, InvoicePdfService],
+  providers: [ChromiumConfig, PdfService, InvoicePdfService, InvoiceDocumentsService],
+  exports: [PdfService, InvoicePdfService, InvoiceDocumentsService],
 })
 export class PdfModule {}

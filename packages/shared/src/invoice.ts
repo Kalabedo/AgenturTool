@@ -272,6 +272,18 @@ export interface InvoiceResponse {
   /** Vom Server berechnet — maßgeblich, auch wenn das Formular mitrechnet. */
   totals: TotalsSnapshot;
 
+  /** Ob ein gespeichertes PDF vorliegt (entsteht beim Finalisieren). */
+  hasDocument: boolean;
+  /**
+   * Datensatz vorhanden, Datei nicht — reparierbar, weil der Snapshot alles
+   * enthält, was das Dokument braucht (Abschnitt 13).
+   */
+  documentMissing: boolean;
+  /** Ob „Finalisierung zurücknehmen" gerade erlaubt ist. */
+  canUnfinalize: boolean;
+  /** Warum nicht — `null`, wenn es erlaubt ist. */
+  unfinalizeBlocker: string | null;
+
   issuedAt: string | null;
   sentAt: string | null;
   paidAt: string | null;

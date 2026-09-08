@@ -10,4 +10,6 @@ export * from './template-settings.js';
 export * from './snapshot-mapping.js';
 export * from './invoice-calculation.js';
 export * from './invoice.js';
+export * from './invoice-number.js';
+export * from './finalization.js';
 export * from './assets.js';

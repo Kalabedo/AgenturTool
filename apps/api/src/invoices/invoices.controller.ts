@@ -23,6 +23,7 @@ import {
 } from '@agentur-tool/shared';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { InvoicePdfService, type RenderedInvoicePdf } from '../pdf/invoice-pdf.service';
+import { InvoiceFinalizeService } from './invoice-finalize.service';
 import { InvoicesService } from './invoices.service';
 
 /** Beim Anlegen genügt der Kunde; alles Weitere belegt der Server vor. */
@@ -41,6 +42,7 @@ const createDraftSchema = z.object({
 export class InvoicesController {
   constructor(
     private readonly invoices: InvoicesService,
+    private readonly finalizer: InvoiceFinalizeService,
     private readonly pdf: InvoicePdfService,
   ) {}
 
@@ -104,7 +106,36 @@ export class InvoicesController {
    */
   @Get(':id/pdf')
   async pdfById(@Param('id', ParseIntPipe) id: number, @Res() response: Response): Promise<void> {
-    this.sendPdf(response, await this.pdf.renderInvoice(id));
+    this.sendPdf(response, await this.pdf.deliver(id));
+  }
+
+  /**
+   * Stellt die Rechnung aus: Nummer, Snapshots, PDF (Abschnitte 8, 9, 13).
+   *
+   * Ein eigener Endpunkt statt `PATCH { status }` — der Zustandswechsel ist
+   * eine fachliche Handlung mit Vorbedingungen, kein Feld.
+   */
+  @Post(':id/finalize')
+  @HttpCode(HttpStatus.OK)
+  async finalize(@Param('id', ParseIntPipe) id: number): Promise<InvoiceResponse> {
+    await this.finalizer.finalize(id);
+    return this.invoices.findById(id);
+  }
+
+  /** Nimmt die Finalisierung zurück — nur unter den Bedingungen aus D6. */
+  @Post(':id/unfinalize')
+  @HttpCode(HttpStatus.OK)
+  async unfinalize(@Param('id', ParseIntPipe) id: number): Promise<InvoiceResponse> {
+    await this.finalizer.unfinalize(id);
+    return this.invoices.findById(id);
+  }
+
+  /** Erzeugt das gespeicherte PDF aus den Snapshots neu (Reparaturweg). */
+  @Post(':id/regenerate-pdf')
+  @HttpCode(HttpStatus.OK)
+  async regeneratePdf(@Param('id', ParseIntPipe) id: number): Promise<InvoiceResponse> {
+    await this.finalizer.regenerateDocument(id);
+    return this.invoices.findById(id);
   }
 
   @Post(':id/refresh-customer')

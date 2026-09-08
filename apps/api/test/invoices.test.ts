@@ -11,6 +11,8 @@ import { InvoicesService } from '../src/invoices/invoices.service';
 import { CompanyService } from '../src/company/company.service';
 import { FilesService } from '../src/files/files.service';
 import { StorageConfig } from '../src/common/config.service';
+import { InvoiceDocumentsService } from '../src/pdf/invoice-documents.service';
+import { InvoiceNumbersService } from '../src/invoices/invoice-numbers.service';
 import { ApiError } from '../src/common/api-error';
 import {
   createTestDatabase,
@@ -33,7 +35,12 @@ beforeAll(async () => {
   dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentur-tool-inv-'));
   const storage = new StorageConfig({ get: () => dataDir } as never);
   const company = new CompanyService(prisma, new FilesService(prisma, storage));
-  invoices = new InvoicesService(prisma, company);
+  invoices = new InvoicesService(
+    prisma,
+    company,
+    new InvoiceNumbersService(prisma),
+    new InvoiceDocumentsService(prisma, storage),
+  );
 });
 
 afterAll(async () => {

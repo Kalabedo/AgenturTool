@@ -15,6 +15,7 @@ import { FilesService } from '../src/files/files.service';
 import { TaxProfilesService } from '../src/tax-profiles/tax-profiles.service';
 import { TemplateSettingsService } from '../src/template-settings/template-settings.service';
 import { ChromiumConfig, findChromiumExecutable } from '../src/pdf/chromium';
+import { InvoiceDocumentsService } from '../src/pdf/invoice-documents.service';
 import { InvoicePdfService } from '../src/pdf/invoice-pdf.service';
 import { PdfService } from '../src/pdf/pdf.service';
 import {
@@ -66,6 +67,7 @@ beforeAll(async () => {
     new TemplateSettingsService(prisma),
     new TaxProfilesService(prisma),
     files,
+    new InvoiceDocumentsService(prisma, storage),
     pdfService,
   );
 });

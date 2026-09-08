@@ -138,6 +138,43 @@ export function InvoiceEditorPage(): JSX.Element {
     onSuccess: saveFile,
   });
 
+  /**
+   * Ausstellen: Nummer, eingefrorene Daten, abgelegtes PDF.
+   *
+   * Ungespeicherte Änderungen werden vorher gespeichert. Das Backend
+   * finalisiert, was in der Datenbank steht — ohne diesen Schritt bekäme man
+   * eine Rechnung, die anders aussieht als das Formular davor.
+   */
+  const finalize = useMutation({
+    mutationFn: async (values: InvoiceFormValues) => {
+      if (form.formState.isDirty) {
+        await apiClient.patch<InvoiceResponse>(`/invoices/${invoiceId}`, toInvoicePayload(values));
+      }
+      return apiClient.post<InvoiceResponse>(`/invoices/${invoiceId}/finalize`, {});
+    },
+    onSuccess: async (updated) => {
+      queryClient.setQueryData(queryKeys.invoices.byId(invoiceId), updated);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.invoices.all });
+      form.reset(toInvoiceFormValues(updated));
+    },
+  });
+
+  const unfinalize = useMutation({
+    mutationFn: () => apiClient.post<InvoiceResponse>(`/invoices/${invoiceId}/unfinalize`, {}),
+    onSuccess: async (updated) => {
+      queryClient.setQueryData(queryKeys.invoices.byId(invoiceId), updated);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.invoices.all });
+      form.reset(toInvoiceFormValues(updated));
+    },
+  });
+
+  const regeneratePdf = useMutation({
+    mutationFn: () => apiClient.post<InvoiceResponse>(`/invoices/${invoiceId}/regenerate-pdf`, {}),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(queryKeys.invoices.byId(invoiceId), updated);
+    },
+  });
+
   const remove = useMutation({
     mutationFn: () => apiClient.delete<void>(`/invoices/${invoiceId}`),
     onSuccess: async () => {
@@ -166,6 +203,12 @@ export function InvoiceEditorPage(): JSX.Element {
   const data = invoice.data;
   const editable = isEditable(data.status);
   const saveError = save.error instanceof ApiRequestError ? save.error : null;
+  const finalizeError = finalize.error instanceof ApiRequestError ? finalize.error : null;
+  const unfinalizeError = unfinalize.error instanceof ApiRequestError ? unfinalize.error : null;
+
+  // Die Liste der fehlenden Pflichtangaben kommt als `details` aus der API —
+  // dieselbe Liste, die `checkFinalizable` im geteilten Paket erzeugt.
+  const finalizeProblems = finalizeError?.details ?? [];
   const fieldErrors = saveError?.fieldErrors();
 
   const errorFor = (field: string): string | undefined => fieldErrors?.[field];
@@ -242,8 +285,51 @@ export function InvoiceEditorPage(): JSX.Element {
         {!editable && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
             <p className="text-sm text-amber-900">
-              Diese Rechnung ist finalisiert und kann nicht mehr geändert werden.
+              Diese Rechnung ist ausgestellt und kann nicht mehr geändert werden. Für eine Korrektur
+              wird sie storniert und neu ausgestellt.
             </p>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              {data.canUnfinalize ? (
+                <Button
+                  variant="secondary"
+                  disabled={unfinalize.isPending}
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        `Finalisierung von ${invoiceDisplayName(data)} zurücknehmen? ` +
+                          'Die Nummer wird wieder freigegeben und das PDF gelöscht.',
+                      )
+                    ) {
+                      unfinalize.mutate();
+                    }
+                  }}
+                >
+                  Finalisierung zurücknehmen
+                </Button>
+              ) : (
+                <p className="text-sm text-amber-800">{data.unfinalizeBlocker}</p>
+              )}
+              {unfinalizeError !== null && (
+                <span className="text-sm text-rose-600">{unfinalizeError.message}</span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {data.documentMissing && (
+          <div className="rounded-lg border border-rose-200 bg-rose-50 p-4">
+            <p className="text-sm text-rose-900">
+              Zu dieser Rechnung fehlt die PDF-Datei. Sie lässt sich aus den gespeicherten Daten
+              unverändert neu erzeugen.
+            </p>
+            <Button
+              variant="secondary"
+              className="mt-3"
+              disabled={regeneratePdf.isPending}
+              onClick={() => regeneratePdf.mutate()}
+            >
+              {regeneratePdf.isPending ? 'wird erzeugt …' : 'PDF neu erzeugen'}
+            </Button>
           </div>
         )}
 
@@ -459,6 +545,23 @@ export function InvoiceEditorPage(): JSX.Element {
               {save.isPending ? 'wird gespeichert …' : 'Speichern'}
             </Button>
           )}
+          {editable && (
+            <Button
+              disabled={finalize.isPending}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    'Rechnung ausstellen? Sie bekommt die nächste Rechnungsnummer und ist ' +
+                      'danach nicht mehr änderbar.',
+                  )
+                ) {
+                  finalize.mutate(form.getValues());
+                }
+              }}
+            >
+              {finalize.isPending ? 'wird ausgestellt …' : 'Rechnung ausstellen'}
+            </Button>
+          )}
           <Button
             variant="secondary"
             disabled={downloadPdf.isPending}
@@ -484,6 +587,22 @@ export function InvoiceEditorPage(): JSX.Element {
           )}
           {saveError !== null && Object.keys(fieldErrors ?? {}).length > 0 && (
             <span className="text-sm text-rose-600">Bitte die markierten Felder prüfen.</span>
+          )}
+
+          {finalizeProblems.length > 0 && (
+            <div className="w-full rounded-lg border border-rose-200 bg-rose-50 p-4">
+              <p className="text-sm font-medium text-rose-900">
+                Diese Angaben fehlen noch, damit die Rechnung ausgestellt werden kann:
+              </p>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-rose-800">
+                {finalizeProblems.map((problem) => (
+                  <li key={`${problem.field}-${problem.message}`}>{problem.message}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {finalizeError !== null && finalizeProblems.length === 0 && (
+            <span className="text-sm text-rose-600">{finalizeError.message}</span>
           )}
 
           {editable && (

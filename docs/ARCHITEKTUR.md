@@ -1,7 +1,7 @@
 # Projektplan: Eigene Rechnungssoftware ("AgenturTool")
 
-**Status:** v1.8 — Schritte 0 bis 8 umgesetzt; Rechnungen lassen sich erfassen,
-in der Live-Vorschau ansehen und als PDF herunterladen.
+**Status:** v1.9 — Schritte 0 bis 9 umgesetzt; Rechnungen lassen sich erfassen,
+ausstellen und als PDF ablegen. Die Kernfunktion steht.
 **Repository:** `Kalabedo/AgenturTool`
 
 Dieses Dokument ist die verbindliche Architekturgrundlage. Es wird mit dem Code
@@ -500,6 +500,13 @@ gerade gezogen hat. Ohne diese Bedingung wäre Undo ein Loch in der
 Fortlaufendkeit. Die UI zeigt den Button deshalb auch nur, wenn er wirklich
 zulässig ist, und benennt sonst den Grund.
 
+**Umgesetzt in Schritt 9.** Die vier Bedingungen stehen als
+`unfinalizeBlocker()` im geteilten Paket und werden an zwei Stellen benutzt:
+Das Backend weist den Aufruf damit ab, und die Antwort trägt `canUnfinalize`
+samt Begründung, damit die Oberfläche den Knopf gar nicht erst anbietet. Zwei
+Formulierungen derselben Regel wären genau der Fall, in dem ein sichtbarer
+Knopf mit 409 antwortet.
+
 Weil Undo Nummern und Dokumente wieder freigibt, ist `InvoiceEvent` **kein
 optionales Extra mehr, sondern Pflicht** — es ist die einzige Spur, dass eine
 Nummer einmal vergeben und zurückgenommen wurde.
@@ -539,6 +546,11 @@ Entgelt und Steuersatz bzw. Hinweis auf Steuerbefreiung; bei Reverse Charge
 zusätzlich USt-ID beider Seiten). Fehlt etwas, schlägt die Finalisierung mit
 einer verständlichen Liste fehl. Rechtsberatung ersetzt das nicht.
 
+**Umgesetzt in Schritt 9** als `checkFinalizable()` im geteilten Paket. Die
+Liste kommt als `details` einer 409-Antwort mit dem Code
+`FINALIZE_VALIDATION_FAILED` zurück und steht im Editor unter den Positionen —
+nicht als „Etwas fehlt", sondern als die Aufzählung dessen, was fehlt.
+
 ---
 
 ## 9. Rechnungsnummern
@@ -559,6 +571,11 @@ WHERE scope = ? AND year = ? AND nextValue = ?`, Ergebnis muss 1 Zeile sein),
   Single-User-Tool ist echte Nebenläufigkeit ohnehin die Ausnahme — aber
   Doppelvergabe darf auch in der Ausnahme nicht passieren.
 - Format konfigurierbar über ein Muster, Default `{YYYY}-{SEQ:3}` → `2026-001`.
+  Das Muster liegt in `AppSetting` unter `invoice.numberPattern` (keine
+  Oberfläche in V1) und kennt `{YYYY}`, `{YY}`, `{MM}` und `{SEQ:n}`. Es wird
+  beim Lesen validiert und fällt bei Unsinn auf den Standard zurück, statt das
+  Ausstellen unmöglich zu machen — und es darf keine Zeichen enthalten, die in
+  einem Dateinamen unzulässig sind, weil die Nummer der Dateiname des PDFs ist.
 - **Jahreswechsel:** Zähler-Jahr wird aus dem **Rechnungsdatum** abgeleitet
   (nicht aus `now()`). Wer am 03.01.2027 eine Rechnung mit Datum 31.12.2026
   finalisiert, bekommt korrekt `2026-0xx`. Ist das Zieljahr bereits
@@ -760,19 +777,38 @@ unsichtbar. Die Konsistenzlücke des Dateisystems ist mit wenig Aufwand
 schließbar, die Nachteile des BLOB-Wegs nicht.
 
 **Konsistenzprotokoll beim Finalisieren** (Dateisystem und DB dürfen nicht
-auseinanderlaufen):
+auseinanderlaufen). Umgesetzt in Schritt 9, mit einer Korrektur gegenüber der
+ersten Fassung dieses Abschnitts: Dort stand das PDF **vor** der Transaktion.
+Das geht nicht — auf dem Dokument steht die Rechnungsnummer, und die gibt es
+erst, wenn der Zähler gezogen ist. Das Drucken liegt deshalb **in** der
+Transaktion:
 
-1. PDF erzeugen und unter `data/tmp/<uuid>.pdf` schreiben, SHA-256 bilden.
-2. Transaktion: Nummer ziehen, Snapshots schreiben, Status auf `ISSUED`,
+1. Transaktion öffnen und die Nummer ziehen (bedingtes Update, Abschnitt 9).
+2. Mit dieser Nummer das PDF rendern, unter `data/tmp/<uuid>.pdf` schreiben,
+   SHA-256 bilden.
+3. Weiter in derselben Transaktion: Snapshots schreiben, Status auf `ISSUED`,
    `InvoiceDocument`-Datensatz mit Zielpfad und Hash anlegen, `InvoiceEvent`
-   schreiben. Bricht hier etwas ab, wird zurückgerollt und die temporäre Datei
-   verworfen — es entsteht kein halb ausgestelltes Dokument.
-3. Nach erfolgreichem Commit die Datei an den Zielpfad verschieben
+   schreiben. Bricht irgendetwas davon ab, wird zurückgerollt und die
+   temporäre Datei verworfen — die Nummer ist dann nicht verbraucht und es
+   entsteht kein halb ausgestelltes Dokument.
+4. Nach erfolgreichem Commit die Datei an den Zielpfad verschieben
    (`rename`, atomar innerhalb desselben Dateisystems).
-4. Beim Start prüft ein kleiner Reconciler: `InvoiceDocument`-Zeilen ohne
+5. Beim Start prüft ein kleiner Reconciler: `InvoiceDocument`-Zeilen ohne
    Datei werden protokolliert und in der UI als reparierbar markiert
-   (Neuerzeugung aus dem Snapshot ist möglich, weil der Snapshot alles
-   enthält); verwaiste Dateien ohne Zeile wandern nach `data/orphans/`.
+   (`documentMissing` in der Antwort, Knopf „PDF neu erzeugen"); verwaiste
+   Dateien ohne Zeile wandern nach `data/orphans/` statt gelöscht zu werden.
+
+Der Preis der Umkehrung: Chromium druckt, während die Schreibsperre der
+Datenbank gehalten wird — knapp eine Sekunde. Bei einem Einzelplatzwerkzeug
+ist das der günstigere Tausch. Die Alternative wäre ein Fenster, in dem eine
+Nummer vergeben, aber keine Rechnung ausgestellt ist, und genau das erzeugt
+die Lücke, die die späte Nummernvergabe vermeiden soll. Das Zeitlimit der
+Transaktion ist deshalb auf 120 Sekunden gesetzt; die Voreinstellung von fünf
+reicht für eine lange Rechnung auf einer langsamen Maschine nicht sicher.
+
+Der einzige verbleibende Bruchfall ist ein Absturz zwischen Commit und
+Verschieben: Dann gibt es einen Datensatz ohne Datei. Er ist beim Start
+sichtbar und aus dem Snapshot reparierbar — deshalb ist er tragbar.
 
 Weitere Regeln:
 
@@ -825,19 +861,21 @@ steht ihr CSS inline und ihre Schrift ist eine generische.
 
 **Wege zum PDF**, beide über `Content-Disposition: inline` und `no-store`:
 
-| Route                            | Quelle                                               |
-| -------------------------------- | ---------------------------------------------------- |
-| `GET /api/invoices/:id/pdf`      | Entwurf: heutige Stammdaten · ausgestellt: Snapshots |
-| `POST /api/invoices/preview/pdf` | ungespeicherte Formulardaten, nichts wird angelegt   |
+| Route                                   | Quelle                                                      |
+| --------------------------------------- | ----------------------------------------------------------- |
+| `GET /api/invoices/:id/pdf`             | Entwurf: frisch gerendert · ausgestellt: gespeicherte Datei |
+| `POST /api/invoices/preview/pdf`        | ungespeicherte Formulardaten, nichts wird angelegt          |
+| `POST /api/invoices/:id/regenerate-pdf` | Reparaturweg: aus dem Snapshot neu erzeugt und abgelegt     |
 
 `no-store` ist wichtiger, als es klingt: Ein Entwurfs-PDF sieht nach der
 nächsten Änderung anders aus, und ein Blatt aus dem Browser-Cache wäre genau
 das Missverständnis, das der Blick auf den Umbruch vermeiden soll.
 
-Ab Schritt 9 legt das Finalisieren das erzeugte PDF ab; der Download einer
-ausgestellten Rechnung liefert dann die gespeicherte Datei (Abschnitt 13).
-Bis dahin entsteht sie aus den Snapshots — dasselbe Dokument, denselben
-Weg geht später auch die Reparatur einer verlorenen Datei.
+Seit Schritt 9 legt das Finalisieren das erzeugte PDF ab, und der Download
+einer ausgestellten Rechnung liefert genau diese Datei — nie eine
+Neuerzeugung (Abschnitt 13). Fehlt sie, wird ersatzweise aus dem Snapshot
+gerendert und die Antwort meldet `documentMissing`; dauerhaft repariert wird
+über `regenerate-pdf`.
 
 ---
 
@@ -875,6 +913,7 @@ POST   /api/invoices/:id/payment       { paidAt | null }
 POST   /api/invoices/:id/sent          { sentAt | null }
 GET    /api/invoices/:id/pdf           gespeichertes PDF (bzw. Draft-Render)
 POST   /api/invoices/preview/pdf       ungespeicherte Formulardaten → PDF
+POST   /api/invoices/:id/regenerate-pdf   PDF aus dem Snapshot neu ablegen
 
 POST   /api/backup/export              GET /api/backup/status
 ```
@@ -1045,7 +1084,7 @@ Jeder Schritt endet mit etwas Lauffähigem.
 | 6 ✅ | Rechnungs-Entwurf: API + Editor mit dynamischen Positionen                 | Rechnungen erfassbar            |
 | 7 ✅ | `invoice-template` + Live-Vorschau im iframe                               | sichtbares Ergebnis             |
 | 8 ✅ | PDF-Service (Puppeteer) + Entwurfs-PDF                                     | PDF-Pipeline steht              |
-| 9    | Nummernvergabe + Snapshots + Finalisieren + PDF-Ablage                     | **Kernfunktion fertig**         |
+| 9 ✅ | Nummernvergabe + Snapshots + Finalisieren + PDF-Ablage                     | **Kernfunktion fertig**         |
 | 10   | Status: bezahlt/versendet, Stornieren, Duplizieren                         | Lebenszyklus komplett           |
 | 11   | Rechnungsübersicht mit Filter/Sortierung + Dashboard                       | Alltagstauglich                 |
 | 12   | Backup-Export/Restore + Restore-Test                                       | Datensicherheit                 |

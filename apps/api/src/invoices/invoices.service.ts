@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma, type Invoice, type InvoiceItem } from '@prisma/client';
 import {
   INVOICE_EVENT_TYPE,
+  unfinalizeBlocker,
   buyerDataSchema,
   calculateInvoice,
   customerToBuyerData,
@@ -22,16 +23,37 @@ import {
 import { ApiError } from '../common/api-error';
 import { PrismaService } from '../common/prisma.service';
 import { CompanyService } from '../company/company.service';
+import { InvoiceDocumentsService } from '../pdf/invoice-documents.service';
+import { InvoiceNumbersService } from './invoice-numbers.service';
 
-type InvoiceWithItems = Invoice & { items: InvoiceItem[] };
+type InvoiceWithItems = Invoice & {
+  items: InvoiceItem[];
+  documents: { path: string }[];
+  cancelledByInvoice: { id: number } | null;
+};
 
-const WITH_ITEMS = { include: { items: { orderBy: { position: 'asc' } } } } as const;
+/**
+ * Was zu einer Rechnung immer mitgeladen wird.
+ *
+ * Die beiden Beziehungen neben den Positionen kosten wenig und beantworten
+ * zwei Fragen, die die Oberfläche sonst einzeln stellen müsste: Gibt es ein
+ * gespeichertes PDF, und ist die Rechnung bereits storniert?
+ */
+const WITH_ITEMS = {
+  include: {
+    items: { orderBy: { position: 'asc' } },
+    documents: { select: { path: true } },
+    cancelledByInvoice: { select: { id: true } },
+  },
+} as const;
 
 @Injectable()
 export class InvoicesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly company: CompanyService,
+    private readonly numbers: InvoiceNumbersService,
+    private readonly documents: InvoiceDocumentsService,
   ) {}
 
   async list(query: InvoiceListQuery): Promise<InvoiceResponse[]> {
@@ -58,11 +80,12 @@ export class InvoicesService {
       ...WITH_ITEMS,
     });
 
-    return invoices.map((invoice) => this.toResponse(invoice));
+    const nextValues = await this.numbers.allNextValues();
+    return invoices.map((invoice) => this.toResponse(invoice, nextValues));
   }
 
   async findById(id: number): Promise<InvoiceResponse> {
-    return this.toResponse(await this.load(id));
+    return this.respond(await this.load(id));
   }
 
   /**
@@ -130,7 +153,7 @@ export class InvoicesService {
       return created;
     });
 
-    return this.toResponse(invoice);
+    return this.respond(invoice);
   }
 
   /**
@@ -197,7 +220,7 @@ export class InvoicesService {
       return tx.invoice.findUniqueOrThrow({ where: { id }, ...WITH_ITEMS });
     });
 
-    return this.toResponse(invoice);
+    return this.respond(invoice);
   }
 
   /** Holt den aktuellen Stammdatenstand des Kunden in den Entwurf (D9). */
@@ -230,7 +253,7 @@ export class InvoicesService {
       ...WITH_ITEMS,
     });
 
-    return this.toResponse(invoice);
+    return this.respond(invoice);
   }
 
   async deleteDraft(id: number): Promise<void> {
@@ -280,7 +303,18 @@ export class InvoicesService {
     return invoice;
   }
 
-  private toResponse(invoice: InvoiceWithItems): InvoiceResponse {
+  /**
+   * Antwort für eine einzelne Rechnung.
+   *
+   * Holt die Zählerstände nach, die `toResponse` für „darf zurückgenommen
+   * werden" braucht. Es sind wenige Zeilen — eine je Jahr —, deshalb ist die
+   * eine Abfrage billiger als ein Sonderweg.
+   */
+  private async respond(invoice: InvoiceWithItems): Promise<InvoiceResponse> {
+    return this.toResponse(invoice, await this.numbers.allNextValues());
+  }
+
+  private toResponse(invoice: InvoiceWithItems, nextValues: Map<number, number>): InvoiceResponse {
     const calculation = calculateInvoice(
       invoice.items.map((item) => ({
         quantity: item.quantity,
@@ -294,6 +328,15 @@ export class InvoicesService {
     // Bei einer finalisierten Rechnung gilt der eingefrorene Snapshot, nicht
     // die Neuberechnung — sonst änderte eine spätere Anpassung der
     // Rechenlogik rückwirkend ein ausgestelltes Dokument.
+    const blocker = unfinalizeBlocker({
+      status: invoice.status,
+      numberSeq: invoice.numberSeq,
+      sequenceNextValue:
+        invoice.numberYear === null ? null : (nextValues.get(invoice.numberYear) ?? null),
+      sentAt: invoice.sentAt?.toISOString() ?? null,
+      hasCancellation: invoice.cancelledByInvoice !== null,
+    });
+
     const totals: TotalsSnapshot =
       invoice.totalsSnapshot === null
         ? toTotalsSnapshot(calculation)
@@ -329,6 +372,14 @@ export class InvoicesService {
         lineNetCents: item.lineNetCents,
       })),
       totals,
+      hasDocument: invoice.documents.length > 0,
+      // Ein Blick ins Dateisystem je Rechnung. Ein `stat` ist billig, und
+      // die Alternative wäre, dem Benutzer eine Datei anzubieten, die es
+      // nicht mehr gibt.
+      documentMissing: invoice.documents.some((document) => !this.documents.exists(document.path)),
+      canUnfinalize: blocker === null,
+      unfinalizeBlocker: blocker,
+
       issuedAt: invoice.issuedAt?.toISOString() ?? null,
       sentAt: invoice.sentAt?.toISOString() ?? null,
       paidAt: invoice.paidAt,
