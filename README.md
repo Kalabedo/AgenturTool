@@ -34,14 +34,18 @@ Die zwei prägenden Architekturprinzipien:
 
 ## Entwicklung
 
-Voraussetzungen: Node 22+, pnpm 10+ und ein Chromium für die PDF-Erzeugung
-(`chromium`, `chromium-browser` oder Google Chrome). Liegt es nicht an einem
-der üblichen Orte, zeigt `PUPPETEER_EXECUTABLE_PATH` in der `.env` darauf.
-Ohne Chromium läuft alles außer dem PDF; die Rendertests überspringen sich.
+Voraussetzungen: Node 22+, pnpm 10+ und ein Chromium für die PDF-Erzeugung.
+Ein bereits installiertes (`chromium`, `chromium-browser`, Google Chrome)
+wird an den üblichen Orten gefunden; ist keines da, lädt
+`pnpm chromium:install` eines nach `~/.cache/puppeteer`, wo die Anwendung
+ebenfalls nachsieht. Liegt der Browser woanders, zeigt
+`PUPPETEER_EXECUTABLE_PATH` in der `.env` darauf. Ohne Chromium läuft alles
+außer dem PDF; die Rendertests überspringen sich.
 
 ```bash
 pnpm install
 cp .env.example .env
+pnpm chromium:install # nur nötig, wenn kein Chromium installiert ist
 pnpm db:migrate      # Schema anlegen
 pnpm db:seed         # Steuerprofile und Grundeinstellungen
 pnpm dev             # API auf :3000, Web auf :5173
@@ -55,6 +59,7 @@ Weitere Befehle:
 | `pnpm lint` / `pnpm typecheck`  | Statische Prüfungen                                           |
 | `pnpm verify`                   | Alle Prüfungen und den Produktions-Build ausführen            |
 | `pnpm build`                    | Alle Pakete und Apps bauen                                    |
+| `pnpm chromium:install`         | Chromium für die PDF-Erzeugung laden, falls keines da ist     |
 | `pnpm db:studio`                | Daten im Browser ansehen                                      |
 | `pnpm db:verify`                | Prüft, dass alle CHECK-Constraints und Trigger vorhanden sind |
 | `pnpm db:reset`                 | Datenbank verwerfen und neu aufbauen                          |

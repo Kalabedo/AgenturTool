@@ -13,6 +13,7 @@
     "db:studio": "prisma studio",
     "db:verify": "tsx prisma/verify.ts",
     "db:reset": "prisma migrate reset --force",
+    "chromium:install": "tsx scripts/chromium.ts",
     "backup": "tsx scripts/backup.ts",
     "restore": "tsx scripts/restore.ts",
     "user:set": "tsx scripts/user.ts"
@@ -41,6 +42,7 @@
   "devDependencies": {
     "@nestjs/cli": "^11.0.24",
     "@nestjs/schematics": "^11.1.0",
+    "@puppeteer/browsers": "^3.2.2",
     "@types/express": "^5.0.0",
     "@types/multer": "^2.2.0",
     "@types/react": "^18.3.31",

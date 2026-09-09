@@ -940,10 +940,22 @@ Einzelplatzwerkzeug bringt Parallelität nichts und kostet Speicher.
 **`puppeteer-core` statt `puppeteer` (D32).** Das große Paket lädt bei jeder
 Installation ein eigenes Chromium (~150 MB) und legte im Image ein zweites
 neben das des Paketmanagers. Der Preis dafür ist `apps/api/src/pdf/chromium.ts`:
-`PUPPETEER_EXECUTABLE_PATH`, sonst die üblichen Orte, sonst eine Meldung, die
-sagt, was zu tun ist. Fehlt Chromium, ist das ein Konfigurationsfehler beim
-Aufsetzen und kein Ausfall im Betrieb — die Anwendung startet trotzdem, nur
-das PDF entsteht nicht.
+`PUPPETEER_EXECUTABLE_PATH`, sonst die üblichen Orte der Paketverwaltung,
+sonst der Zwischenspeicher unter `~/.cache/puppeteer` (bzw.
+`PUPPETEER_CACHE_DIR`), sonst eine Meldung, die sagt, was zu tun ist. Fehlt
+Chromium, ist das ein Konfigurationsfehler beim Aufsetzen und kein Ausfall im
+Betrieb — die Anwendung startet trotzdem, nur das PDF entsteht nicht.
+
+Die dritte Stufe gibt es, weil die zweite auf einem Entwicklungsrechner
+regelmäßig ins Leere lief: Wer kein Chromium installiert hat, bekam beim
+ersten PDF eine Fehlermeldung und musste selbst herausfinden, welches Paket
+gemeint ist. `pnpm chromium:install` (`apps/api/scripts/chromium.ts`) lädt
+über `@puppeteer/browsers` ein Chrome for Testing genau dorthin, wo die Suche
+ohnehin nachsieht — es bleibt nichts in der `.env` einzutragen. Das Skript
+benutzt für seine Vorprüfung dieselbe `findChromiumExecutable`, damit es
+nichts lädt, was schon da ist, und nie einen anderen Ort für richtig hält als
+der Server. Am Docker-Image ändert das nichts: Dort kommt Chromium weiterhin
+aus Debian, und `PUPPETEER_EXECUTABLE_PATH` zeigt darauf.
 
 **Sandbox bleibt an.** `--no-sandbox` nur, wenn `PUPPETEER_NO_SANDBOX=true`
 ausdrücklich gesetzt ist — vorgesehen für den Container, in dem der Prozess
