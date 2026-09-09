@@ -6,6 +6,7 @@ import { CustomersModule } from './customers/customers.module';
 import { TaxProfilesModule } from './tax-profiles/tax-profiles.module';
 import { TemplateSettingsModule } from './template-settings/template-settings.module';
 import { InvoicesModule } from './invoices/invoices.module';
+import { TimeEntriesModule } from './time-entries/time-entries.module';
 import { FilesModule } from './files/files.module';
 import { HealthModule } from './health/health.module';
 import { BackupModule } from './backup/backup.module';
@@ -24,6 +25,7 @@ import { WebModule } from './web/web.module';
     TaxProfilesModule,
     TemplateSettingsModule,
     InvoicesModule,
+    TimeEntriesModule,
     BackupModule,
     // Zuletzt: Der statische Ausliefer-Zweig darf erst greifen, wenn keine
     // API-Route gepasst hat.

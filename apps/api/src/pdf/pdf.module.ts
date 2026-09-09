@@ -7,6 +7,7 @@ import { ChromiumConfig } from './chromium';
 import { InvoiceDocumentsService } from './invoice-documents.service';
 import { InvoicePdfService } from './invoice-pdf.service';
 import { PdfService } from './pdf.service';
+import { TimeReportService } from './time-report.service';
 
 /**
  * Die PDF-Erzeugung als eigenes Modul.
@@ -18,7 +19,13 @@ import { PdfService } from './pdf.service';
  */
 @Module({
   imports: [CompanyModule, TemplateSettingsModule, TaxProfilesModule, FilesModule],
-  providers: [ChromiumConfig, PdfService, InvoicePdfService, InvoiceDocumentsService],
-  exports: [PdfService, InvoicePdfService, InvoiceDocumentsService],
+  providers: [
+    ChromiumConfig,
+    PdfService,
+    InvoicePdfService,
+    InvoiceDocumentsService,
+    TimeReportService,
+  ],
+  exports: [PdfService, InvoicePdfService, InvoiceDocumentsService, TimeReportService],
 })
 export class PdfModule {}

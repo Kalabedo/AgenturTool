@@ -42,6 +42,16 @@ export const EXPECTED_CHECK_CONSTRAINTS: Record<string, readonly string[]> = {
     'Invoice_paidAt_isodate_check',
   ],
   InvoiceItem: ['InvoiceItem_discountType_check'],
+  TimeEntry: [
+    'TimeEntry_date_isodate_check',
+    // Das Viertelstundenraster der Zeiterfassung: Ohne diese vier Regeln
+    // hinge es allein am Zod-Schema, und ein Import an der Anwendung vorbei
+    // brächte 12:13-Einträge in die Auswertung.
+    'TimeEntry_startMinutes_check',
+    'TimeEntry_endMinutes_check',
+    'TimeEntry_range_check',
+    'TimeEntry_breakMinutes_check',
+  ],
   InvoiceEvent: ['InvoiceEvent_type_check'],
 };
 

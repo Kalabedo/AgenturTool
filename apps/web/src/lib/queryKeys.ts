@@ -20,6 +20,12 @@ export const queryKeys = {
     list: (includeArchived: boolean) => ['tax-profiles', 'list', includeArchived] as const,
     byId: (id: number) => ['tax-profiles', 'detail', id] as const,
   },
+  timeEntries: {
+    all: ['time-entries'] as const,
+    // Zeitraum und Kundenfilter stecken in der Abfragezeichenkette; jede
+    // Kombination bekommt so ihren eigenen Zwischenspeicher.
+    list: (queryString: string) => ['time-entries', 'list', queryString] as const,
+  },
   invoices: {
     all: ['invoices'] as const,
     // Die vollständige Abfragezeichenkette als Schlüssel: Filter, Sortierung
