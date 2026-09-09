@@ -105,10 +105,43 @@ model Customer {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  invoices Invoice[]
+  invoices    Invoice[]
+  timeEntries TimeEntry[]
 
   @@index([companyName])
   @@index([archivedAt])
+}
+
+/// Ein Eintrag der Zeiterfassung: ein Tag, ein Kunde, eine Spanne.
+///
+/// Uhrzeiten als Minuten seit Mitternacht und nicht als DateTime — aus
+/// demselben Grund wie bei den Kalenderdaten (D21): Eine erfasste Zeit ist
+/// eine Angabe auf der Uhr des Benutzers, kein Zeitpunkt auf der Weltlinie.
+/// Alle drei Minutenfelder sind per CHECK auf Vielfache von 15 festgenagelt;
+/// das Runden erledigt `timeEntryInputSchema`.
+model TimeEntry {
+  id Int @id @default(autoincrement())
+
+  /// Kalendertag "YYYY-MM-DD".
+  date String
+
+  /// Restrict statt SetNull: Eine Stunde ohne Kunden ließe sich nicht mehr
+  /// abrechnen und stünde als herrenloser Datensatz in jeder Auswertung.
+  customerId Int
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  startMinutes Int
+  endMinutes   Int
+  /// Unbezahlte Unterbrechung; wird von der Spanne abgezogen.
+  breakMinutes Int @default(0)
+
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+  @@index([customerId, date])
 }
 
 /// Konfigurierbare Steuerkonstellation. Bewusst datengetrieben statt

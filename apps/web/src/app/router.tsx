@@ -7,6 +7,7 @@ import { EditCustomerPage } from '../features/customers/EditCustomerPage';
 import { NewCustomerPage } from '../features/customers/NewCustomerPage';
 import { InvoiceEditorPage } from '../features/invoices/InvoiceEditorPage';
 import { InvoiceListPage } from '../features/invoices/InvoiceListPage';
+import { TimeTrackingPage } from '../features/time-tracking/TimeTrackingPage';
 import { SettingsLayout } from '../features/settings/SettingsLayout';
 import { BackupPage } from '../features/settings/backup/BackupPage';
 import { EditTaxProfilePage } from '../features/settings/tax-profiles/EditTaxProfilePage';
@@ -26,6 +27,7 @@ export const router = createBrowserRouter([
       { index: true, element: <DashboardPage /> },
       { path: 'invoices', element: <InvoiceListPage /> },
       { path: 'invoices/:id', element: <InvoiceEditorPage /> },
+      { path: 'time-tracking', element: <TimeTrackingPage /> },
       { path: 'customers', element: <CustomerListPage /> },
       { path: 'customers/new', element: <NewCustomerPage /> },
       { path: 'customers/:id', element: <EditCustomerPage /> },

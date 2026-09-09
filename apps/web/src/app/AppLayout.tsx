@@ -7,6 +7,7 @@ const NAVIGATION = [
   { to: '/', label: 'Dashboard', end: true },
   { to: '/invoices', label: 'Rechnungen' },
   { to: '/customers', label: 'Kunden' },
+  { to: '/time-tracking', label: 'Zeiterfassung' },
   { to: '/settings/company', label: 'Einstellungen' },
 ];
 

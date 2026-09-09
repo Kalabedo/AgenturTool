@@ -330,6 +330,7 @@ Nest-spezifisch:
 | `InvoiceDocument`  | erzeugte PDF-Datei                          | Invoice-Ref, Pfad, SHA-256, Bytes, `generatedAt`, `kind`                                                               |
 | `Asset`            | hochgeladene Dateien (Logo)                 | Pfad, MIME, Größe, Hash                                                                                                |
 | `InvoiceEvent`     | Verlaufsprotokoll (**Pflicht**, siehe Undo) | Invoice-Ref, Typ, Zeitpunkt, Metadaten-JSON                                                                            |
+| `TimeEntry`        | erfasste Arbeitszeit für einen Kunden       | Tag, Kunden-Ref, Beginn/Ende/Pause in Minuten (Viertelstundenraster), Tätigkeit                                        |
 | `AppSetting`       | Key-Value-Kleinkram                         | Key, JSON-Wert                                                                                                         |
 
 ### Beziehungen
@@ -337,6 +338,7 @@ Nest-spezifisch:
 ```
 Company (1) ──── (1) Asset            Logo
 Customer (1) ──< (n) Invoice          nur als Referenz für Filter/Statistik
+Customer (1) ──< (n) TimeEntry        RESTRICT: erfasste Zeit hält den Kunden
 TaxProfile (1) ─< (n) Invoice         nur als Referenz
 Invoice  (1) ──< (n) InvoiceItem      Positionen (bei ISSUED eingefroren)
 Invoice  (1) ──< (n) InvoiceDocument  PDF(s)
@@ -1019,6 +1021,11 @@ GET    /api/invoices/:id/pdf           gespeichertes PDF (bzw. Draft-Render)
 POST   /api/invoices/preview/pdf       ungespeicherte Formulardaten → PDF
 POST   /api/invoices/:id/regenerate-pdf   PDF aus dem Snapshot neu ablegen
 
+GET    /api/time-entries?from=&to=&customerId=      POST  /api/time-entries
+GET    /api/time-entries/:id                       PATCH /api/time-entries/:id
+DELETE /api/time-entries/:id
+GET    /api/time-entries/report/pdf?from=&to=&customerId=   Zeitnachweis
+
 POST   /api/backup/export              GET /api/backup/status
 GET    /api/backup/:filename           Archiv herunterladen
 ```
@@ -1049,6 +1056,17 @@ Umsatzübersichten und offene Posten mit Altersstruktur bleiben ausdrücklich
 einer späteren Version vorbehalten (Abschnitt 21). Die Filter der Übersicht
 stehen in der Adresszeile, damit das Dashboard direkt auf „überfällig"
 verlinken kann und eine Auswahl teilbar ist.
+
+**Die Zeiterfassung** hält Uhrzeiten als Minuten seit Mitternacht und den Tag
+als Kalenderdatum (D21) — eine erfasste Zeit ist eine Angabe auf der Uhr des
+Benutzers, kein Zeitpunkt auf der Weltlinie. Alle Minutenangaben liegen auf
+dem Viertelstundenraster: Das Zod-Schema rundet jede Eingabe **ab** (aus
+„12:13 bis 14:02" wird „12:00 bis 14:00"), und vier CHECK-Constraints halten
+das Raster auch gegen Schreibwege an der Anwendung vorbei. Abrunden statt
+kaufmännisch runden, damit die abgerechnete Zeit im Zweifel unter der
+geleisteten liegt. Der Zeitnachweis ist bewusst kein Rechnungsdokument: keine
+Nummer, kein Snapshot, keine Ablage — er wird bei jedem Abruf aus den
+aktuellen Einträgen gedruckt und teilt mit der Rechnung nur den PDF-Dienst.
 
 Fehler einheitlich als `{ error: { code, message, details? } }`;
 Domänenverletzungen als `409 Conflict` mit sprechendem `code`

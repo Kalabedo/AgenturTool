@@ -130,6 +130,17 @@ export class CustomersService {
       );
     }
 
+    // Zeiterfassung: Der Fremdschlüssel steht auf RESTRICT, das Löschen
+    // schlüge also ohnehin fehl — aber als roher Datenbankfehler mit 500.
+    // Hier wird daraus derselbe erklärende Hinweis wie bei den Rechnungen.
+    const timeEntries = await this.prisma.timeEntry.count({ where: { customerId: id } });
+    if (timeEntries > 0) {
+      throw ApiError.validation(
+        `Zu diesem Kunden gibt es ${timeEntries} erfasste Zeit(en). ` +
+          'Er kann deshalb nur archiviert, nicht gelöscht werden.',
+      );
+    }
+
     await this.prisma.customer.delete({ where: { id } });
   }
 
