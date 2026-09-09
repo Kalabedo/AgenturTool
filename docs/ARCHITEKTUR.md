@@ -803,6 +803,33 @@ beiden derselbe — 12 mm links und oben, 16 mm unten für die Fußzeile. Der
 Test liest diesen Kasten aus dem PDF; mit Padding statt `@page` stimmte er
 nur auf Seite 1.
 
+**Ein Streifen bleibt rechts frei (`PAGE.edgeGapMm`, 0,75 mm).** Chromium
+richtet den Inhalt an einem Kasten aus und beschneidet die gedruckte Seite
+dann auf einen, der eine Winzigkeit schmaler ist — nachgemessen 0,7 pt. Was
+bündig rechts steht, verlor dadurch eine Scheibe: die „6" der Datumsangaben
+und die „4" der IBAN standen mit senkrecht abgeschnittener Rundung im PDF.
+Ein größerer Seitenrand hilft dagegen nicht — rechtsbündiger Text wandert mit
+ihm —, also gehört der Streifen in den Textbereich: `.page` behält im Druck
+ein `padding-right`, am Bildschirm steckt derselbe Wert im Seitenpadding.
+Beide Medien haben so denselben Textbereich, sonst bräche die Vorschau anders
+um als das PDF. Die Fußzeile (`renderInvoiceFooterTemplate`) rechnet
+denselben Wert ein, damit die Seitenzahl mit dem Textblock fluchtet.
+Nachgemessen an sechs Varianten (Entwurf, Steuer und Rabatt, große Beträge,
+zweiseitig, leerer Entwurf): Vorher lag in 74 Bildzeilen Tinte auf dem
+Beschnitt, danach in keiner, bei mindestens 1,1 pt Abstand.
+`packages/invoice-template/test/page-geometry.test.ts` hält die Geometrie
+fest.
+
+Der Platzhalter „Entwurf" statt der Rechnungsnummer steht deshalb **aufrecht**.
+Eingebettet sind nur Regular und Bold (D29); ein `font-style: italic` ergibt
+keine echte Kursive, sondern eine von Chromium schräggestellte Regular, deren
+Tinte bis zu 2 pt über die Laufweite hinausragt — rechtsbündig fiel damit das
+halbe „f" dem Beschnitt zum Opfer. Eine echte Kursive einzubetten wäre der
+andere Weg, kostet aber 26 kB in jedem Dokument und beseitigt den Überstand
+nur zur Hälfte (gemessen). Die grau gesetzte Farbe kennzeichnet den
+Platzhalter genauso; die kursiven Platzhalter im Fließtext bleiben, sie stehen
+linksbündig und damit nie am Beschnitt.
+
 **Die Live-Vorschau (D30)** rendert die Komponente über ein React-Portal in
 ein `about:blank`-iframe. Ein iframe, weil das Template ein eigenes
 Stylesheet mitbringt, das sich mit Tailwinds Preflight in beide Richtungen

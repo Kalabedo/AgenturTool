@@ -63,9 +63,9 @@ export function renderInvoiceDocument(
  * Die Fußzeile, die Puppeteer auf jede Seite setzt.
  *
  * Sie entsteht hier und nicht im Backend, weil sie zwei Dinge aus dem
- * Template kennen muss: den Seitenrand (`PAGE.marginMm`), damit sie mit dem
- * Textblock darüber fluchtet, und die Höhe des Fußbereichs, für den
- * `@page` den Platz freihält.
+ * Template kennen muss: den Seitenrand (`PAGE.marginMm`, rechts zuzüglich
+ * `PAGE.edgeGapMm`), damit sie mit dem Textblock darüber fluchtet, und die
+ * Höhe des Fußbereichs, für den `@page` den Platz freihält.
  *
  * Chromium rendert dieses Fragment in einem eigenen Dokument — ohne das
  * Stylesheet der Seite und ohne die eingebettete Schrift. Deshalb steht das
@@ -79,7 +79,8 @@ export function renderInvoiceFooterTemplate(model: InvoiceRenderModel): string {
   const label = model.number === null ? 'Entwurf' : `Rechnung ${model.number}`;
 
   return [
-    `<div style="width:100%;box-sizing:border-box;padding:0 ${PAGE.marginMm}mm;`,
+    '<div style="width:100%;box-sizing:border-box;',
+    `padding:0 ${PAGE.marginMm + PAGE.edgeGapMm}mm 0 ${PAGE.marginMm}mm;`,
     'font-family:Helvetica,Arial,sans-serif;font-size:7.5pt;color:#6b7280;',
     'display:flex;justify-content:space-between;align-items:center">',
     `<span>${escapeHtml(label)}</span>`,

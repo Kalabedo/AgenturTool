@@ -19,6 +19,24 @@ export const PAGE = {
   marginMm: 12,
   /** Platz am Fuß für die Seitenzahl, die Puppeteer beisteuert. */
   footerMm: 16,
+  /**
+   * Der Streifen am rechten Rand, den der Inhalt frei lässt.
+   *
+   * Chromium beschneidet die gedruckte Seite auf einen Kasten, der eine
+   * Winzigkeit schmaler ist als der, an dem es vorher ausrichtet — gemessen
+   * 0,7 pt. Buchstaben, die bündig am rechten Rand stehen, verlieren dadurch
+   * eine Scheibe: Die „6" der Datumsangaben und die „4" der IBAN standen im
+   * PDF mit senkrecht abgeschnittener Rundung.
+   *
+   * 0,75 mm sind rund das Dreifache des gemessenen Fehlers — genug Luft
+   * dafür, dass eine andere Chromium-Fassung anders rundet, und zu wenig,
+   * als dass der Unterschied zum linken Rand auffiele.
+   *
+   * Der Abstand gehört zur Seitengeometrie und nicht etwa nur zum Druck:
+   * Bildschirm und Druck müssen denselben Textbereich haben, sonst bricht
+   * die Vorschau anders um als das PDF.
+   */
+  edgeGapMm: 0.75,
 } as const;
 
 export const CLASSIC_CSS = `${EMBEDDED_FONT_CSS}
@@ -69,15 +87,22 @@ export const CLASSIC_CSS = `${EMBEDDED_FONT_CSS}
 .page {
   width: ${PAGE.widthMm}mm;
   min-height: ${PAGE.heightMm}mm;
-  padding: ${PAGE.marginMm}mm ${PAGE.marginMm}mm ${PAGE.footerMm}mm;
+  padding: ${PAGE.marginMm}mm ${PAGE.marginMm + PAGE.edgeGapMm}mm ${PAGE.footerMm}mm
+    ${PAGE.marginMm}mm;
   background: #ffffff;
 }
 
+/*
+ * Im Druck kommen die Ränder von @page — bis auf den rechten Spielraum
+ * (PAGE.edgeGapMm), der hier stehen bleibt: Er gehört in den Textbereich und
+ * nicht in den Seitenrand, sonst wanderte der rechtsbündige Text einfach mit
+ * dem Rand nach links und stünde wieder bündig am Beschnitt.
+ */
 @media print {
   .page {
     width: auto;
     min-height: 0;
-    padding: 0;
+    padding: 0 ${PAGE.edgeGapMm}mm 0 0;
   }
 }
 
@@ -192,9 +217,20 @@ export const CLASSIC_CSS = `${EMBEDDED_FONT_CSS}
   white-space: nowrap;
 }
 
+/*
+ * „Entwurf" statt einer Nummer — als einziger Platzhalter des Dokuments
+ * aufrecht und nicht kursiv.
+ *
+ * Eingebettet sind nur Regular und Bold (D29). Ein font-style: italic
+ * bekommt deshalb keine echte Kursive, sondern eine von Chromium schräg
+ * gestellte Regular — und deren Tinte steht bis zu 2 pt über die Laufweite
+ * des Buchstabens hinaus. Am rechten Rand fiel damit das halbe „f" dem
+ * Beschnitt zum Opfer. Die graue Farbe kennzeichnet den Platzhalter
+ * genauso, ohne dass ein Buchstabe aus seinem Kasten tritt; die kursiven
+ * Platzhalter im Fließtext bleiben, sie stehen linksbündig.
+ */
 .meta__value--placeholder {
   color: var(--ink-soft);
-  font-style: italic;
 }
 
 /* ---------- Titel ---------- */
