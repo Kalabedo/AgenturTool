@@ -940,8 +940,10 @@ Einzelplatzwerkzeug bringt Parallelität nichts und kostet Speicher.
 **`puppeteer-core` statt `puppeteer` (D32).** Das große Paket lädt bei jeder
 Installation ein eigenes Chromium (~150 MB) und legte im Image ein zweites
 neben das des Paketmanagers. Der Preis dafür ist `apps/api/src/pdf/chromium.ts`:
-`PUPPETEER_EXECUTABLE_PATH`, sonst die üblichen Orte der Paketverwaltung,
-sonst der Zwischenspeicher unter `~/.cache/puppeteer` (bzw.
+`PUPPETEER_EXECUTABLE_PATH`, sonst die üblichen Orte der Paketverwaltung
+(Chromium und Chrome, danach Edge als Rückfall — derselbe Motor, aber der
+Browser, der ohnehin da ist, soll kein absichtlich installiertes Chromium
+verdecken), sonst der Zwischenspeicher unter `~/.cache/puppeteer` (bzw.
 `PUPPETEER_CACHE_DIR`), sonst eine Meldung, die sagt, was zu tun ist. Fehlt
 Chromium, ist das ein Konfigurationsfehler beim Aufsetzen und kein Ausfall im
 Betrieb — die Anwendung startet trotzdem, nur das PDF entsteht nicht.

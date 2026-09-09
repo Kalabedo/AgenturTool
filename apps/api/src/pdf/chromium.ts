@@ -30,7 +30,21 @@ export function puppeteerCacheDir(): string {
   return path.join(os.homedir(), '.cache', 'puppeteer');
 }
 
-function candidatePaths(): string[] {
+/**
+ * Die Orte einer Installation aus der Paketverwaltung, in der Reihenfolge,
+ * in der sie ausprobiert werden.
+ *
+ * Zuerst Chromium und Chrome, danach Edge: Edge ist derselbe Motor und
+ * druckt dasselbe PDF, aber es ist der Browser, der auf einem Windows-Rechner
+ * ohnehin da ist — als erste Wahl würde er ein absichtlich installiertes
+ * Chromium verdecken. Andere Chromium-Abkömmlinge (Brave, Vivaldi, Opera)
+ * stehen bewusst nicht hier: Die Liste soll kurz und vorhersagbar bleiben,
+ * und für sie genügt ein `PUPPETEER_EXECUTABLE_PATH` in der `.env`.
+ *
+ * Firefox und Safari fehlen nicht aus Versehen — das PDF entsteht über
+ * Chromiums Druckweg, den es dort nicht gibt.
+ */
+export function candidatePaths(): string[] {
   const paths = [
     '/usr/bin/chromium',
     '/usr/bin/chromium-browser',
@@ -41,6 +55,9 @@ function candidatePaths(): string[] {
     '/opt/homebrew/bin/chromium',
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    '/usr/bin/microsoft-edge',
+    '/usr/bin/microsoft-edge-stable',
+    '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
   ];
 
   // Unter Windows stehen die Orte nicht fest, sondern in der Umgebung —
@@ -53,6 +70,7 @@ function candidatePaths(): string[] {
     if (base === undefined || base === '') continue;
     paths.push(path.join(base, 'Google', 'Chrome', 'Application', 'chrome.exe'));
     paths.push(path.join(base, 'Chromium', 'Application', 'chrome.exe'));
+    paths.push(path.join(base, 'Microsoft', 'Edge', 'Application', 'msedge.exe'));
   }
 
   return paths;

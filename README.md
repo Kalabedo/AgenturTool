@@ -35,11 +35,13 @@ Die zwei prägenden Architekturprinzipien:
 ## Entwicklung
 
 Voraussetzungen: Node 22+, pnpm 10+ und ein Chromium für die PDF-Erzeugung.
-Ein bereits installiertes (`chromium`, `chromium-browser`, Google Chrome)
-wird an den üblichen Orten gefunden; ist keines da, lädt
-`pnpm chromium:install` eines nach `~/.cache/puppeteer`, wo die Anwendung
-ebenfalls nachsieht. Liegt der Browser woanders, zeigt
-`PUPPETEER_EXECUTABLE_PATH` in der `.env` darauf. Ohne Chromium läuft alles
+Ein bereits installierter Browser wird an den üblichen Orten gefunden —
+Chromium, Google Chrome und, als Rückfall, Microsoft Edge. Ist keiner da,
+lädt `pnpm chromium:install` eines nach `~/.cache/puppeteer`, wo die
+Anwendung ebenfalls nachsieht. Für jeden anderen Chromium-Abkömmling (Brave,
+Vivaldi, Opera) oder einen Browser an einem ungewöhnlichen Ort zeigt
+`PUPPETEER_EXECUTABLE_PATH` in der `.env` darauf; Firefox und Safari gehen
+nicht, das PDF entsteht über Chromiums Druckweg. Ohne Chromium läuft alles
 außer dem PDF; die Rendertests überspringen sich.
 
 ```bash

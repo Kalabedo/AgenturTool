@@ -3,15 +3,15 @@
  *
  * Geprüft wird der Zwischenspeicher, in den `pnpm chromium:install` lädt:
  * Er ist die Stufe, die auf einem Entwicklungsrechner ohne Systempaket
- * darüber entscheidet, ob ein PDF entsteht. Die Suche in den festen
- * Systempfaden bleibt außen vor — sie hinge davon ab, was auf der Maschine
- * installiert ist, auf der der Test läuft.
+ * darüber entscheidet, ob ein PDF entsteht. Von den festen Systempfaden
+ * wird nur die Liste geprüft, nicht das Ergebnis der Suche — was davon
+ * existiert, hängt an der Maschine, auf der der Test läuft.
  */
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { findChromiumExecutable, findChromiumInCache } from '../src/pdf/chromium';
+import { candidatePaths, findChromiumExecutable, findChromiumInCache } from '../src/pdf/chromium';
 
 let cacheDir: string;
 
@@ -74,6 +74,42 @@ describe('Chromium im Zwischenspeicher', () => {
     const usable = fakeInstall('chrome', 'linux64-140.0.7339.82', 'chrome-linux64', 'chrome');
 
     expect(findChromiumInCache(cacheDir)).toBe(usable);
+  });
+});
+
+describe('Orte der Paketverwaltung', () => {
+  it('kennt Edge unter Linux und macOS', () => {
+    const paths = candidatePaths();
+
+    expect(paths).toContain('/usr/bin/microsoft-edge');
+    expect(paths).toContain('/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge');
+  });
+
+  it('kennt Edge unter Windows an den Orten aus der Umgebung', () => {
+    const before = process.env['PROGRAMFILES(X86)'];
+    process.env['PROGRAMFILES(X86)'] = 'C:\\Program Files (x86)';
+
+    try {
+      expect(candidatePaths()).toContain(
+        path.join('C:\\Program Files (x86)', 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+      );
+    } finally {
+      if (before === undefined) delete process.env['PROGRAMFILES(X86)'];
+      else process.env['PROGRAMFILES(X86)'] = before;
+    }
+  });
+
+  it('probiert Chromium und Chrome vor Edge', () => {
+    // Edge ist der Rückfall, nicht die erste Wahl: Wer ausdrücklich ein
+    // Chromium installiert hat, soll dieses bekommen.
+    const paths = candidatePaths();
+
+    expect(paths.indexOf('/usr/bin/chromium')).toBeLessThan(
+      paths.indexOf('/usr/bin/microsoft-edge'),
+    );
+    expect(
+      paths.indexOf('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'),
+    ).toBeLessThan(paths.indexOf('/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge'));
   });
 });
 
