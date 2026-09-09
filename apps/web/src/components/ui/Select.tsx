@@ -13,7 +13,11 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
       ref={ref}
       aria-invalid={invalid || undefined}
       className={[
-        'w-full rounded-md border bg-white px-3 py-2 text-sm text-slate-900 shadow-sm',
+        // `min-w-0` gegen Safari: Ein <select> hat dort eine Mindestbreite in
+        // Höhe seiner längsten Option. Ohne das Zurücksetzen wächst das Feld
+        // über seine Rasterspalte hinaus und schiebt die Nachbarn zusammen —
+        // in Firefox fällt das nicht auf, weil es die Breite dort schrumpft.
+        'w-full min-w-0 rounded-md border bg-white px-3 py-2 text-sm text-slate-900 shadow-sm',
         'focus:outline-none focus:ring-2',
         invalid
           ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-200'

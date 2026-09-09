@@ -303,8 +303,10 @@ export function InvoiceEditorPage(): JSX.Element {
         showPreview
           ? 'grid items-start gap-6 2xl:grid-cols-[minmax(0,1fr)_36rem]'
           : // Ohne Vorschau bleibt das Formular auf Lesebreite, statt sich
-            // über die volle Fensterbreite zu ziehen.
-            'grid max-w-5xl items-start gap-6'
+            // über die volle Fensterbreite zu ziehen — mittig, weil die
+            // Seite selbst schon auf 104rem aufgezogen ist und der Inhalt
+            // sonst am linken Rand kleben würde.
+            'mx-auto grid w-full max-w-5xl items-start gap-6'
       }
     >
       <form
@@ -315,7 +317,7 @@ export function InvoiceEditorPage(): JSX.Element {
         // Erst ab 2xl steht die Vorschau daneben. Darunter bekäme das
         // Formular sonst die volle Breite des breiten Layouts — ein
         // Eingabefeld über 1400 Pixel ist nicht großzügig, sondern unlesbar.
-        className="min-w-0 max-w-5xl space-y-6 2xl:max-w-none"
+        className="mx-auto w-full min-w-0 max-w-5xl space-y-6 2xl:mx-0 2xl:max-w-none"
         noValidate
       >
         <div>
@@ -697,7 +699,7 @@ export function InvoiceEditorPage(): JSX.Element {
          * als das Fenster — dann käme man an das Ende des Formulars nicht
          * mehr heran.
          */
-        <aside className="min-w-0 max-w-5xl 2xl:sticky 2xl:top-6 2xl:max-h-[calc(100vh-3rem)] 2xl:overflow-y-auto">
+        <aside className="mx-auto w-full min-w-0 max-w-5xl 2xl:mx-0 2xl:sticky 2xl:top-6 2xl:max-h-[calc(100vh-3rem)] 2xl:overflow-y-auto">
           <h2 className="mb-2 text-base font-semibold text-slate-900">Vorschau</h2>
           <p className="mb-3 text-xs text-slate-500">
             Zeigt dasselbe Template, das später das PDF erzeugt. Der Seitenumbruch entsteht erst

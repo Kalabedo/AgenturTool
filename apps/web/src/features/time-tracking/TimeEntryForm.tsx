@@ -170,7 +170,7 @@ export function TimeEntryForm({
             htmlFor="date"
             required
             error={errorFor('date')}
-            className="sm:col-span-3"
+            className="sm:col-span-4 lg:col-span-2"
           >
             <Input
               id="date"
@@ -185,7 +185,7 @@ export function TimeEntryForm({
             htmlFor="customerId"
             required
             error={errorFor('customerId')}
-            className="sm:col-span-4"
+            className="sm:col-span-8 lg:col-span-4"
           >
             <Select
               id="customerId"
@@ -207,7 +207,7 @@ export function TimeEntryForm({
             required
             error={errorFor('startMinutes')}
             hint={gridHintFor(start)}
-            className="sm:col-span-2"
+            className="sm:col-span-3 lg:col-span-2"
           >
             <Controller
               control={form.control}
@@ -231,7 +231,7 @@ export function TimeEntryForm({
             required
             error={errorFor('endMinutes')}
             hint={gridHintFor(end)}
-            className="sm:col-span-2"
+            className="sm:col-span-3 lg:col-span-2"
           >
             <Controller
               control={form.control}
@@ -252,7 +252,9 @@ export function TimeEntryForm({
             label="Pause"
             htmlFor="breakMinutes"
             error={errorFor('breakMinutes')}
-            className="sm:col-span-1"
+            // Die längste Option ist „4:00 h“ — in einer Zwölftelspalte
+            // bliebe davon neben dem Aufklapp-Pfeil nichts übrig.
+            className="sm:col-span-6 lg:col-span-2"
           >
             <Select
               id="breakMinutes"

@@ -28,7 +28,18 @@ export function AppLayout({ error }: { error?: ReactNode }): JSX.Element {
    * lesen.
    */
   const wideLayout = useMatch('/invoices/:id') !== null;
-  const width = wideLayout ? 'max-w-[104rem]' : 'max-w-5xl';
+
+  /**
+   * Die Zeiterfassung liegt dazwischen. Ihr Erfassungsformular stellt fünf
+   * Felder nebeneinander — Datum, Kunde, Beginn, Ende, Pause — und darunter
+   * steht eine Tabelle mit sieben Spalten. In 64rem wird jedes davon so
+   * schmal, dass in den Auswahlfeldern neben dem Aufklapp-Pfeil kaum noch
+   * Text Platz hat. Sie braucht aber auch keine 104rem, weil nichts
+   * daneben steht.
+   */
+  const mediumLayout = useMatch('/time-tracking') !== null;
+
+  const width = wideLayout ? 'max-w-[104rem]' : mediumLayout ? 'max-w-7xl' : 'max-w-5xl';
 
   return (
     <div className="min-h-screen bg-slate-50">

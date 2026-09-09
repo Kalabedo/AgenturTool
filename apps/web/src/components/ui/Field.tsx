@@ -37,7 +37,10 @@ export function Field({
     : children;
 
   return (
-    <div className={className}>
+    // `min-w-0`, weil dieses div das Rasterelement ist: Ohne das Zurücksetzen
+    // der automatischen Mindestbreite bestimmt der breiteste Inhalt — in
+    // Safari die längste Option eines <select> — die Spaltenbreite.
+    <div className={`min-w-0 ${className}`}>
       <label htmlFor={htmlFor} className="block text-sm font-medium text-slate-700">
         {label}
         {required && (
