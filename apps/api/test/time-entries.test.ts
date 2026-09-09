@@ -282,3 +282,162 @@ describe('Zeitnachweis', () => {
     30_000,
   );
 });
+
+/**
+ * Das Abrechnen.
+ *
+ * Der Kern der Zeiterfassung: Die Liste ist ein Posteingang, und
+ * „Abrechnen" leert ihn, ohne etwas wegzuwerfen. Diese Tests halten die
+ * beiden Zusagen fest, an denen Geld hängt — nichts verschwindet
+ * unbemerkt, und nichts gilt als abgerechnet, ohne auf dem Nachweis zu
+ * stehen.
+ */
+describe('Abrechnen', () => {
+  it('markiert die offenen Zeiten eines Kunden und lässt andere unberührt', async () => {
+    const mine = await timeEntries.create(input());
+    const other = await timeEntries.create(input({ customerId: otherCustomerId }));
+
+    const result = await timeEntries.bill(customerId);
+
+    expect(result.entries.map((entry) => entry.id)).toEqual([mine.id]);
+    expect((await timeEntries.findById(mine.id)).billedAt).not.toBeNull();
+    expect((await timeEntries.findById(other.id)).billedAt).toBeNull();
+  });
+
+  it('löscht nicht: die Einträge bleiben über den Zeitraum abrufbar', async () => {
+    const created = await timeEntries.create(input());
+    await timeEntries.bill(customerId);
+
+    const billed = await timeEntries.list(range({ billing: 'billed' }));
+    expect(billed.map((entry) => entry.id)).toEqual([created.id]);
+  });
+
+  it('nimmt aus der offenen Liste, was abgerechnet wurde', async () => {
+    await timeEntries.create(input());
+    await timeEntries.create(input({ date: '2026-09-08' }));
+    await timeEntries.bill(customerId);
+
+    expect(await timeEntries.list(range({ billing: 'open' }))).toHaveLength(0);
+  });
+
+  it('rechnet ein zweites Mal nur ab, was seither dazugekommen ist', async () => {
+    await timeEntries.create(input());
+    await timeEntries.bill(customerId);
+
+    const later = await timeEntries.create(input({ date: '2026-09-10' }));
+    const second = await timeEntries.bill(customerId);
+
+    expect(second.entries.map((entry) => entry.id)).toEqual([later.id]);
+  });
+
+  it('weist das Abrechnen ohne offene Zeiten zurück', async () => {
+    await expect(timeEntries.bill(customerId)).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it('nimmt eine Abrechnung wieder zurück', async () => {
+    const created = await timeEntries.create(input());
+    const result = await timeEntries.bill(customerId);
+
+    const count = await timeEntries.unbill(result.entries.map((entry) => entry.id));
+
+    expect(count).toBe(1);
+    expect((await timeEntries.findById(created.id)).billedAt).toBeNull();
+    expect(await timeEntries.list(range({ billing: 'open' }))).toHaveLength(1);
+  });
+
+  it('bleibt beim zweiten Rückgängigmachen ruhig', async () => {
+    await timeEntries.create(input());
+    const result = await timeEntries.bill(customerId);
+    const ids = result.entries.map((entry) => entry.id);
+
+    await timeEntries.unbill(ids);
+    expect(await timeEntries.unbill(ids)).toBe(0);
+  });
+
+  /**
+   * Ein abgerechneter Eintrag steht auf einem Nachweis beim Kunden. Ihn
+   * danach zu ändern hieße, das Dokument still von seiner Grundlage zu
+   * lösen — der Kunde hätte eine Zahl auf dem Papier und die Datenbank eine
+   * andere.
+   */
+  it('lässt abgerechnete Einträge nicht mehr ändern oder löschen', async () => {
+    const created = await timeEntries.create(input());
+    await timeEntries.bill(customerId);
+
+    await expect(
+      timeEntries.update(created.id, input({ endMinutes: '18:00' })),
+    ).rejects.toBeInstanceOf(ApiError);
+    await expect(timeEntries.remove(created.id)).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it('gibt einen zurückgenommenen Eintrag wieder zur Änderung frei', async () => {
+    const created = await timeEntries.create(input());
+    const result = await timeEntries.bill(customerId);
+    await timeEntries.unbill(result.entries.map((entry) => entry.id));
+
+    const updated = await timeEntries.update(created.id, input({ endMinutes: '18:00' }));
+    expect(updated.durationMinutes).toBe(540);
+  });
+});
+
+describe('Offene Zeiten je Kunde', () => {
+  it('nennt Summe, Anzahl und Zeitraum je Kunde', async () => {
+    await timeEntries.create(input({ date: '2026-09-07' }));
+    await timeEntries.create(input({ date: '2026-09-10', endMinutes: '11:00' }));
+    await timeEntries.create(input({ customerId: otherCustomerId }));
+
+    const summary = await timeEntries.openSummary();
+    const alpha = summary.find((entry) => entry.customerId === customerId);
+
+    expect(alpha).toMatchObject({
+      customerName: 'Alpha AG',
+      entryCount: 2,
+      durationMinutes: 330,
+      from: '2026-09-07',
+      to: '2026-09-10',
+    });
+  });
+
+  it('führt keinen Kunden mehr, dessen Zeiten abgerechnet sind', async () => {
+    await timeEntries.create(input());
+    await timeEntries.create(input({ customerId: otherCustomerId }));
+    await timeEntries.bill(customerId);
+
+    expect((await timeEntries.openSummary()).map((entry) => entry.customerName)).toEqual([
+      'Zeta GmbH',
+    ]);
+  });
+
+  it('sortiert die Kunden nach Namen', async () => {
+    await timeEntries.create(input({ customerId: otherCustomerId }));
+    await timeEntries.create(input());
+
+    expect((await timeEntries.openSummary()).map((entry) => entry.customerName)).toEqual([
+      'Alpha AG',
+      'Zeta GmbH',
+    ]);
+  });
+});
+
+/**
+ * Ohne Zeitraum liefert die Liste alles — auch den Eintrag von vor drei
+ * Monaten. Genau darauf beruht der Posteingang: Was nicht abgerechnet ist,
+ * bleibt sichtbar, egal wie alt es ist.
+ */
+describe('Liste ohne Zeitraum', () => {
+  it('zeigt offene Einträge außerhalb des laufenden Monats', async () => {
+    await timeEntries.create(input({ date: '2026-06-15' }));
+    await timeEntries.create(input({ date: '2026-09-07' }));
+
+    const open = timeEntryRangeSchema.parse({ billing: 'open' });
+    expect(await timeEntries.list(open)).toHaveLength(2);
+  });
+
+  it('grenzt trotzdem auf einen Kunden ein', async () => {
+    await timeEntries.create(input());
+    await timeEntries.create(input({ customerId: otherCustomerId }));
+
+    const open = timeEntryRangeSchema.parse({ billing: 'open', customerId });
+    expect(await timeEntries.list(open)).toHaveLength(1);
+  });
+});

@@ -97,3 +97,29 @@ export function isBefore(a: IsoDate, b: IsoDate): boolean {
 export function formatDateDe(date: IsoDate): string {
   return `${date.slice(8, 10)}.${date.slice(5, 7)}.${date.slice(0, 4)}`;
 }
+
+const WEEKDAYS_DE = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'] as const;
+
+/**
+ * Der Wochentag als Kürzel: "2026-12-31" -> "Do".
+ *
+ * Gerechnet in UTC und aus einer festen Liste statt über `Intl`: Der
+ * Wochentag eines Kalendertags hängt nicht davon ab, in welcher Zeitzone
+ * oder Sprachumgebung er gelesen wird — und `Intl` liefert je nach
+ * Laufzeitumgebung "Do" oder "Do." zurück.
+ */
+export function weekdayDe(date: IsoDate): string {
+  const day = new Date(`${date}T00:00:00.000Z`).getUTCDay();
+  return WEEKDAYS_DE[day] as string;
+}
+
+/** Wochentag und Datum zusammen: "Do, 31.12.2026" — die Form eines Tageskopfs. */
+export function formatDayDe(date: IsoDate): string {
+  return `${weekdayDe(date)}, ${formatDateDe(date)}`;
+}
+
+/** Samstag oder Sonntag — in Listen schwächer gezeichnet als ein Werktag. */
+export function isWeekend(date: IsoDate): boolean {
+  const day = new Date(`${date}T00:00:00.000Z`).getUTCDay();
+  return day === 0 || day === 6;
+}

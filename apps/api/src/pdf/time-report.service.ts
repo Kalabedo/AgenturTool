@@ -33,6 +33,32 @@ function escapeHtml(value: string): string {
 }
 
 /**
+ * Der Zeitraum, den der Nachweis ausweist.
+ *
+ * Abgeleitet, wenn keiner angefragt wurde: Beim Abrechnen gibt niemand
+ * Daten ein — der Zeitraum ergibt sich aus dem frühesten und spätesten
+ * abgerechneten Tag. Ein gewählter Zeitraum hat Vorrang, denn dann ist die
+ * Aussage „in diesem Monat" gemeint, auch wenn nur an drei Tagen etwas
+ * erfasst wurde.
+ */
+function periodOf(
+  query: TimeEntryRangeQuery,
+  entries: readonly TimeEntryResponse[],
+): { from: string | null; to: string | null } {
+  const dates = entries.map((entry) => entry.date).sort();
+  return {
+    from: query.from ?? dates[0] ?? null,
+    to: query.to ?? dates[dates.length - 1] ?? null,
+  };
+}
+
+function formatPeriod(period: { from: string | null; to: string | null }): string {
+  if (period.from === null || period.to === null) return 'ohne Zeitraum';
+  if (period.from === period.to) return formatDateDe(period.from as IsoDate);
+  return `${formatDateDe(period.from as IsoDate)} – ${formatDateDe(period.to as IsoDate)}`;
+}
+
+/**
  * Der Zeitnachweis als PDF.
  *
  * Bewusst ein eigenes, kleines Dokument statt eines Rechnungstemplates: Ein
@@ -107,7 +133,7 @@ export class TimeReportService {
   }): string {
     const { title, companyName, query, entries, summary } = input;
 
-    const period = `${formatDateDe(query.from as IsoDate)} – ${formatDateDe(query.to as IsoDate)}`;
+    const period = formatPeriod(periodOf(query, entries));
     const groups = summary.byCustomer.map((customer) => ({
       customer,
       entries: entries.filter((entry) => entry.customerId === customer.customerId),
@@ -329,7 +355,7 @@ tfoot td {
   }
 
   private titleFor(query: TimeEntryRangeQuery, entries: readonly TimeEntryResponse[]): string {
-    const period = `${formatDateDe(query.from as IsoDate)} – ${formatDateDe(query.to as IsoDate)}`;
+    const period = formatPeriod(periodOf(query, entries));
     const customer = this.singleCustomerName(query, entries);
     return customer === null ? `Zeitnachweis ${period}` : `Zeitnachweis ${customer} ${period}`;
   }
@@ -344,8 +370,9 @@ tfoot td {
    */
   private filenameFor(query: TimeEntryRangeQuery, entries: readonly TimeEntryResponse[]): string {
     const customer = this.singleCustomerName(query, entries);
-    const parts = ['Zeitnachweis', customer, query.from, 'bis', query.to].filter(
-      (part): part is string => part !== null,
+    const period = periodOf(query, entries);
+    const parts = ['Zeitnachweis', customer, period.from, 'bis', period.to].filter(
+      (part): part is string => part !== null && part !== undefined,
     );
 
     return `${parts.join('-').replace(/[^\p{L}\p{N}-]+/gu, '-')}.pdf`;

@@ -61,6 +61,56 @@ export function parseTimeOfDay(value: string): number | null {
   return hours * 60 + minutes;
 }
 
+/**
+ * Eine getippte Uhrzeit, so nachsichtig wie möglich gelesen.
+ *
+ * Wer eine Woche nachträgt, tippt nicht „09:00" — er tippt „9". Diese
+ * Funktion nimmt, was beim schnellen Schreiben entsteht, und macht Minuten
+ * daraus:
+ *
+ * - `9`, `9.`, `9h`      → 09:00
+ * - `930`, `9:30`, `9.30` → 09:30
+ * - `1415`, `14:15`      → 14:15
+ * - `24`, `24:00`        → 24:00 (nur als Ende zulässig, siehe Schema)
+ *
+ * Bewusst **kein** Runden hier: Diese Funktion liest, sie korrigiert nicht.
+ * Das Abrunden aufs Viertelstundenraster bleibt an einer Stelle —
+ * `snapToGrid` im Schema —, damit die Oberfläche dieselbe Zahl anzeigt, die
+ * der Server später speichert.
+ *
+ * Liefert null bei allem, was sich nicht eindeutig als Uhrzeit lesen lässt.
+ * Stilles Raten wäre hier schlimmer als eine rote Umrandung: Aus „12345"
+ * eine Uhrzeit zu erfinden hieße, eine falsche Zeit abzurechnen.
+ */
+export function parseTimeInput(value: string): number | null {
+  const trimmed = value.trim().replace(/\s*(?:uhr|h)$/iu, '');
+  if (trimmed === '') return null;
+
+  // Mit Trenner: Punkt und Komma sind auf dem Zehnerblock schneller als der
+  // Doppelpunkt, meinen aber dasselbe.
+  const separated = /^(\d{1,2})[.:,](\d{1,2})$/u.exec(trimmed);
+  if (separated !== null) {
+    return toMinutesOfDay(Number(separated[1]), Number(separated[2]).toString().padStart(2, '0'));
+  }
+
+  // Ohne Trenner: Die Ziffernzahl entscheidet, wo die Stunde endet.
+  const digits = /^(\d{1,4})[.]?$/u.exec(trimmed);
+  if (digits === null) return null;
+
+  const raw = digits[1] as string;
+  if (raw.length <= 2) return toMinutesOfDay(Number(raw), '00');
+  // „930" ist 9:30, „1415" ist 14:15 — die letzten beiden Ziffern sind immer
+  // die Minuten.
+  return toMinutesOfDay(Number(raw.slice(0, raw.length - 2)), raw.slice(raw.length - 2));
+}
+
+function toMinutesOfDay(hours: number, minutes: string): number | null {
+  const parsedMinutes = Number(minutes);
+  if (!Number.isInteger(hours) || hours > 24 || parsedMinutes > 59) return null;
+  if (hours === 24 && parsedMinutes !== 0) return null;
+  return hours * 60 + parsedMinutes;
+}
+
 /** 570 → „09:30". Zweistellig, damit Uhrzeiten in Listen untereinander fluchten. */
 export function formatTimeOfDay(minutes: number): string {
   const hours = Math.floor(minutes / 60);
@@ -107,7 +157,10 @@ export function gridTimes(includeEndOfDay = false): string[] {
  * schicken kann, ohne den Umweg über einen String.
  */
 const timeOfDaySchema = z.union([z.string(), z.number()]).transform((value, ctx) => {
-  const minutes = typeof value === 'number' ? value : parseTimeOfDay(value);
+  // `parseTimeInput` und nicht `parseTimeOfDay`: Das Formular schickt, was
+  // getippt wurde. „930" ist eine Uhrzeit, kein Fehler — und die Regel, was
+  // als Uhrzeit gilt, soll für Formular und API dieselbe sein.
+  const minutes = typeof value === 'number' ? value : parseTimeInput(value);
 
   if (minutes === null || !Number.isFinite(minutes)) {
     ctx.addIssue({
@@ -216,10 +269,35 @@ export const timeEntryResponseSchema = z.object({
   /** Ende minus Beginn minus Pause — vom Server gerechnet, nicht geschätzt. */
   durationMinutes: z.number().int(),
   description: z.string().nullable(),
+  /**
+   * Wann dieser Eintrag abgerechnet wurde; null, solange er offen ist.
+   *
+   * Das Feld ist der ganze Unterschied zwischen „steht noch in meiner Liste"
+   * und „ist beim Kunden": Die Zeiterfassung zeigt im Normalbetrieb die
+   * offenen Einträge, und „Abrechnen" setzt diesen Zeitstempel, statt zu
+   * löschen. Erhalten bleibt damit alles — der Zeitnachweis lässt sich
+   * jederzeit neu erzeugen (D-Zeit-2).
+   */
+  billedAt: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
 export type TimeEntryResponse = z.infer<typeof timeEntryResponseSchema>;
+
+/**
+ * Welche Einträge eine Liste zeigt.
+ *
+ * `OPEN` ist der Normalbetrieb: der Posteingang, der sich beim Erfassen
+ * füllt und beim Abrechnen leert. `BILLED` ist der Blick zurück, `ALL` gibt
+ * es für Auswertungen über beides.
+ */
+export const TIME_ENTRY_BILLING_FILTER = {
+  OPEN: 'open',
+  BILLED: 'billed',
+  ALL: 'all',
+} as const;
+export type TimeEntryBillingFilter =
+  (typeof TIME_ENTRY_BILLING_FILTER)[keyof typeof TIME_ENTRY_BILLING_FILTER];
 
 /**
  * Zeitraum und Filter — für die Liste wie für das PDF dieselbe Form.
@@ -228,25 +306,55 @@ export type TimeEntryResponse = z.infer<typeof timeEntryResponseSchema>;
  * ganzen September, und ein Monatsende, das nicht mitzählt, wäre genau die
  * Art Fehler, die erst beim Abgleich mit der Rechnung auffällt.
  */
+const optionalIsoDate = z
+  .union([isoDateSchema, z.literal(''), z.null()])
+  .optional()
+  .transform((value) => (value === undefined || value === null || value === '' ? null : value));
+
+const optionalCustomerId = z
+  .union([z.string().trim(), z.number(), z.null()])
+  .optional()
+  .transform((value, ctx) => {
+    if (value === undefined || value === null || value === '') return null;
+    const parsed = typeof value === 'number' ? value : Number(value);
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Ungültige Kundenauswahl' });
+      return z.NEVER;
+    }
+    return parsed;
+  });
+
 export const timeEntryRangeSchema = z
   .object({
-    from: isoDateSchema,
-    to: isoDateSchema,
-    customerId: z
-      .union([z.string().trim(), z.number(), z.null()])
+    /**
+     * Der Zeitraum ist optional.
+     *
+     * Die Zeiterfassung fragt im Normalbetrieb ohne Datum an — sie will
+     * alles Offene sehen, auch den Eintrag vom August, der im September
+     * noch nicht abgerechnet ist. Ein Zeitraum als Pflichtangabe würde
+     * genau diese Arbeit verstecken, und Verstecktes wird nicht bezahlt.
+     */
+    from: optionalIsoDate,
+    to: optionalIsoDate,
+    customerId: optionalCustomerId,
+    /** Ohne Angabe: alles. Die Oberfläche fragt gezielt nach `open`. */
+    billing: z
+      .union([
+        z.literal(TIME_ENTRY_BILLING_FILTER.OPEN),
+        z.literal(TIME_ENTRY_BILLING_FILTER.BILLED),
+        z.literal(TIME_ENTRY_BILLING_FILTER.ALL),
+        z.literal(''),
+        z.null(),
+      ])
       .optional()
-      .transform((value, ctx) => {
-        if (value === undefined || value === null || value === '') return null;
-        const parsed = typeof value === 'number' ? value : Number(value);
-        if (!Number.isInteger(parsed) || parsed < 1) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Ungültige Kundenauswahl' });
-          return z.NEVER;
-        }
-        return parsed;
-      }),
+      .transform((value): TimeEntryBillingFilter =>
+        value === undefined || value === null || value === ''
+          ? TIME_ENTRY_BILLING_FILTER.ALL
+          : value,
+      ),
   })
   .superRefine((value, ctx) => {
-    if (value.to < value.from) {
+    if (value.from !== null && value.to !== null && value.to < value.from) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['to'],
@@ -255,6 +363,32 @@ export const timeEntryRangeSchema = z
     }
   });
 export type TimeEntryRangeQuery = z.output<typeof timeEntryRangeSchema>;
+
+/**
+ * Die Einträge, die eine Abrechnung erfasst.
+ *
+ * Immer genau ein Kunde: Ein Zeitnachweis geht an diesen einen Kunden, und
+ * ein Dokument mit fremden Kunden darin könnte man niemandem schicken
+ * (D-Zeit-1). Der Zeitraum steht bewusst nicht darin — er ergibt sich aus
+ * den offenen Einträgen selbst.
+ */
+export const timeEntryBillingSchema = z.object({
+  customerId: z.union([z.string().trim(), z.number()]).transform((value, ctx) => {
+    const parsed = typeof value === 'number' ? value : Number(value);
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Bitte einen Kunden auswählen' });
+      return z.NEVER;
+    }
+    return parsed;
+  }),
+});
+export type TimeEntryBillingPayload = z.output<typeof timeEntryBillingSchema>;
+
+/** Die Ids einer Abrechnung — genug, um sie zurückzunehmen. */
+export const timeEntryUnbillSchema = z.object({
+  ids: z.array(z.number().int().positive()).min(1, 'Es wurde kein Eintrag angegeben'),
+});
+export type TimeEntryUnbillPayload = z.output<typeof timeEntryUnbillSchema>;
 
 /** Summe je Kunde — die Zeile, die im PDF unter dem jeweiligen Block steht. */
 export interface TimeEntryCustomerSummary {
@@ -268,6 +402,36 @@ export interface TimeEntrySummary {
   entryCount: number;
   durationMinutes: number;
   byCustomer: TimeEntryCustomerSummary[];
+}
+
+/**
+ * Ein Kunde mit offenen Zeiten — eine Zeile der Reiterleiste.
+ *
+ * Trägt Zeitraum und Summe mit, weil das die Angaben sind, die vor dem
+ * Abrechnen zählen: Der Reiter zeigt, wie viel offen ist, und der Nachweis
+ * bekommt daraus seinen Zeitraum, ohne dass ihn jemand eintippen muss.
+ */
+export interface TimeEntryOpenSummary {
+  customerId: number;
+  customerName: string;
+  entryCount: number;
+  durationMinutes: number;
+  /** Frühester und spätester offener Tag; der abgeleitete Zeitraum des PDFs. */
+  from: string;
+  to: string;
+}
+
+/** Was nach dem Abrechnen zurückkommt: genug, um es rückgängig zu machen. */
+export interface TimeEntryBillingResult {
+  customerId: number;
+  customerName: string;
+  entryCount: number;
+  durationMinutes: number;
+  from: string;
+  to: string;
+  billedAt: string;
+  /** Die abgerechneten Einträge — die Grundlage für „Rückgängig". */
+  ids: number[];
 }
 
 /**
@@ -307,6 +471,55 @@ export function summarizeTimeEntries(
       a.customerName.localeCompare(b.customerName, 'de'),
     ),
   };
+}
+
+/** Ein Tag der Liste: seine Einträge und was an ihm zusammenkam. */
+export interface TimeEntryDayGroup<T> {
+  date: string;
+  durationMinutes: number;
+  entries: T[];
+}
+
+/**
+ * Gruppiert Einträge nach Tag.
+ *
+ * Die Liste zeigt einen Kunden über viele Wochen; ohne Tagesköpfe steht das
+ * Datum in jeder Zeile wieder da und der Tag als Einheit ist nicht zu
+ * sehen. Leere Tage tauchen hier nicht auf — in der Ansicht eines einzelnen
+ * Kunden wären die meisten Tage leer, und eine Liste, die zu vier Fünfteln
+ * aus Lücken besteht, zeigt nichts.
+ *
+ * `newestFirst` sortiert die Tage absteigend: Beim Nachtragen soll der
+ * eben gespeicherte Eintrag oben stehen, nicht ans Ende einer langen Liste
+ * rutschen. Innerhalb eines Tages bleibt es chronologisch — ein Tag liest
+ * sich vorwärts.
+ */
+export function groupTimeEntriesByDay<
+  T extends Pick<TimeEntryResponse, 'date' | 'startMinutes' | 'durationMinutes'>,
+>(entries: readonly T[], newestFirst = true): TimeEntryDayGroup<T>[] {
+  const days = new Map<string, TimeEntryDayGroup<T>>();
+
+  for (const entry of entries) {
+    const day = days.get(entry.date);
+    if (day === undefined) {
+      days.set(entry.date, {
+        date: entry.date,
+        durationMinutes: entry.durationMinutes,
+        entries: [entry],
+      });
+    } else {
+      day.durationMinutes += entry.durationMinutes;
+      day.entries.push(entry);
+    }
+  }
+
+  const groups = [...days.values()].sort((a, b) =>
+    newestFirst ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date),
+  );
+  for (const group of groups) {
+    group.entries.sort((a, b) => a.startMinutes - b.startMinutes);
+  }
+  return groups;
 }
 
 /** Erster und letzter Tag eines Monats — die übliche Auswahl im Zeitraumfilter. */

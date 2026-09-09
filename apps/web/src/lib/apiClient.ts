@@ -77,6 +77,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export interface DownloadedFile {
   blob: Blob;
   filename: string;
+  /**
+   * Antwortkopfzeilen — für Downloads, die nebenbei etwas mitteilen.
+   *
+   * Das Abrechnen der Zeiterfassung ist so ein Fall: Der Rumpf ist der
+   * Zeitnachweis, aber die Oberfläche muss auch erfahren, welche Einträge
+   * dabei markiert wurden, um das rückgängig machen zu können.
+   */
+  headers: Headers;
 }
 
 /**
@@ -106,6 +114,7 @@ async function requestFile(
   return {
     blob: await response.blob(),
     filename: filenameFrom(response.headers.get('Content-Disposition'), fallbackName),
+    headers: response.headers,
   };
 }
 

@@ -1,13 +1,13 @@
-import { useEffect, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
+import { useEffect, useMemo, useRef } from 'react';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   TIME_GRID_MINUTES,
   TIME_ENTRY_DESCRIPTION_MAX_LENGTH,
   formatDuration,
   formatTimeOfDay,
-  gridTimes,
-  parseTimeOfDay,
+  parseTimeInput,
+  snapToGrid,
   timeEntryInputSchema,
   type CustomerResponse,
   type TimeEntryInput,
@@ -19,6 +19,7 @@ import { Card } from '../../components/ui/Card.js';
 import { Field } from '../../components/ui/Field.js';
 import { Input } from '../../components/ui/Input.js';
 import { Select } from '../../components/ui/Select.js';
+import { TimeInput, gridHintFor } from './TimeInput.js';
 
 /**
  * Das Formular ist durchgehend stringbasiert.
@@ -28,10 +29,6 @@ import { Select } from '../../components/ui/Select.js';
  * `timeEntryInputSchema` — dieselbe Stelle, die auch der Server benutzt.
  */
 export type TimeEntryFormValues = TimeEntryInput;
-
-/** Uhrzeiten der Auswahl: 00:00 bis 23:45 für den Beginn, plus 24:00 fürs Ende. */
-const START_TIMES = gridTimes();
-const END_TIMES = gridTimes(true).slice(1);
 
 /**
  * Pausenlängen zur Auswahl, bis vier Stunden.
@@ -43,12 +40,24 @@ const END_TIMES = gridTimes(true).slice(1);
  */
 const BREAK_OPTIONS = Array.from({ length: 17 }, (_, index) => index * TIME_GRID_MINUTES);
 
+/**
+ * Ein leeres Formular.
+ *
+ * Die Zeitfelder starten leer und werden es nach jedem Speichern wieder —
+ * auch beim ersten Öffnen der Seite. Eine Vorbelegung mit „09:00 bis 17:00"
+ * wäre bequem und gefährlich zugleich: Sie lässt sich absenden, ohne dass
+ * jemand die Zeiten angesehen hat, und trägt dann einen Achtstundentag ein,
+ * den es so nie gab.
+ *
+ * Datum und Kunde bleiben dagegen stehen — beim Nachtragen ändert sich
+ * meist nur die Uhrzeit, und wer den Tag wechselt, tut es bewusst.
+ */
 export function emptyTimeEntryValues(date: string, customerId = ''): TimeEntryFormValues {
   return {
     date,
     customerId,
-    startMinutes: '09:00',
-    endMinutes: '17:00',
+    startMinutes: '',
+    endMinutes: '',
     breakMinutes: '0',
     description: '',
   };
@@ -71,6 +80,8 @@ interface TimeEntryFormProps {
   /** Gesetzt, solange ein vorhandener Eintrag bearbeitet wird. */
   editingId: number | null;
   isSubmitting: boolean;
+  /** Zählt hoch, wenn gespeichert wurde — setzt den Fokus zurück auf „Beginn". */
+  savedCount: number;
   onSubmit: (payload: TimeEntryPayload) => void;
   onCancelEdit: () => void;
   fieldErrors?: Record<string, string>;
@@ -81,6 +92,7 @@ export function TimeEntryForm({
   customers,
   editingId,
   isSubmitting,
+  savedCount,
   onSubmit,
   onCancelEdit,
   fieldErrors,
@@ -89,6 +101,7 @@ export function TimeEntryForm({
     resolver: zodResolver(timeEntryInputSchema),
     defaultValues: values,
   });
+  const startRef = useRef<HTMLInputElement | null>(null);
 
   // Der Wechsel zwischen „neu" und „bearbeiten" tauscht die Werte, nicht die
   // Komponente: Ohne dieses Zurücksetzen bliebe beim Klick auf „Bearbeiten"
@@ -96,6 +109,21 @@ export function TimeEntryForm({
   useEffect(() => {
     form.reset(values);
   }, [form, values]);
+
+  /**
+   * Nach dem Speichern zurück in die Schleife.
+   *
+   * Datum und Kunde stehen noch, die Zeitfelder sind leer — das erste Feld,
+   * das wirklich ausgefüllt werden muss, ist „Beginn". Der Fokus springt
+   * dorthin, damit Nachtragen aus tippen, tippen, Enter besteht und die
+   * Hand nicht zur Maus wandert.
+   *
+   * Am Zähler und nicht an den Werten aufgehängt: Zwei identische Einträge
+   * hintereinander ergäben dieselben Werte und der Fokus bliebe liegen.
+   */
+  useEffect(() => {
+    if (savedCount > 0 && editingId === null) startRef.current?.focus();
+  }, [savedCount, editingId]);
 
   const start = String(form.watch('startMinutes'));
   const end = String(form.watch('endMinutes'));
@@ -106,14 +134,16 @@ export function TimeEntryForm({
    *
    * Sie steht im Formular, weil sie die eigentliche Angabe ist: Beginn und
    * Ende sind nur der Weg dorthin, und ein Vertipper fällt hier sofort auf
-   * statt erst in der Monatssumme.
+   * statt erst in der Monatssumme. Gerechnet wird mit den gerundeten
+   * Werten — also mit dem, was gespeichert würde.
    */
   const duration = useMemo(() => {
-    const from = parseTimeOfDay(start);
-    const to = parseTimeOfDay(end);
+    const from = parseTimeInput(start);
+    const to = parseTimeInput(end);
     if (from === null || to === null) return null;
 
-    const minutes = to - from - (Number.isFinite(pause) ? pause : 0);
+    const minutes =
+      snapToGrid(to) - snapToGrid(from) - (Number.isFinite(pause) ? snapToGrid(pause) : 0);
     return minutes > 0 ? minutes : null;
   }, [start, end, pause]);
 
@@ -121,19 +151,26 @@ export function TimeEntryForm({
   const errorFor = (field: keyof TimeEntryFormValues): string | undefined =>
     fieldErrors?.[field] ?? errors[field]?.message;
 
+  const isEditing = editingId !== null;
+
   return (
     <Card
-      title={editingId === null ? 'Zeit erfassen' : 'Eintrag bearbeiten'}
-      description="Beginn, Ende und Pause in Viertelstunden — so, wie später abgerechnet wird."
+      title={isEditing ? 'Eintrag bearbeiten' : 'Zeit erfassen'}
+      description={
+        isEditing
+          ? 'Änderungen gelten nur für offene Einträge.'
+          : 'Beginn und Ende lassen sich tippen: 9, 930 oder 14:15.'
+      }
+      className={isEditing ? 'border-slate-400 ring-1 ring-slate-200' : undefined}
     >
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
-        <div className="grid gap-4 sm:grid-cols-6">
+        <div className="grid gap-4 sm:grid-cols-12">
           <Field
             label="Datum"
             htmlFor="date"
             required
             error={errorFor('date')}
-            className="sm:col-span-2"
+            className="sm:col-span-3"
           >
             <Input
               id="date"
@@ -169,19 +206,23 @@ export function TimeEntryForm({
             htmlFor="startMinutes"
             required
             error={errorFor('startMinutes')}
+            hint={gridHintFor(start)}
             className="sm:col-span-2"
           >
-            <Select
-              id="startMinutes"
-              invalid={errorFor('startMinutes') !== undefined}
-              {...form.register('startMinutes')}
-            >
-              {START_TIMES.map((time) => (
-                <option key={time} value={time}>
-                  {time}
-                </option>
-              ))}
-            </Select>
+            <Controller
+              control={form.control}
+              name="startMinutes"
+              render={({ field }) => (
+                <TimeInput
+                  ref={startRef}
+                  id="startMinutes"
+                  value={String(field.value ?? '')}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  invalid={errorFor('startMinutes') !== undefined}
+                />
+              )}
+            />
           </Field>
 
           <Field
@@ -189,26 +230,29 @@ export function TimeEntryForm({
             htmlFor="endMinutes"
             required
             error={errorFor('endMinutes')}
+            hint={gridHintFor(end)}
             className="sm:col-span-2"
           >
-            <Select
-              id="endMinutes"
-              invalid={errorFor('endMinutes') !== undefined}
-              {...form.register('endMinutes')}
-            >
-              {END_TIMES.map((time) => (
-                <option key={time} value={time}>
-                  {time}
-                </option>
-              ))}
-            </Select>
+            <Controller
+              control={form.control}
+              name="endMinutes"
+              render={({ field }) => (
+                <TimeInput
+                  id="endMinutes"
+                  value={String(field.value ?? '')}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  invalid={errorFor('endMinutes') !== undefined}
+                />
+              )}
+            />
           </Field>
 
           <Field
             label="Pause"
             htmlFor="breakMinutes"
             error={errorFor('breakMinutes')}
-            className="sm:col-span-2"
+            className="sm:col-span-1"
           >
             <Select
               id="breakMinutes"
@@ -217,7 +261,7 @@ export function TimeEntryForm({
             >
               {BREAK_OPTIONS.map((minutes) => (
                 <option key={minutes} value={minutes}>
-                  {minutes === 0 ? 'keine' : `${formatDuration(minutes)} h`}
+                  {minutes === 0 ? '—' : formatDuration(minutes)}
                 </option>
               ))}
             </Select>
@@ -228,7 +272,7 @@ export function TimeEntryForm({
             htmlFor="description"
             hint="Erscheint im Zeitnachweis neben der Zeit."
             error={errorFor('description')}
-            className="sm:col-span-6"
+            className="sm:col-span-12"
           >
             <Input
               id="description"
@@ -242,17 +286,28 @@ export function TimeEntryForm({
 
         <div className="flex flex-wrap items-center gap-3">
           <Button type="submit" disabled={isSubmitting}>
-            {editingId === null ? 'Zeit eintragen' : 'Änderung speichern'}
+            {isEditing ? 'Änderung speichern' : 'Zeit eintragen'}
           </Button>
-          {editingId !== null && (
+          {isEditing && (
             <Button variant="secondary" onClick={onCancelEdit}>
               Abbrechen
             </Button>
           )}
-          <span aria-live="polite" className="text-sm text-slate-500">
-            {duration === null
-              ? 'Das Ende muss nach dem Beginn liegen.'
-              : `Erfasste Zeit: ${formatDuration(duration)} h`}
+
+          {/* Die Dauer steht rechts und in groß: Sie ist die Zahl, die am
+              Ende abgerechnet wird, und der schnellste Weg, einen
+              Zahlendreher zu bemerken. */}
+          <span aria-live="polite" className="ml-auto text-sm">
+            {duration === null ? (
+              <span className="text-slate-400">Dauer ergibt sich aus Beginn und Ende</span>
+            ) : (
+              <>
+                <span className="text-slate-500">Dauer</span>{' '}
+                <span className="text-base font-semibold tabular-nums text-slate-900">
+                  {formatDuration(duration)} h
+                </span>
+              </>
+            )}
           </span>
         </div>
       </form>

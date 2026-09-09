@@ -4,7 +4,9 @@ import {
   formatDuration,
   formatTimeOfDay,
   gridTimes,
+  groupTimeEntriesByDay,
   monthRange,
+  parseTimeInput,
   parseTimeOfDay,
   snapToGrid,
   summarizeTimeEntries,
@@ -219,8 +221,111 @@ function entry(overrides: Partial<TimeEntryResponse>): TimeEntryResponse {
     breakMinutes: 0,
     durationMinutes: 120,
     description: null,
+    billedAt: null,
     createdAt: '2026-09-07T10:00:00.000Z',
     updatedAt: '2026-09-07T10:00:00.000Z',
     ...overrides,
   };
 }
+
+describe('Getippte Uhrzeiten', () => {
+  it('liest eine Zahl als volle Stunde', () => {
+    expect(parseTimeInput('9')).toBe(9 * 60);
+    expect(parseTimeInput('14')).toBe(14 * 60);
+    expect(parseTimeInput('9h')).toBe(9 * 60);
+  });
+
+  it('liest die letzten beiden Ziffern als Minuten', () => {
+    expect(parseTimeInput('930')).toBe(9 * 60 + 30);
+    expect(parseTimeInput('1415')).toBe(14 * 60 + 15);
+  });
+
+  it('nimmt Doppelpunkt, Punkt und Komma als denselben Trenner', () => {
+    for (const value of ['9:30', '9.30', '9,30']) {
+      expect(parseTimeInput(value)).toBe(9 * 60 + 30);
+    }
+  });
+
+  it('lässt 24:00 zu, aber nichts darüber hinaus', () => {
+    expect(parseTimeInput('24')).toBe(1440);
+    expect(parseTimeInput('24:00')).toBe(1440);
+    expect(parseTimeInput('24:15')).toBeNull();
+    expect(parseTimeInput('25')).toBeNull();
+  });
+
+  it('rät nicht: Unlesbares bleibt unlesbar', () => {
+    for (const value of ['', 'abc', '12345', '9:99', '9:30:15']) {
+      expect(parseTimeInput(value)).toBeNull();
+    }
+  });
+
+  it('rundet nicht selbst — das bleibt beim Schema', () => {
+    expect(parseTimeInput('9:07')).toBe(9 * 60 + 7);
+  });
+
+  it('nimmt getippte Zeiten auch über das Eingabeschema an', () => {
+    const parsed = timeEntryInputSchema.parse({
+      date: '2026-09-07',
+      customerId: 1,
+      startMinutes: '930',
+      endMinutes: '1415',
+      breakMinutes: '',
+      description: '',
+    });
+
+    expect(parsed.startMinutes).toBe(9 * 60 + 30);
+    expect(parsed.endMinutes).toBe(14 * 60 + 15);
+  });
+});
+
+describe('Zeitraum als Filter', () => {
+  it('kommt ohne Zeitraum aus — der Normalbetrieb fragt nach allem Offenen', () => {
+    const query = timeEntryRangeSchema.parse({ billing: 'open' });
+
+    expect(query.from).toBeNull();
+    expect(query.to).toBeNull();
+    expect(query.billing).toBe('open');
+  });
+
+  it('meldet ein Ende vor dem Beginn, wenn beide angegeben sind', () => {
+    expect(() => timeEntryRangeSchema.parse({ from: '2026-09-30', to: '2026-09-01' })).toThrow();
+  });
+
+  it('zeigt ohne Angabe alles', () => {
+    expect(timeEntryRangeSchema.parse({}).billing).toBe('all');
+  });
+});
+
+describe('Gruppierung nach Tag', () => {
+  const entries = [
+    entry({ id: 1, date: '2026-09-07', startMinutes: 600, durationMinutes: 60 }),
+    entry({ id: 2, date: '2026-09-07', startMinutes: 540, durationMinutes: 120 }),
+    entry({ id: 3, date: '2026-09-09', startMinutes: 540, durationMinutes: 45 }),
+  ];
+
+  it('fasst einen Tag zusammen und summiert ihn', () => {
+    const days = groupTimeEntriesByDay(entries);
+
+    expect(days).toHaveLength(2);
+    expect(days[0]?.date).toBe('2026-09-09');
+    expect(days[1]?.durationMinutes).toBe(180);
+  });
+
+  it('sortiert Tage absteigend, Einträge innerhalb des Tages aufsteigend', () => {
+    const days = groupTimeEntriesByDay(entries);
+
+    expect(days.map((day) => day.date)).toEqual(['2026-09-09', '2026-09-07']);
+    expect(days[1]?.entries.map((item) => item.id)).toEqual([2, 1]);
+  });
+
+  it('sortiert auf Wunsch chronologisch — so liest sich der Nachweis', () => {
+    expect(groupTimeEntriesByDay(entries, false).map((day) => day.date)).toEqual([
+      '2026-09-07',
+      '2026-09-09',
+    ]);
+  });
+
+  it('kommt mit einer leeren Liste zurecht', () => {
+    expect(groupTimeEntriesByDay([])).toEqual([]);
+  });
+});

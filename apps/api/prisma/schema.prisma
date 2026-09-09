@@ -137,11 +137,23 @@ model TimeEntry {
 
   description String?
 
+  /// Zeitpunkt der Abrechnung; null, solange der Eintrag offen ist.
+  ///
+  /// Abrechnen löscht nicht, es markiert. Die Zeiterfassung zeigt im
+  /// Normalbetrieb nur die offenen Einträge — die Liste ist ein Posteingang,
+  /// der sich beim Erfassen füllt und beim Abrechnen leert. Weil die Zeilen
+  /// erhalten bleiben, lässt sich der Zeitnachweis jederzeit neu erzeugen,
+  /// und das PDF muss nirgends aufbewahrt werden.
+  billedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([date])
   @@index([customerId, date])
+  /// Die Abfrage des Normalbetriebs: offene Einträge eines Kunden, nach Tag.
+  @@index([customerId, billedAt, date])
+  @@index([billedAt])
 }
 
 /// Konfigurierbare Steuerkonstellation. Bewusst datengetrieben statt

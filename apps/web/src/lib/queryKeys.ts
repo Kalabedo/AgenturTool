@@ -25,6 +25,8 @@ export const queryKeys = {
     // Zeitraum und Kundenfilter stecken in der Abfragezeichenkette; jede
     // Kombination bekommt so ihren eigenen Zwischenspeicher.
     list: (queryString: string) => ['time-entries', 'list', queryString] as const,
+    /** Die offenen Zeiten je Kunde — die Reiterleiste. */
+    openSummary: ['time-entries', 'open-summary'] as const,
   },
   invoices: {
     all: ['invoices'] as const,
