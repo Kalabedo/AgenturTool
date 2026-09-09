@@ -115,6 +115,12 @@ export async function resetInvoices(prisma: PrismaClient): Promise<void> {
             "issuedAt" = NULL
       WHERE "status" <> 'DRAFT'`,
   );
+  // Storno und Originalrechnung verweisen aufeinander, und der
+  // Fremdschlüssel steht auf RESTRICT — ohne dieses Lösen der Verbindung
+  // ließe sich keine der beiden Zeilen entfernen.
+  await prisma.$executeRawUnsafe(
+    `UPDATE "Invoice" SET "cancelsInvoiceId" = NULL, "cancelledAt" = NULL`,
+  );
   await prisma.invoiceItem.deleteMany();
   await prisma.invoiceEvent.deleteMany();
   await prisma.invoiceDocument.deleteMany();

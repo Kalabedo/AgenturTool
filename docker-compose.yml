@@ -1,0 +1,45 @@
+# Ein Dienst, ein Volume. Es gibt keine zweite Datenbank, keinen Cache und
+# keinen Reverse-Proxy — die Anwendung hängt hinter Tailscale, und das
+# übernimmt Erreichbarkeit und Verschlüsselung (siehe README).
+services:
+  app:
+    build: .
+    image: agentur-tool:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Der Container bindet an alle Adressen — abgeschottet wird er von der
+      # Port-Bindung unten, nicht von der Anwendung.
+      HOST: 0.0.0.0
+      DATA_DIR: /data
+      DATABASE_URL: file:/data/db.sqlite
+      AUTH_ENABLED: 'true'
+      # Diese drei stehen hier und nicht nur im Image, weil `env_file` das
+      # Image überschreibt: Eine `.env` aus dem lokalen Betrieb brächte sonst
+      # `PUPPETEER_NO_SANDBOX=false` mit — und Chromium käme als
+      # unprivilegierter Benutzer im Container gar nicht erst hoch.
+      PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
+      PUPPETEER_NO_SANDBOX: 'true'
+      WEB_ROOT: /app/apps/web/dist
+    ports:
+      # Nur auf die Rückschleife des Hosts. Erreichbar wird die Anwendung durch
+      # `tailscale serve`, nicht dadurch, dass der Port im Internet steht.
+      - '127.0.0.1:3000:3000'
+    volumes:
+      - data:/data
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  data:

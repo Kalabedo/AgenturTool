@@ -5,12 +5,15 @@ import {
   INVOICE_STATUS,
   addDays,
   invoiceDraftInputSchema,
+  invoiceListQuerySchema,
   todayIso,
 } from '@agentur-tool/shared';
 import { InvoicesService } from '../src/invoices/invoices.service';
 import { CompanyService } from '../src/company/company.service';
 import { FilesService } from '../src/files/files.service';
 import { StorageConfig } from '../src/common/config.service';
+import { InvoiceDocumentsService } from '../src/pdf/invoice-documents.service';
+import { InvoiceNumbersService } from '../src/invoices/invoice-numbers.service';
 import { ApiError } from '../src/common/api-error';
 import {
   createTestDatabase,
@@ -33,7 +36,12 @@ beforeAll(async () => {
   dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentur-tool-inv-'));
   const storage = new StorageConfig({ get: () => dataDir } as never);
   const company = new CompanyService(prisma, new FilesService(prisma, storage));
-  invoices = new InvoicesService(prisma, company);
+  invoices = new InvoicesService(
+    prisma,
+    company,
+    new InvoiceNumbersService(prisma),
+    new InvoiceDocumentsService(prisma, storage),
+  );
 });
 
 afterAll(async () => {
@@ -417,24 +425,55 @@ describe('Liste', () => {
     await markIssued(prisma, second.id, { number: '2026-001', seq: 1 });
   });
 
+  /** Die Abfrage geht durch dasselbe Schema wie ein echter Aufruf. */
+  function query(overrides: Record<string, unknown> = {}) {
+    return invoiceListQuerySchema.parse(overrides);
+  }
+
   it('sortiert nach Rechnungsdatum absteigend', async () => {
-    const list = await invoices.list({});
-    expect(list.map((i) => i.invoiceDate)).toEqual(['2026-03-01', '2026-01-10']);
+    const list = await invoices.list(query());
+    expect(list.items.map((invoice) => invoice.invoiceDate)).toEqual(['2026-03-01', '2026-01-10']);
+    expect(list.total).toBe(2);
+    expect(list.pageCount).toBe(1);
+  });
+
+  it('sortiert auf Wunsch aufsteigend und nach Fälligkeit', async () => {
+    const ascending = await invoices.list(query({ order: 'asc' }));
+    expect(ascending.items.map((invoice) => invoice.invoiceDate)).toEqual([
+      '2026-01-10',
+      '2026-03-01',
+    ]);
+
+    const byDueDate = await invoices.list(query({ sort: 'dueDate', order: 'asc' }));
+    expect(byDueDate.items.map((invoice) => invoice.dueDate)).toEqual(['2026-01-24', '2026-03-15']);
+  });
+
+  it('blättert seitenweise und meldet die Gesamtzahl', async () => {
+    const first = await invoices.list(query({ pageSize: 1 }));
+    expect(first.items).toHaveLength(1);
+    expect(first.total).toBe(2);
+    expect(first.pageCount).toBe(2);
+
+    const second = await invoices.list(query({ pageSize: 1, page: 2 }));
+    expect(second.items).toHaveLength(1);
+    // Keine Rechnung darf auf zwei Seiten stehen — dafür sorgt die id als
+    // zweites Sortierkriterium.
+    expect(second.items[0]?.id).not.toBe(first.items[0]?.id);
   });
 
   it('filtert nach Status', async () => {
-    expect((await invoices.list({ status: INVOICE_STATUS.DRAFT })).length).toBe(1);
-    expect((await invoices.list({ status: INVOICE_STATUS.ISSUED })).length).toBe(1);
+    expect((await invoices.list(query({ status: INVOICE_STATUS.DRAFT }))).total).toBe(1);
+    expect((await invoices.list(query({ status: INVOICE_STATUS.ISSUED }))).total).toBe(1);
   });
 
   it('filtert nach Jahr über das Rechnungsdatum', async () => {
-    expect((await invoices.list({ year: 2026 })).length).toBe(2);
-    expect((await invoices.list({ year: 2025 })).length).toBe(0);
+    expect((await invoices.list(query({ year: 2026 }))).total).toBe(2);
+    expect((await invoices.list(query({ year: 2025 }))).total).toBe(0);
   });
 
   it('findet über Nummer und Empfänger', async () => {
-    expect((await invoices.list({ q: '2026-001' })).length).toBe(1);
-    expect((await invoices.list({ q: 'Nordwind' })).length).toBe(1);
+    expect((await invoices.list(query({ q: '2026-001' }))).total).toBe(1);
+    expect((await invoices.list(query({ q: 'Nordwind' }))).total).toBe(1);
   });
 
   it('durchsucht die Empfängerdaten als Ganzes', async () => {
@@ -443,9 +482,28 @@ describe('Liste', () => {
     // dieser Größe eher nützlich als störend. Sollte die Rechnungsübersicht
     // später nach Empfänger sortieren müssen, bekäme die Tabelle eine eigene
     // Spalte dafür.
-    expect((await invoices.list({ q: 'Hafenstraße' })).length).toBe(1);
+    expect((await invoices.list(query({ q: 'Hafenstraße' }))).total).toBe(1);
     // Beide Rechnungen gehen nach Hamburg, also trifft der Ort auch beide.
-    expect((await invoices.list({ q: 'Hamburg' })).length).toBe(2);
+    expect((await invoices.list(query({ q: 'Hamburg' }))).total).toBe(2);
+  });
+
+  it('findet mit dem Überfällig-Filter nur offene Rechnungen mit vergangener Fälligkeit', async () => {
+    // Die ausgestellte Rechnung ist am 24.01.2026 fällig gewesen.
+    const overdue = await invoices.list(query({ overdue: true }));
+    expect(overdue.items.map((invoice) => invoice.number)).toEqual(['2026-001']);
+
+    // Bezahlt ist nicht mehr überfällig, auch wenn das Datum längst vorbei ist.
+    const issued = overdue.items[0];
+    await prisma.invoice.update({
+      where: { id: issued?.id },
+      data: { status: INVOICE_STATUS.PAID, paidAt: '2026-02-01' },
+    });
+    expect((await invoices.list(query({ overdue: true }))).total).toBe(0);
+  });
+
+  it('filtert nach Dokumenttyp', async () => {
+    expect((await invoices.list(query({ documentType: 'INVOICE' }))).total).toBe(2);
+    expect((await invoices.list(query({ documentType: 'CANCELLATION' }))).total).toBe(0);
   });
 });
 

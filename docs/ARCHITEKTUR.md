@@ -1,7 +1,7 @@
 # Projektplan: Eigene Rechnungssoftware ("AgenturTool")
 
-**Status:** v1.7 — Schritte 0 bis 7 umgesetzt; Rechnungen lassen sich erfassen und
-als A4-Dokument in der Live-Vorschau sehen.
+**Status:** v1.12 — Schritte 0 bis 12 umgesetzt; die Daten sind gesichert und
+der Weg zurück ist einmal wirklich gegangen worden (Abschnitt 17).
 **Repository:** `Kalabedo/AgenturTool`
 
 Dieses Dokument ist die verbindliche Architekturgrundlage. Es wird mit dem Code
@@ -39,6 +39,8 @@ sie hier korrigiert und nicht nur im Code.
 | D29 | Schrift im Dokument  | **Open Sans, als Base64 im Paket eingebettet** — kein Netzwerkzugriff beim PDF-Rendern                                |
 | D30 | Vorschau-Einbindung  | **iframe + React-Portal** (nicht `srcdoc`): dieselbe Komponente wie im PDF, inkrementell aktualisiert                 |
 | D31 | Seitenränder         | **`@page`-Ränder im Druck**, Padding nur am Bildschirm — Padding wirkt sonst nur auf der ersten Seite                 |
+| D32 | Puppeteer-Paket      | **`puppeteer-core` mit gefundenem Chromium** statt `puppeteer` mit eigenem Download (Abschnitt 13a)                   |
+| D33 | Backup-Format        | **ZIP** statt tar.gz — mit Bordmitteln auf Windows, macOS und iOS zu öffnen (Abschnitt 17)                            |
 
 Zu D21: Rechnungs-, Leistungs- und Fälligkeitsdatum sind Kalendertage, keine
 Zeitpunkte. Als `DateTime` müsste an jeder Grenze zwischen Browser, API und
@@ -204,6 +206,71 @@ Routen: `/` · `/invoices` · `/invoices/new` · `/invoices/:id` ·
 Preflight und App-Styles nicht ins Template durchschlagen. Der Editor ist
 zweispaltig: links Formular, rechts A4-Vorschau (CSS-`transform: scale`),
 debounced aktualisiert.
+
+---
+
+## 5a. Politur: Fehler, Leere, Tastatur, Breite (Schritt 14)
+
+Der letzte Schritt hat nichts Neues gebaut, sondern die Kanten abgerundet, an
+denen die Anwendung im Alltag hängen bleibt.
+
+### Fehler sagen, was los ist
+
+Vorher wurde ein Fehler beim Speichern über
+`error instanceof ApiRequestError ? … : null` ausgewertet. Das ist genau dann
+falsch, wenn es darauf ankommt: Ein abgestürzter Server wirft im Browser einen
+`TypeError`, keinen `ApiRequestError` — der Klick auf „Speichern" sah damit aus
+wie gar nichts. `formErrorOf` (in `lib/errorMessage.ts`) fängt beide Fälle und
+übersetzt „Failed to fetch" in einen Satz, der eine Handlung nahelegt.
+
+Dieselbe Trennung an anderer Stelle: Ein 404 heißt „diesen Datensatz gibt es
+nicht" und führt zurück zur Liste; alles andere heißt „gerade nicht erreichbar"
+und bekommt einen Knopf zum erneuten Versuch (`isNotFound`). Vorher stand bei
+einem abgestürzten Server „Dieser Kunde wurde nicht gefunden" — eine Auskunft,
+die jemanden glauben lässt, seine Daten seien weg.
+
+Zwei Netze darunter: Der Router bekommt eine `errorElement`-Seite innerhalb des
+Layouts (Kopfzeile und Navigation bleiben stehen, der Weg zurück ist ein
+Klick), und ganz außen steht eine `ErrorBoundary` als Klassenkomponente — die
+einzige Bauart, mit der React Renderfehler abfängt. Ohne sie bliebe ein weißes
+Fenster.
+
+### Leerzustände und Ladezustände sind zweierlei
+
+`latest.data?.items.length === 0` ist während des Ladens ebenfalls wahr — die
+Seite behauptete für einen Moment, es gebe nichts. Jetzt kommt zuerst der
+Ladehinweis (`LoadingNote`, `aria-live="polite"`), dann der Leerzustand mit dem
+nächsten Schritt darin (Anlegen, Filter zurücksetzen).
+
+### Tastatur
+
+- Ein Sprunglink „Zum Inhalt springen" als erste Station — sonst führt jeder
+  Seitenwechsel wieder durch die ganze Navigation.
+- Sichtbarer Fokus überall: Tailwinds Preflight nimmt Links den Rahmen des
+  Browsers weg, eine Regel in `index.css` gibt ihn zurück (`:focus-visible`,
+  nicht `:focus` — der Rahmen gehört zur Tastatur, nicht zur Maus).
+- Strg/Cmd+S speichert die Rechnung, statt den Seite-speichern-Dialog des
+  Browsers zu öffnen.
+- „Position hinzufügen" setzt den Cursor in die neue Zeile.
+- `aria-sort` an den sortierbaren Spalten (der Pfeil daneben ist für einen
+  Screenreader nur ein Zeichen), `role="alert"` an Fehlermeldungen.
+- Ein `beforeunload`-Hinweis, wenn ein Fenster mit ungespeicherten Änderungen
+  zugeht. Innerhalb der Anwendung genügt der sichtbare Hinweis: Ein
+  Seitenwechsel lässt sich zurücknehmen, ein geschlossenes Fenster nicht.
+
+### Breite
+
+Nachgemessen statt geschätzt: Ein Skript fährt mit Chromium jede Seite in 1440
+und in 390 Pixeln an und meldet, wenn das Dokument breiter wird als das
+Fenster. Zwei Stellen taten das — die Hauptnavigation und die Filterleiste der
+Rechnungsliste; beide scrollen jetzt in sich selbst, statt die Seite zu
+verbreitern. Breite Tabellen scrollen ebenso in ihrem eigenen Kasten: Spalten
+zu verstecken hieße, ausgerechnet Betrag oder Status zu verstecken.
+
+Der Rechnungseditor ist der Sonderfall. Seine Vorschau steht erst ab `2xl`
+daneben; darunter bekam das Formular trotzdem die volle Breite des breiten
+Layouts — Eingabefelder über 1400 Pixel. Jetzt bleibt es auf Lesebreite, bis
+die zweite Spalte tatsächlich erscheint.
 
 ---
 
@@ -477,6 +544,30 @@ negativen Beträgen; anschließend kann per „Duplizieren" eine korrigierte
 Rechnung erstellt werden. Das entspricht der üblichen Erwartung an
 GoBD-konforme Belegführung, ohne dass wir Buchhaltungslogik nachbauen.
 
+**Umgesetzt in Schritt 10.** Das Storno geht durch dieselbe Maschinerie wie
+das Finalisieren — Nummer aus derselben Sequenz (D10), eigenes PDF, eigener
+`InvoiceDocument`-Datensatz — und markiert die Originalrechnung **in
+derselben Transaktion**. Sonst gäbe es einen Moment mit einem Storno zu einer
+Rechnung, die nichts davon weiß.
+
+Zwei Festlegungen, die dabei anfielen:
+
+- Das Storno übernimmt die **Snapshots der Originalrechnung**, nicht die
+  heutigen Stammdaten. Es hebt ein bestimmtes Dokument auf und muss deshalb
+  dieselbe Anschrift, dasselbe Steuerprofil und dasselbe Aussehen tragen. Nur
+  die Summen entstehen neu — aus den umgekehrten Mengen, und dank des
+  symmetrischen Rundens ergeben Original und Storno exakt null. Ein Test
+  prüft genau diese Summe am erzeugten Dokument.
+- Ein **Storno auf ein Storno** gibt es nicht: Das wäre eine
+  Wiederherstellung. Wer die Leistung doch abrechnen will, dupliziert die
+  Originalrechnung und stellt sie neu aus. `isCancellable()` im geteilten
+  Paket ist die eine Stelle, an der diese Frage beantwortet wird.
+
+**Duplizieren** kopiert Empfänger, Positionen und Texte, nicht aber Nummer,
+Snapshots, Zahlungs- und Versandvermerke oder die interne Notiz — die gehören
+zu einem abgeschlossenen Vorgang. Die Daten werden neu gesetzt: Ein Duplikat
+ist eine Rechnung von heute, kein Abzug von damals.
+
 ### „Finalisierung zurücknehmen" (eng begrenztes Undo)
 
 Für den Fall „Tippfehler zehn Sekunden nach dem Klick". Erlaubt **nur**, wenn
@@ -498,6 +589,13 @@ eine Lücke, und die Nummer wird nur an denjenigen zurückgegeben, der sie
 gerade gezogen hat. Ohne diese Bedingung wäre Undo ein Loch in der
 Fortlaufendkeit. Die UI zeigt den Button deshalb auch nur, wenn er wirklich
 zulässig ist, und benennt sonst den Grund.
+
+**Umgesetzt in Schritt 9.** Die vier Bedingungen stehen als
+`unfinalizeBlocker()` im geteilten Paket und werden an zwei Stellen benutzt:
+Das Backend weist den Aufruf damit ab, und die Antwort trägt `canUnfinalize`
+samt Begründung, damit die Oberfläche den Knopf gar nicht erst anbietet. Zwei
+Formulierungen derselben Regel wären genau der Fall, in dem ein sichtbarer
+Knopf mit 409 antwortet.
 
 Weil Undo Nummern und Dokumente wieder freigibt, ist `InvoiceEvent` **kein
 optionales Extra mehr, sondern Pflicht** — es ist die einzige Spur, dass eine
@@ -523,7 +621,11 @@ dueDate < heute` berechnet — sonst bräuchte es einen Cron-Job, der Zustände
   zum Bezahlstatus (versendet _und_ bezahlt, versendet _und_ offen).
 - Zahlung ist in V1 nur `paidAt` (Datum oder leer). `PAID` ist damit ein
   abgeleiteter, aber gespeicherter Status: `paidAt` setzen ⇒ `PAID`,
-  `paidAt` leeren ⇒ zurück auf `ISSUED`.
+  `paidAt` leeren ⇒ zurück auf `ISSUED`. **Umgesetzt in Schritt 10** als
+  `POST /api/invoices/:id/payment` — es gibt bewusst keinen zusätzlichen
+  Endpunkt „als bezahlt markieren", sonst gäbe es zwei Wege zu einem Feld.
+  Auf einer stornierten Rechnung wird keine Zahlung mehr vermerkt, auf einem
+  Entwurf gar keine.
 - **Teilzahlungen später:** die Migration ist klein — eine `Payment`-Tabelle
   ergänzen, bestehende `paidAt` als je einen Vollzahlungs-Datensatz
   übernehmen, den Status daraus berechnen. Deshalb ist der schmale Start
@@ -537,6 +639,11 @@ Empfängeradresse, Rechnungsdatum, Leistungsdatum, fortlaufende Nummer,
 Entgelt und Steuersatz bzw. Hinweis auf Steuerbefreiung; bei Reverse Charge
 zusätzlich USt-ID beider Seiten). Fehlt etwas, schlägt die Finalisierung mit
 einer verständlichen Liste fehl. Rechtsberatung ersetzt das nicht.
+
+**Umgesetzt in Schritt 9** als `checkFinalizable()` im geteilten Paket. Die
+Liste kommt als `details` einer 409-Antwort mit dem Code
+`FINALIZE_VALIDATION_FAILED` zurück und steht im Editor unter den Positionen —
+nicht als „Etwas fehlt", sondern als die Aufzählung dessen, was fehlt.
 
 ---
 
@@ -558,6 +665,11 @@ WHERE scope = ? AND year = ? AND nextValue = ?`, Ergebnis muss 1 Zeile sein),
   Single-User-Tool ist echte Nebenläufigkeit ohnehin die Ausnahme — aber
   Doppelvergabe darf auch in der Ausnahme nicht passieren.
 - Format konfigurierbar über ein Muster, Default `{YYYY}-{SEQ:3}` → `2026-001`.
+  Das Muster liegt in `AppSetting` unter `invoice.numberPattern` (keine
+  Oberfläche in V1) und kennt `{YYYY}`, `{YY}`, `{MM}` und `{SEQ:n}`. Es wird
+  beim Lesen validiert und fällt bei Unsinn auf den Standard zurück, statt das
+  Ausstellen unmöglich zu machen — und es darf keine Zeichen enthalten, die in
+  einem Dateinamen unzulässig sind, weil die Nummer der Dateiname des PDFs ist.
 - **Jahreswechsel:** Zähler-Jahr wird aus dem **Rechnungsdatum** abgeleitet
   (nicht aus `now()`). Wer am 03.01.2027 eine Rechnung mit Datum 31.12.2026
   finalisiert, bekommt korrekt `2026-0xx`. Ist das Zieljahr bereits
@@ -683,8 +795,11 @@ Seite wirkt nur auf der ersten Druckseite — auf Folgeseiten klebte die
 Tabelle sonst am oberen Blattrand. Am Bildschirm bleibt das Padding, weil es
 dort das sichtbare Blatt erzeugt. Puppeteer muss dafür mit
 `preferCSSPageSize: true` und ohne eigene `margin`-Angabe aufgerufen werden
-(Schritt 8). Belegt: eine 34-Positionen-Rechnung ergibt drei Seiten mit
-wiederholtem Tabellenkopf, ungeteilten Zeilen und gleichen Rändern.
+(umgesetzt in Schritt 8). Belegt durch `apps/api/test/pdf.test.ts`: Eine
+34-Positionen-Rechnung ergibt zwei Seiten, und der bedruckbare Kasten ist auf
+beiden derselbe — 12 mm links und oben, 16 mm unten für die Fußzeile. Der
+Test liest diesen Kasten aus dem PDF; mit Padding statt `@page` stimmte er
+nur auf Seite 1.
 
 **Die Live-Vorschau (D30)** rendert die Komponente über ein React-Portal in
 ein `about:blank`-iframe. Ein iframe, weil das Template ein eigenes
@@ -692,6 +807,11 @@ Stylesheet mitbringt, das sich mit Tailwinds Preflight in beide Richtungen
 stören würde; ein Portal statt `srcdoc`, weil React so nur die geänderten
 Knoten aktualisiert — bei `srcdoc` würde das Dokument bei jedem Tastendruck
 neu aufgebaut, mit Flackern und verlorener Scrollposition.
+
+Was die Vorschau **nicht** zeigt, ist der Seitenumbruch: Sie ist eine
+fortlaufende Seite. Dafür gibt es seit Schritt 8 den Knopf „PDF
+herunterladen" im Editor — er schickt die aktuellen, auch die noch nicht
+gespeicherten Formularwerte an `POST /api/invoices/preview/pdf`.
 
 **Abweichungen von der Referenzrechnung**, jeweils bewusst:
 
@@ -751,19 +871,38 @@ unsichtbar. Die Konsistenzlücke des Dateisystems ist mit wenig Aufwand
 schließbar, die Nachteile des BLOB-Wegs nicht.
 
 **Konsistenzprotokoll beim Finalisieren** (Dateisystem und DB dürfen nicht
-auseinanderlaufen):
+auseinanderlaufen). Umgesetzt in Schritt 9, mit einer Korrektur gegenüber der
+ersten Fassung dieses Abschnitts: Dort stand das PDF **vor** der Transaktion.
+Das geht nicht — auf dem Dokument steht die Rechnungsnummer, und die gibt es
+erst, wenn der Zähler gezogen ist. Das Drucken liegt deshalb **in** der
+Transaktion:
 
-1. PDF erzeugen und unter `data/tmp/<uuid>.pdf` schreiben, SHA-256 bilden.
-2. Transaktion: Nummer ziehen, Snapshots schreiben, Status auf `ISSUED`,
+1. Transaktion öffnen und die Nummer ziehen (bedingtes Update, Abschnitt 9).
+2. Mit dieser Nummer das PDF rendern, unter `data/tmp/<uuid>.pdf` schreiben,
+   SHA-256 bilden.
+3. Weiter in derselben Transaktion: Snapshots schreiben, Status auf `ISSUED`,
    `InvoiceDocument`-Datensatz mit Zielpfad und Hash anlegen, `InvoiceEvent`
-   schreiben. Bricht hier etwas ab, wird zurückgerollt und die temporäre Datei
-   verworfen — es entsteht kein halb ausgestelltes Dokument.
-3. Nach erfolgreichem Commit die Datei an den Zielpfad verschieben
+   schreiben. Bricht irgendetwas davon ab, wird zurückgerollt und die
+   temporäre Datei verworfen — die Nummer ist dann nicht verbraucht und es
+   entsteht kein halb ausgestelltes Dokument.
+4. Nach erfolgreichem Commit die Datei an den Zielpfad verschieben
    (`rename`, atomar innerhalb desselben Dateisystems).
-4. Beim Start prüft ein kleiner Reconciler: `InvoiceDocument`-Zeilen ohne
+5. Beim Start prüft ein kleiner Reconciler: `InvoiceDocument`-Zeilen ohne
    Datei werden protokolliert und in der UI als reparierbar markiert
-   (Neuerzeugung aus dem Snapshot ist möglich, weil der Snapshot alles
-   enthält); verwaiste Dateien ohne Zeile wandern nach `data/orphans/`.
+   (`documentMissing` in der Antwort, Knopf „PDF neu erzeugen"); verwaiste
+   Dateien ohne Zeile wandern nach `data/orphans/` statt gelöscht zu werden.
+
+Der Preis der Umkehrung: Chromium druckt, während die Schreibsperre der
+Datenbank gehalten wird — knapp eine Sekunde. Bei einem Einzelplatzwerkzeug
+ist das der günstigere Tausch. Die Alternative wäre ein Fenster, in dem eine
+Nummer vergeben, aber keine Rechnung ausgestellt ist, und genau das erzeugt
+die Lücke, die die späte Nummernvergabe vermeiden soll. Das Zeitlimit der
+Transaktion ist deshalb auf 120 Sekunden gesetzt; die Voreinstellung von fünf
+reicht für eine lange Rechnung auf einer langsamen Maschine nicht sicher.
+
+Der einzige verbleibende Bruchfall ist ein Absturz zwischen Commit und
+Verschieben: Dann gibt es einen Datensatz ohne Datei. Er ist beim Start
+sichtbar und aus dem Snapshot reparierbar — deshalb ist er tragbar.
 
 Weitere Regeln:
 
@@ -774,6 +913,72 @@ Weitere Regeln:
 - Beim Backup gilt eine feste Reihenfolge: erst die Datenbank sichern, dann
   die Dateien. So kann das Backup höchstens Dateien enthalten, die die DB noch
   nicht kennt — nie umgekehrt. Ein Verifikationsschritt vergleicht die Hashes.
+
+---
+
+## 13a. Der PDF-Dienst (Schritt 8)
+
+Zwei Klassen, weil sie zwei verschiedene Dinge wissen müssen:
+
+- **`PdfService`** kennt nur Chromium: einen Browser starten, HTML drucken.
+  Er weiß nichts über Rechnungen.
+- **`InvoicePdfService`** baut das Dokument: Render-Modell aus Rechnung und
+  Stammdaten oder Snapshots, HTML über `renderInvoiceDocument`, Dateiname.
+
+Der Schnitt ist nicht kosmetisch: `buildHtml()` lässt sich ohne Browser
+prüfen, und genau dort sitzen die Fehler, die teuer wären — falscher
+Snapshot, fehlendes Logo, neu gerechnete statt eingefrorener Summen.
+
+**Ein Browser für die Laufzeit, gestartet beim ersten PDF.** Ein Kaltstart
+kostet je nach Maschine 200 bis 600 ms; wer an einer Rechnung schreibt,
+sieht sich den Umbruch mehrfach an. Wer nur Stammdaten pflegt, soll dafür
+kein Chromium im Speicher haben. Renderläufe laufen nacheinander — bei einem
+Einzelplatzwerkzeug bringt Parallelität nichts und kostet Speicher.
+
+**`puppeteer-core` statt `puppeteer` (D32).** Das große Paket lädt bei jeder
+Installation ein eigenes Chromium (~150 MB) und legte im Image ein zweites
+neben das des Paketmanagers. Der Preis dafür ist `apps/api/src/pdf/chromium.ts`:
+`PUPPETEER_EXECUTABLE_PATH`, sonst die üblichen Orte, sonst eine Meldung, die
+sagt, was zu tun ist. Fehlt Chromium, ist das ein Konfigurationsfehler beim
+Aufsetzen und kein Ausfall im Betrieb — die Anwendung startet trotzdem, nur
+das PDF entsteht nicht.
+
+**Sandbox bleibt an.** `--no-sandbox` nur, wenn `PUPPETEER_NO_SANDBOX=true`
+ausdrücklich gesetzt ist — vorgesehen für den Container, in dem der Prozess
+ohnehin isoliert und unprivilegiert läuft (Abschnitt 16).
+
+**Chromium bekommt kein Netz.** Neben den Flags gegen Hintergrundverbindungen
+(`--disable-background-networking` und Verwandte) läuft der Browser mit
+`--host-resolver-rules=MAP * ~NOTFOUND`: Namensauflösung schlägt darin
+grundsätzlich fehl. Der Anlass war eine Messung — trotz der Flags ging beim
+Rendern eine Anfrage nach draußen. Das Dokument braucht kein Netz, es trägt
+Schrift und Logo als Data-URI in sich; also soll es auch keines bekommen
+können. Nebeneffekt: Baut ein Template je eine externe Adresse ein, fällt das
+sofort auf, statt still ein Bild im PDF fehlen zu lassen.
+
+**Die Fußzeile mit der Seitenzahl** kommt aus `renderInvoiceFooterTemplate()`
+im Template-Paket, nicht aus dem Backend: Sie muss den Seitenrand kennen und
+in den Platz passen, den `@page` unten frei lässt. Chromium rendert dieses
+Fragment in einem eigenen Dokument, ohne das Stylesheet der Seite — deshalb
+steht ihr CSS inline und ihre Schrift ist eine generische.
+
+**Wege zum PDF**, beide über `Content-Disposition: inline` und `no-store`:
+
+| Route                                   | Quelle                                                      |
+| --------------------------------------- | ----------------------------------------------------------- |
+| `GET /api/invoices/:id/pdf`             | Entwurf: frisch gerendert · ausgestellt: gespeicherte Datei |
+| `POST /api/invoices/preview/pdf`        | ungespeicherte Formulardaten, nichts wird angelegt          |
+| `POST /api/invoices/:id/regenerate-pdf` | Reparaturweg: aus dem Snapshot neu erzeugt und abgelegt     |
+
+`no-store` ist wichtiger, als es klingt: Ein Entwurfs-PDF sieht nach der
+nächsten Änderung anders aus, und ein Blatt aus dem Browser-Cache wäre genau
+das Missverständnis, das der Blick auf den Umbruch vermeiden soll.
+
+Seit Schritt 9 legt das Finalisieren das erzeugte PDF ab, und der Download
+einer ausgestellten Rechnung liefert genau diese Datei — nie eine
+Neuerzeugung (Abschnitt 13). Fehlt sie, wird ersatzweise aus dem Snapshot
+gerendert und die Antwort meldet `documentMissing`; dauerhaft repariert wird
+über `regenerate-pdf`.
 
 ---
 
@@ -798,7 +1003,8 @@ PATCH  /api/tax-profiles/:id           DELETE /api/tax-profiles/:id
 
 GET    /api/template-settings          PUT  /api/template-settings
 
-GET    /api/invoices?status=&year=&customerId=&q=&page=&sort=
+GET    /api/invoices?status=&documentType=&year=&customerId=&q=&overdue=
+                     &sort=&order=&page=&pageSize=
 POST   /api/invoices                   Entwurf anlegen
 GET    /api/invoices/:id
 PATCH  /api/invoices/:id               nur DRAFT → sonst 409
@@ -811,9 +1017,38 @@ POST   /api/invoices/:id/payment       { paidAt | null }
 POST   /api/invoices/:id/sent          { sentAt | null }
 GET    /api/invoices/:id/pdf           gespeichertes PDF (bzw. Draft-Render)
 POST   /api/invoices/preview/pdf       ungespeicherte Formulardaten → PDF
+POST   /api/invoices/:id/regenerate-pdf   PDF aus dem Snapshot neu ablegen
 
 POST   /api/backup/export              GET /api/backup/status
+GET    /api/backup/:filename           Archiv herunterladen
 ```
+
+**Die Übersicht** (umgesetzt in Schritt 11) antwortet nicht mit einem nackten
+Array, sondern mit `{ items, total, page, pageSize, pageCount }`: „87
+Rechnungen, Seite 2 von 4" lässt sich sonst nicht anzeigen, und ein Zähler,
+den das Frontend schätzt, ist falsch, sobald gefiltert wird. Dazu:
+
+- Sortierbar nach `invoiceDate`, `dueDate` und `number` — alles Spalten.
+  Nach dem Betrag zu sortieren hieße, alle Rechnungen zu laden und im
+  Speicher zu sortieren, weil die Summe je nach Zustand aus einem
+  JSON-Snapshot kommt oder berechnet wird. Ein unbekanntes Sortierfeld wird
+  abgewiesen, nicht ignoriert: Sonst käme ein Feldname ungeprüft in die
+  Datenbankabfrage.
+- Die `id` ist immer zweites Sortierkriterium. Ohne sie wäre die Reihenfolge
+  zweier Rechnungen mit gleichem Datum offen, und beim Blättern könnte
+  dieselbe Rechnung auf zwei Seiten stehen oder ganz fehlen.
+- `overdue=true` ist ein Filter und kein Status: „überfällig" ergibt sich aus
+  `status = ISSUED` und `dueDate < heute` (Abschnitt 8).
+
+**Das Dashboard hat bewusst keinen eigenen Endpunkt.** Es stellt dieselbe
+Übersichtsabfrage dreimal mit kleinem `pageSize` und liest `total` — Entwürfe,
+offene, überfällige. Ein Statistik-Endpunkt müsste dieselben Filter ein
+zweites Mal ausdrücken, und die beiden Ausdrücke liefen irgendwann
+auseinander. Gezeigt werden diese drei Zahlen und die letzten Rechnungen;
+Umsatzübersichten und offene Posten mit Altersstruktur bleiben ausdrücklich
+einer späteren Version vorbehalten (Abschnitt 21). Die Filter der Übersicht
+stehen in der Adresszeile, damit das Dashboard direkt auf „überfällig"
+verlinken kann und eine Auswahl teilbar ist.
 
 Fehler einheitlich als `{ error: { code, message, details? } }`;
 Domänenverletzungen als `409 Conflict` mit sprechendem `code`
@@ -906,6 +1141,111 @@ sich dafür nicht — der Login ist ja bereits aktiv.
 
 ---
 
+## 16a. Anmeldung und Betrieb im Container (Schritt 13)
+
+Umgesetzt ist beides zusammen, weil es zusammengehört: Das Image macht die
+Anwendung erreichbar, die Anmeldung entscheidet, wer hineinkommt.
+
+### Der Schalter
+
+`AUTH_ENABLED` ist keine halbe Anmeldung, sondern eine ganze, die abgeschaltet
+werden kann. Derselbe Code läuft in beiden Fällen; nur der globale Wächter
+(`AuthGuard`, per `APP_GUARD` an alle Routen gebunden) gibt bei
+`AUTH_ENABLED=false` sofort frei. Das ist der lokale Betrieb aus D1 — der
+Server hört dort ohnehin nur auf `127.0.0.1`.
+
+Öffentlich bleiben in jedem Fall drei Routen, ausgezeichnet mit `@Public()`:
+`GET /api/health`, `POST /api/auth/login` und `POST /api/auth/logout`. Dazu
+`GET /api/auth/session`, denn das Frontend muss vor der Anmeldung fragen
+dürfen, ob es überhaupt eine gibt. Die Antwort verrät nichts:
+`{ enabled, user }`, und `user` ist ohne gültige Sitzung `null`.
+
+### Passwörter und Sitzungen
+
+- **argon2id** über `@node-rs/argon2` mit den Voreinstellungen der Bibliothek
+  (19 MiB, 2 Durchläufe). Kein bcrypt: Argon2 ist speicherhart, und genau das
+  macht Angriffe mit Grafikkarten teuer.
+- **Serverseitige Sitzungen**, kein JWT. Abmelden muss sofort wirken; bei
+  einem JWT hieße das warten oder eine Sperrliste führen — und eine Sperrliste
+  ist eine Sitzungstabelle mit Umwegen.
+- In der Tabelle steht nie das Token, sondern sein **SHA-256**. Wer die
+  Datenbank in die Hände bekommt — Backup, Kopie, Fehlersuche —, kann sich
+  damit nicht anmelden. Ein zweiter Hash-Durchlauf mit Argon2 wäre hier
+  unnötig: Das Token ist 32 zufällige Bytes, es gibt nichts zu raten.
+- Cookie: `httpOnly` (kein Skript kommt heran), `SameSite=Lax` (eine fremde
+  Seite kann keine Anfrage im Namen des Angemeldeten stellen — CSRF ist damit
+  erledigt, ohne ein zweites Token einzuführen), `Secure`, sobald
+  `AUTH_ENABLED` gesetzt ist. `COOKIE_SECURE=false` ist der bewusste Ausweg
+  für den Betrieb ohne HTTPS-Terminierung im Tailnet.
+- Laufzeit `SESSION_TTL_DAYS` (30). Abgelaufene Sitzungen räumt jede Anmeldung
+  mit weg; ein eigener Aufräumlauf wäre für eine Tabelle mit einer Handvoll
+  Zeilen zu viel Apparat.
+
+### Was ein Angreifer nicht erfährt
+
+Falsches Passwort und unbekannte Adresse ergeben dieselbe Meldung und dieselbe
+Antwortzeit: Gibt es den Benutzer nicht, wird gegen einen fest hinterlegten
+Dummy-Hash geprüft, statt sofort zurückzukehren. Sonst ließe sich an der
+Antwortzeit ablesen, welche Adresse existiert. Ein Test hält beides fest.
+
+Dazu eine Sperre nach `LOGIN_MAX_ATTEMPTS` Fehlversuchen je Absender innerhalb
+von `LOGIN_WINDOW_MINUTES`. Sie liegt im Arbeitsspeicher, nicht in der
+Datenbank: Es gibt einen Prozess und einen Benutzer. Nach einem Neustart ist
+die Zählung weg — das ist die Schwäche, und hinter Tailscale ist sie
+hinnehmbar.
+
+### Kein Registrierungsweg
+
+Benutzer entstehen auf der Kommandozeile: `pnpm user:set <e-mail>`. Ein
+Registrierungsformular wäre genau die Tür, die die Anmeldung zumachen soll.
+Das Passwort wird eingegeben, nicht als Argument übergeben — was auf der
+Kommandozeile steht, landet in der Prozessliste und in der Shell-Historie. Wird
+ein Passwort geändert, werden alle bestehenden Sitzungen dieses Benutzers
+verworfen: Ein Passwortwechsel nach einem verlorenen Gerät wäre sonst wirkungslos.
+
+### Das Frontend liefert der Server mit
+
+`ServeStaticModule` reicht `apps/web/dist` aus, mit `exclude: ['/api/(.*)']` —
+ohne diese Ausnahme beantwortete der statische Server einen vertippten
+API-Pfad mit der `index.html`, und ein 404 sähe im Frontend aus wie kaputtes
+JSON. Existiert das Verzeichnis nicht (Entwicklung, dort übernimmt Vite),
+hält sich das Modul heraus, statt beim Start zu stolpern.
+
+Vor der Anwendung steht der `AuthGate`: Er fragt `/api/auth/session` und zeigt
+das Anmeldeformular nur, wenn der Server sagt, dass es eine Anmeldung gibt und
+niemand angemeldet ist. Aus einem 401 zu raten wäre unzuverlässig — es gäbe
+einen Moment, in dem die Anwendung schon steht und ihre Daten nicht. Läuft die
+Sitzung während der Arbeit ab, meldet der HTTP-Client das über ein
+Fensterereignis, und der Gate fragt nach.
+
+### Das Image
+
+Ein Dockerfile in zwei Stufen, ein Compose-Dienst, ein Volume.
+
+- Basis **Debian slim**, nicht Alpine: Prisma und `@node-rs/argon2` liefern
+  ihre Binärdateien gegen glibc aus; auf musl müsste beides aus den Quellen
+  gebaut werden.
+- **Chromium aus dem Paketmanager**, nicht aus Puppeteers Download (D32). So
+  kommen die Sicherheitsaktualisierungen der Distribution mit, und das Image
+  bleibt kleiner. `PUPPETEER_EXECUTABLE_PATH` zeigt darauf.
+- Der Prozess läuft als **`node`**, unprivilegiert. Chromiums eigene Sandbox
+  ist damit abgeschaltet (`PUPPETEER_NO_SANDBOX=true`) — vertretbar genau
+  hier, wo der Container die Isolation übernimmt und der Benutzer keine Rechte
+  hat, die zu missbrauchen sich lohnte.
+- **tini als PID 1**: Chromium hinterlässt Kindprozesse, und ohne einen
+  init-Prozess sammeln sich Zombies an.
+- Migrationen laufen im Entrypoint, nicht beim Bauen: Erst zur Laufzeit ist die
+  Datenbank aus dem Volume überhaupt da. `prisma migrate deploy` wendet nur an,
+  was fehlt, und ist bei jedem Neustart unbedenklich.
+- Der Port wird an `127.0.0.1` des Hosts gebunden, nicht an alle Adressen.
+  Erreichbar wird die Anwendung durch `tailscale serve`, nicht dadurch, dass
+  ein Port im Internet steht.
+- Der gesamte Zustand — Datenbank, Assets, PDFs, Sicherungen — liegt im Volume
+  unter `/data`, ausdrücklich außerhalb des Images: Sonst wäre er beim nächsten
+  Neubau weg.
+
+---
+
 ## 17. Backup
 
 Ziel: eine Datei, die alles enthält, und ein Weg zurück, den man auch unter
@@ -926,6 +1266,40 @@ Stress noch versteht.
   Migrationen anwenden, starten. Restore muss **einmal getestet** werden;
   ein ungetestetes Backup ist kein Backup.
 - Automatisches Backup zusätzlich vor jeder Migration.
+
+**Umgesetzt in Schritt 12.** Ein paar Festlegungen, die dabei anfielen:
+
+- **ZIP statt tar.gz** (D33). Das Archiv soll sich auf Windows, macOS und iOS
+  mit Bordmitteln öffnen lassen: Im Zweifel will man ein einzelnes PDF
+  herausholen, ohne die Anwendung überhaupt zu starten. Geschrieben mit
+  `yazl`, gelesen mit `yauzl` — beide streamen, was bei einigen hundert
+  Megabyte den Unterschied zwischen „läuft" und „Speicher voll" ausmacht.
+- **Aufbau des Archivs:** `manifest.json`, `database.sqlite` und
+  `files/<pfad relativ zu DATA_DIR>` für Assets, PDFs und verwaiste Dateien.
+  `data/tmp` bleibt draußen — dort liegt nur Arbeitsmaterial.
+- **Erst prüfen, dann anfassen.** Die Wiederherstellung entpackt zunächst
+  vollständig in ein temporäres Verzeichnis und vergleicht jeden Hash mit dem
+  Manifest. Erst danach werden die vorhandenen Daten beiseitegelegt. Ein
+  beschädigtes Archiv darf nicht auffallen, nachdem die alten Daten weg sind.
+- **Beiseitelegen statt löschen:** Ohne `--force` bricht die
+  Wiederherstellung ab, solange Daten da sind; mit `--force` wandern sie nach
+  `data.bak-<Zeitstempel>`. Wer im Ernstfall das falsche Archiv erwischt,
+  soll das zurücknehmen können.
+- **WAL- und SHM-Datei werden entfernt**, wenn die Datenbank ersetzt wird.
+  Bleiben sie liegen, hält SQLite sie für das Write-Ahead-Log genau dieser
+  Datei und liest Änderungen ein, die es nicht mehr gibt.
+- **Kein Restore-Knopf im Browser.** Die Wiederherstellung ersetzt das
+  Datenverzeichnis unter der laufenden Anwendung — das ist ein Skript, keine
+  Schaltfläche. Die Einstellungsseite zeigt stattdessen den Befehl.
+
+**Der Restore-Test ist durchgeführt** (Abschnitt 23, Punkt 9), zweifach: als
+automatischer Test (`apps/api/test/backup.test.ts`) und einmal von Hand am
+laufenden System — drei ausgestellte Rechnungen mit echten PDFs und
+hochgeladenem Logo, Backup über die API, dann `data/` **und** Datenbank
+gelöscht, `pnpm restore` ausgeführt, Anwendung gestartet: alle drei Rechnungen
+mit ihren Beträgen wieder da, das Logo wieder da, und die SHA-256 der drei
+PDFs identisch zu denen vor dem Verlust — auch die des über die API
+heruntergeladenen Dokuments.
 
 ---
 
@@ -970,23 +1344,23 @@ und läuft als unprivilegierter Benutzer.
 
 Jeder Schritt endet mit etwas Lauffähigem.
 
-| #    | Schritt                                                                    | Ergebnis                        |
-| ---- | -------------------------------------------------------------------------- | ------------------------------- |
-| 0 ✅ | Monorepo-Gerüst, TS-Configs, Lint/Format, `shared`-Skeleton                | `pnpm dev` läuft                |
-| 1 ✅ | DB-Schema, Migrationen, Seed                                               | Datenbank steht                 |
-| 2 ✅ | Company-Einstellungen inkl. Logo-Upload                                    | erster vertikaler Durchstich    |
-| 3 ✅ | Kundenverwaltung (CRUD, Liste, Suche)                                      | zweite Domäne, Muster etabliert |
-| 4 ✅ | Steuerprofile                                                              | Stammdaten komplett             |
-| 5 ✅ | Berechnungslogik in `shared` + Unit-Tests                                  | Kern abgesichert                |
-| 6 ✅ | Rechnungs-Entwurf: API + Editor mit dynamischen Positionen                 | Rechnungen erfassbar            |
-| 7 ✅ | `invoice-template` + Live-Vorschau im iframe                               | sichtbares Ergebnis             |
-| 8    | PDF-Service (Puppeteer) + Entwurfs-PDF                                     | PDF-Pipeline steht              |
-| 9    | Nummernvergabe + Snapshots + Finalisieren + PDF-Ablage                     | **Kernfunktion fertig**         |
-| 10   | Status: bezahlt/versendet, Stornieren, Duplizieren                         | Lebenszyklus komplett           |
-| 11   | Rechnungsübersicht mit Filter/Sortierung + Dashboard                       | Alltagstauglich                 |
-| 12   | Backup-Export/Restore + Restore-Test                                       | Datensicherheit                 |
-| 13   | Docker-Image + Auth-Modul (per `AUTH_ENABLED`), Tailscale-Anbindung        | deploy-fähig                    |
-| 14   | Politur: Fehlerbehandlung, Leerzustände, Tastaturbedienung, Responsiveness | V1                              |
+| #     | Schritt                                                                    | Ergebnis                        |
+| ----- | -------------------------------------------------------------------------- | ------------------------------- |
+| 0 ✅  | Monorepo-Gerüst, TS-Configs, Lint/Format, `shared`-Skeleton                | `pnpm dev` läuft                |
+| 1 ✅  | DB-Schema, Migrationen, Seed                                               | Datenbank steht                 |
+| 2 ✅  | Company-Einstellungen inkl. Logo-Upload                                    | erster vertikaler Durchstich    |
+| 3 ✅  | Kundenverwaltung (CRUD, Liste, Suche)                                      | zweite Domäne, Muster etabliert |
+| 4 ✅  | Steuerprofile                                                              | Stammdaten komplett             |
+| 5 ✅  | Berechnungslogik in `shared` + Unit-Tests                                  | Kern abgesichert                |
+| 6 ✅  | Rechnungs-Entwurf: API + Editor mit dynamischen Positionen                 | Rechnungen erfassbar            |
+| 7 ✅  | `invoice-template` + Live-Vorschau im iframe                               | sichtbares Ergebnis             |
+| 8 ✅  | PDF-Service (Puppeteer) + Entwurfs-PDF                                     | PDF-Pipeline steht              |
+| 9 ✅  | Nummernvergabe + Snapshots + Finalisieren + PDF-Ablage                     | **Kernfunktion fertig**         |
+| 10 ✅ | Status: bezahlt/versendet, Stornieren, Duplizieren                         | Lebenszyklus komplett           |
+| 11 ✅ | Rechnungsübersicht mit Filter/Sortierung + Dashboard                       | Alltagstauglich                 |
+| 12 ✅ | Backup-Export/Restore + Restore-Test                                       | Datensicherheit                 |
+| 13 ✅ | Docker-Image + Auth-Modul (per `AUTH_ENABLED`), Tailscale-Anbindung        | deploy-fähig                    |
+| 14 ✅ | Politur: Fehlerbehandlung, Leerzustände, Tastaturbedienung, Responsiveness | **V1**                          |
 
 Tests bewusst schmal, aber gezielt: Berechnungen und Nummernvergabe mit
 Unit-Tests, Finalisierung als Integrationstest, ein PDF-Snapshot-Test.
@@ -1105,12 +1479,22 @@ Womit wir prüfen, dass es wirklich funktioniert — nicht nur kompiliert.
 9. Backup erzeugen, `data/` löschen, aus dem Backup wiederherstellen, alle
    Rechnungen und PDFs sind wieder da und die Hashes stimmen.
    **Dieser Test wird einmal wirklich durchgeführt, nicht nur geplant.**
+   ✅ In Schritt 12 durchgeführt — mit gelöschter Datenbank und gelöschtem
+   Datenverzeichnis, wiederhergestellt über `pnpm restore`; die Hashes der
+   PDFs stimmen vorher und nachher überein.
 
 ---
 
-## Nächster Schritt
+## Stand
 
-Alle Entscheidungen sind getroffen (D1–D20). Die Implementierung folgt der
-Reihenfolge aus Abschnitt 20, beginnend mit Schritt 0 (Monorepo-Gerüst) und
-Schritt 1 (Schema + Migrationen). Neue Entscheidungen von Tragweite, die
-während der Umsetzung auftauchen, werden wie bisher vorher abgestimmt.
+Die Reihenfolge aus Abschnitt 20 ist abgearbeitet: Schritte 0 bis 14 sind
+umgesetzt, V1 steht. Was während der Umsetzung an Entscheidungen dazukam,
+steht in den Abschnitten mit Buchstaben-Suffix (5a, 13a, 16a) bei dem Thema,
+zu dem es gehört.
+
+Was bewusst offen bleibt, steht in Abschnitt 21 — unter anderem Mahnwesen,
+wiederkehrende Rechnungen, E-Rechnung (XRechnung/ZUGFeRD), Mehrbenutzerbetrieb
+und Auswertungen. Nichts davon ist verbaut: Die Snapshots tragen die Historie,
+das Auth-Modul kennt bereits eine `User`-Tabelle, und die Berechnung liegt in
+`shared` und nicht in der Oberfläche. Neue Entscheidungen von Tragweite werden
+wie bisher vorher abgestimmt.

@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
+import { Public } from '../auth/public.decorator';
 
 @Controller('health')
 export class HealthController {
@@ -10,6 +11,9 @@ export class HealthController {
    * tatsächlich antwortet — sonst meldet der Endpunkt "ok", während jede
    * fachliche Anfrage scheitert.
    */
+  // Die Gesundheitsprüfung muss ohne Anmeldung erreichbar sein: Sie beantwortet
+  // dem Container und dem Reverse Proxy die Frage, ob der Dienst lebt.
+  @Public()
   @Get()
   async check(): Promise<{ status: string; database: string; timestamp: string }> {
     let database = 'ok';

@@ -11,6 +11,10 @@ async function bootstrap(): Promise<void> {
   // Einheitliches Fehlerformat für alles, was aus der API herauskommt.
   app.useGlobalFilters(new ApiExceptionFilter());
 
+  // Nötig, damit onModuleDestroy beim Beenden läuft: Sonst überlebt der
+  // Chromium-Prozess der PDF-Erzeugung die Anwendung.
+  app.enableShutdownHooks();
+
   const port = Number(process.env.PORT ?? 3000);
 
   // Bewusst an 127.0.0.1 gebunden, nicht an 0.0.0.0: Die Anwendung enthält

@@ -16,6 +16,9 @@ import { Card } from '../../../components/ui/Card.js';
 import { Field } from '../../../components/ui/Field.js';
 import { Input } from '../../../components/ui/Input.js';
 import { LogoUpload } from './LogoUpload.js';
+import { ErrorNotice } from '../../../components/ui/ErrorNotice.js';
+import { formErrorOf } from '../../../lib/errorMessage.js';
+import { LoadingNote } from '../../../components/ui/LoadingNote.js';
 
 /**
  * Der Eingabetyp des geteilten Schemas ist zugleich der Formulartyp.
@@ -85,26 +88,21 @@ export function CompanyPage(): JSX.Element {
   });
 
   if (company.isLoading) {
-    return <p className="text-sm text-slate-500">Unternehmensdaten werden geladen …</p>;
+    return <LoadingNote>Unternehmensdaten werden geladen …</LoadingNote>;
   }
 
   if (company.isError) {
     return (
-      <div className="rounded-lg border border-rose-200 bg-rose-50 p-5">
-        <p className="text-sm text-rose-800">
-          Die Unternehmensdaten konnten nicht geladen werden. Läuft die API?
-        </p>
-      </div>
+      <ErrorNotice
+        error={company.error}
+        title="Die Unternehmensdaten konnten nicht geladen werden."
+        onRetry={() => void company.refetch()}
+      />
     );
   }
 
   const errors = form.formState.errors;
-  const generalError =
-    save.isError && !(save.error instanceof ApiRequestError && save.error.details !== undefined)
-      ? save.error instanceof Error
-        ? save.error.message
-        : 'Speichern fehlgeschlagen.'
-      : null;
+  const generalError = formErrorOf(save.error);
 
   return (
     <form
@@ -334,7 +332,11 @@ export function CompanyPage(): JSX.Element {
         {form.formState.isDirty && (
           <span className="text-sm text-slate-500">Ungespeicherte Änderungen</span>
         )}
-        {generalError !== null && <span className="text-sm text-rose-600">{generalError}</span>}
+        {generalError !== null && (
+          <span role="alert" className="text-sm text-rose-600">
+            {generalError}
+          </span>
+        )}
       </div>
     </form>
   );

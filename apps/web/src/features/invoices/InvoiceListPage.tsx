@@ -1,29 +1,43 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
+  DOCUMENT_TYPE,
+  INVOICE_SORT_FIELD,
+  INVOICE_SORT_FIELD_VALUES,
   INVOICE_STATUS,
   INVOICE_STATUS_LABELS,
+  describeRange,
   formatCents,
   formatDateDe,
   invoiceDisplayName,
   isOverdue,
   toIsoDate,
+  type InvoiceListResponse,
   type InvoiceResponse,
+  type InvoiceSortField,
   type InvoiceStatus,
+  type SortOrder,
 } from '@agentur-tool/shared';
 import { apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
+import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
 import { useDebounced } from '../../lib/useDebounced.js';
 import { Button } from '../../components/ui/Button.js';
 import { EmptyState } from '../../components/ui/EmptyState.js';
+import { ErrorNotice } from '../../components/ui/ErrorNotice.js';
+import { LoadingNote } from '../../components/ui/LoadingNote.js';
 import { Input } from '../../components/ui/Input.js';
+import { Select } from '../../components/ui/Select.js';
 
-const FILTERS: { value: '' | InvoiceStatus; label: string }[] = [
+/** Statusfilter und der Sonderfall „überfällig", der kein Status ist. */
+const FILTERS: { value: string; label: string }[] = [
   { value: '', label: 'Alle' },
   { value: INVOICE_STATUS.DRAFT, label: 'Entwürfe' },
   { value: INVOICE_STATUS.ISSUED, label: 'Ausgestellt' },
   { value: INVOICE_STATUS.PAID, label: 'Bezahlt' },
+  { value: INVOICE_STATUS.CANCELLED, label: 'Storniert' },
+  { value: 'overdue', label: 'Überfällig' },
 ];
 
 const STATUS_STYLES: Record<InvoiceStatus, string> = {
@@ -33,22 +47,85 @@ const STATUS_STYLES: Record<InvoiceStatus, string> = {
   CANCELLED: 'bg-rose-100 text-rose-800',
 };
 
+const PAGE_SIZE = 25;
+
+/** Die letzten Jahre zur Auswahl — weiter zurück gibt es keine Rechnungen. */
+function selectableYears(): number[] {
+  const current = new Date().getFullYear();
+  return [current, current - 1, current - 2, current - 3, current - 4];
+}
+
 export function InvoiceListPage(): JSX.Element {
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState<'' | InvoiceStatus>('');
+  useDocumentTitle('Rechnungen');
+
+  /*
+   * Filter, Sortierung und Seite stehen in der Adresszeile, nicht im
+   * Komponentenzustand. Damit ist eine Auswahl teilbar und überlebt das
+   * Neuladen — und das Dashboard kann direkt auf „überfällig" verlinken,
+   * statt die Auswahl nur zu beschreiben.
+   */
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const filter = searchParams.get('filter') ?? '';
+  const year = searchParams.get('year') ?? '';
+  const sortParam = searchParams.get('sort');
+  const sort: InvoiceSortField = INVOICE_SORT_FIELD_VALUES.includes(sortParam as InvoiceSortField)
+    ? (sortParam as InvoiceSortField)
+    : INVOICE_SORT_FIELD.INVOICE_DATE;
+  const order: SortOrder = searchParams.get('order') === 'asc' ? 'asc' : 'desc';
+  const page = Math.max(1, Number(searchParams.get('page') ?? 1) || 1);
+
+  // Der Suchtext bleibt lokal und wandert erst entprellt in die Adresse —
+  // sonst entstünde bei jedem Tastendruck ein Eintrag im Verlauf.
+  const [search, setSearch] = useState(searchParams.get('q') ?? '');
   const debouncedSearch = useDebounced(search);
+
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  // Erst wenn das Tippen zur Ruhe kommt, landet die Suche in der Adresse.
+  // Der Vergleich verhindert die Schleife: Ohne ihn schriebe jeder Lauf
+  // erneut denselben Wert und löste den nächsten aus.
+  useEffect(() => {
+    if ((searchParams.get('q') ?? '') === debouncedSearch) return;
+    update({ q: debouncedSearch });
+  }, [debouncedSearch, searchParams]);
+
+  /**
+   * Ändert die Auswahl in der Adresszeile.
+   *
+   * Jede Änderung außer dem Blättern setzt auf Seite 1 zurück: Seite 3 eines
+   * anderen Filters ist fast immer leer, und eine leere Liste nach einem
+   * Klick sieht aus wie ein Fehler.
+   */
+  const update = (changes: Record<string, string>): void => {
+    const next = new URLSearchParams(searchParams);
+    for (const [key, value] of Object.entries(changes)) {
+      if (value === '') next.delete(key);
+      else next.set(key, value);
+    }
+    if (!('page' in changes)) next.delete('page');
+    setSearchParams(next, { replace: true });
+  };
+
+  const params = new URLSearchParams({
+    page: String(page),
+    pageSize: String(PAGE_SIZE),
+    sort,
+    order,
+  });
+  if (debouncedSearch !== '') params.set('q', debouncedSearch);
+  if (year !== '') params.set('year', year);
+  if (filter === 'overdue') params.set('overdue', 'true');
+  else if (filter !== '') params.set('status', filter);
+
+  const queryString = params.toString();
+
   const invoices = useQuery({
-    queryKey: queryKeys.invoices.list(debouncedSearch, status),
-    queryFn: () => {
-      const params = new URLSearchParams();
-      if (debouncedSearch !== '') params.set('q', debouncedSearch);
-      if (status !== '') params.set('status', status);
-      const suffix = params.toString();
-      return apiClient.get<InvoiceResponse[]>(`/invoices${suffix === '' ? '' : `?${suffix}`}`);
-    },
+    queryKey: queryKeys.invoices.list(queryString),
+    queryFn: () => apiClient.get<InvoiceListResponse>(`/invoices?${queryString}`),
+    // Beim Blättern und Filtern bleibt die vorige Seite stehen, statt kurz
+    // zu verschwinden — sonst springt die Tabelle bei jedem Tastendruck.
     placeholderData: (previous) => previous,
   });
 
@@ -60,17 +137,52 @@ export function InvoiceListPage(): JSX.Element {
     },
   });
 
-  const hasResults = (invoices.data?.length ?? 0) > 0;
-  const isSearching = search !== '' || status !== '';
+  const result = invoices.data;
+  const hasResults = (result?.items.length ?? 0) > 0;
+  const isFiltering = search !== '' || filter !== '' || year !== '';
+
+  /** Ein Klick auf dieselbe Spalte dreht die Richtung um. */
+  const sortBy = (field: InvoiceSortField): void => {
+    if (field === sort) {
+      update({ order: order === 'asc' ? 'desc' : 'asc' });
+      return;
+    }
+    update({ sort: field, order: 'desc' });
+  };
+
+  const resetFilters = (): void => {
+    setSearch('');
+    setSearchParams(new URLSearchParams(), { replace: true });
+  };
+
+  const sortableHeader = (field: InvoiceSortField, label: string, align = 'left'): JSX.Element => (
+    <th
+      className={`px-4 py-2 font-medium ${align === 'right' ? 'text-right' : ''}`}
+      // Ohne aria-sort ist eine sortierte Tabelle für einen Screenreader eine
+      // unsortierte: Der Pfeil daneben ist nur ein Zeichen ohne Bedeutung.
+      aria-sort={sort === field ? (order === 'asc' ? 'ascending' : 'descending') : 'none'}
+    >
+      <button
+        type="button"
+        onClick={() => sortBy(field)}
+        className="inline-flex items-center gap-1 rounded uppercase tracking-wide hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+        aria-label={`Nach ${label} sortieren`}
+      >
+        {label}
+        <span aria-hidden className={sort === field ? 'text-slate-900' : 'text-transparent'}>
+          {order === 'asc' ? '▲' : '▼'}
+        </span>
+      </button>
+    </th>
+  );
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">Rechnungen</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Entwürfe lassen sich frei bearbeiten. Das Finalisieren mit Nummernvergabe und PDF folgt
-            in einem späteren Schritt.
+            Entwürfe lassen sich frei bearbeiten; ausgestellte Rechnungen sind unveränderlich.
           </p>
         </div>
         <Button onClick={() => create.mutate()} disabled={create.isPending}>
@@ -87,44 +199,64 @@ export function InvoiceListPage(): JSX.Element {
           className="sm:max-w-sm"
           aria-label="Rechnungen durchsuchen"
         />
-        <div className="flex rounded-md border border-slate-300 bg-white p-0.5">
-          {FILTERS.map((filter) => (
+
+        <div className="flex max-w-full overflow-x-auto rounded-md border border-slate-300 bg-white p-0.5">
+          {FILTERS.map((entry) => (
             <button
-              key={filter.value}
+              key={entry.value}
               type="button"
-              onClick={() => setStatus(filter.value)}
+              onClick={() => update({ filter: entry.value })}
               className={[
-                'rounded px-3 py-1 text-sm transition-colors',
-                status === filter.value
+                'whitespace-nowrap rounded px-3 py-1 text-sm transition-colors',
+                'focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300',
+                filter === entry.value
                   ? 'bg-slate-900 text-white'
                   : 'text-slate-600 hover:bg-slate-50',
               ].join(' ')}
             >
-              {filter.label}
+              {entry.label}
             </button>
           ))}
         </div>
+
+        <Select
+          value={year}
+          onChange={(event) => update({ year: event.target.value })}
+          aria-label="Jahr"
+          className="w-auto"
+        >
+          <option value="">Alle Jahre</option>
+          {selectableYears().map((entry) => (
+            <option key={entry} value={entry}>
+              {entry}
+            </option>
+          ))}
+        </Select>
       </div>
 
-      {invoices.isLoading && <p className="text-sm text-slate-500">Wird geladen …</p>}
+      {invoices.isLoading && <LoadingNote>Rechnungen werden geladen …</LoadingNote>}
+
+      {invoices.isError && (
+        <ErrorNotice
+          error={invoices.error}
+          title="Die Rechnungen konnten nicht geladen werden."
+          onRetry={() => void invoices.refetch()}
+        />
+      )}
+
+      {create.isError && <ErrorNotice error={create.error} title="Anlegen fehlgeschlagen" />}
 
       {invoices.isSuccess && !hasResults && (
         <EmptyState
-          title={isSearching ? 'Keine Treffer' : 'Noch keine Rechnungen'}
+          title={isFiltering ? 'Keine Treffer' : 'Noch keine Rechnungen'}
           description={
-            isSearching
-              ? 'Zu dieser Suche wurde nichts gefunden.'
+            isFiltering
+              ? 'Zu dieser Auswahl wurde nichts gefunden.'
               : 'Lege die erste Rechnung an — Kunde und Steuerprofil werden aus den Stammdaten vorbelegt.'
           }
           action={
-            isSearching ? (
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setSearch('');
-                  setStatus('');
-                }}
-              >
+            isFiltering ? (
+              <Button variant="secondary" onClick={resetFilters}>
                 Filter zurücksetzen
               </Button>
             ) : (
@@ -134,58 +266,97 @@ export function InvoiceListPage(): JSX.Element {
         />
       )}
 
-      {invoices.isSuccess && hasResults && (
-        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-          <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-4 py-2 font-medium">Rechnung</th>
-                <th className="px-4 py-2 font-medium">Empfänger</th>
-                <th className="px-4 py-2 font-medium">Datum</th>
-                <th className="px-4 py-2 text-right font-medium">Betrag</th>
-                <th className="px-4 py-2 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {invoices.data.map((invoice) => (
-                <tr key={invoice.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3">
-                    <Link
-                      to={`/invoices/${invoice.id}`}
-                      className="font-medium text-slate-900 hover:underline"
-                    >
-                      {invoiceDisplayName(invoice)}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {invoice.buyerData.companyName === '' ? (
-                      <span className="text-slate-400">kein Empfänger</span>
-                    ) : (
-                      invoice.buyerData.companyName
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-slate-500">
-                    {formatDateDe(toIsoDate(invoice.invoiceDate))}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-slate-900">
-                    {formatCents(invoice.totals.grossCents)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded px-1.5 py-0.5 text-xs ${STATUS_STYLES[invoice.status]}`}
-                    >
-                      {INVOICE_STATUS_LABELS[invoice.status]}
-                    </span>
-                    {isOverdue(invoice) && (
-                      <span className="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800">
-                        überfällig
-                      </span>
-                    )}
-                  </td>
+      {result !== undefined && hasResults && (
+        <div className="space-y-3">
+          {/* Sechs Spalten passen auf ein Telefon nicht nebeneinander. Statt
+              Spalten zu verstecken — und damit ausgerechnet Betrag oder Status —
+              darf die Tabelle in ihrem eigenen Kasten scrollen. */}
+          <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+            <table className="w-full min-w-[44rem] text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  {sortableHeader(INVOICE_SORT_FIELD.NUMBER, 'Rechnung')}
+                  <th className="px-4 py-2 font-medium">Empfänger</th>
+                  {sortableHeader(INVOICE_SORT_FIELD.INVOICE_DATE, 'Datum')}
+                  {sortableHeader(INVOICE_SORT_FIELD.DUE_DATE, 'Fällig')}
+                  <th className="px-4 py-2 text-right font-medium">Betrag</th>
+                  <th className="px-4 py-2 font-medium">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {result.items.map((invoice) => (
+                  <tr key={invoice.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3">
+                      <Link
+                        to={`/invoices/${invoice.id}`}
+                        className="font-medium text-slate-900 hover:underline"
+                      >
+                        {invoiceDisplayName(invoice)}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {invoice.buyerData.companyName === '' ? (
+                        <span className="text-slate-400">kein Empfänger</span>
+                      ) : (
+                        invoice.buyerData.companyName
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-slate-500">
+                      {formatDateDe(toIsoDate(invoice.invoiceDate))}
+                    </td>
+                    <td className="px-4 py-3 text-slate-500">
+                      {formatDateDe(toIsoDate(invoice.dueDate))}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-900">
+                      {formatCents(invoice.totals.grossCents)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-xs ${STATUS_STYLES[invoice.status]}`}
+                      >
+                        {INVOICE_STATUS_LABELS[invoice.status]}
+                      </span>
+                      {invoice.documentType === DOCUMENT_TYPE.CANCELLATION && (
+                        <span className="ml-1 rounded bg-slate-200 px-1.5 py-0.5 text-xs text-slate-700">
+                          Storno
+                        </span>
+                      )}
+                      {isOverdue(invoice) && (
+                        <span className="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800">
+                          überfällig
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+            <span>{describeRange(result)}</span>
+            {result.pageCount > 1 && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  disabled={page <= 1}
+                  onClick={() => update({ page: String(page - 1) })}
+                >
+                  Zurück
+                </Button>
+                <span>
+                  Seite {result.page} von {result.pageCount}
+                </span>
+                <Button
+                  variant="secondary"
+                  disabled={page >= result.pageCount}
+                  onClick={() => update({ page: String(page + 1) })}
+                >
+                  Weiter
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

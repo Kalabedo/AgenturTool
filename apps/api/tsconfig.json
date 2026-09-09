@@ -10,6 +10,15 @@
     "isolatedModules": false,
     "verbatimModuleSyntax": false,
     "rootDir": "src",
+    // Der zweite Einstiegspunkt des Template-Pakets steht in dessen
+    // "exports"-Feld. Node und Vitest lösen ihn darüber auf; die
+    // TypeScript-Auflösung "Node" (node10) kennt "exports" nicht und braucht
+    // deshalb diesen Verweis. Ein Wechsel auf "Node16" wäre der sauberere
+    // Weg, zieht aber die ESM/CJS-Doppelform aller Pakete nach sich — das
+    // ist ein eigener Umbau und keiner, der in Schritt 8 gehört.
+    "paths": {
+      "@agentur-tool/invoice-template/server": ["../../packages/invoice-template/dist/server.d.ts"]
+    },
     "outDir": "dist"
   },
   "include": ["src/**/*"],

@@ -1,0 +1,14 @@
+# Alles, was im Image nichts zu suchen hat: Zustand, Geheimnisse, Baureste.
+.git
+.env
+data
+backups
+node_modules
+**/node_modules
+**/dist
+apps/api/dist
+apps/web/dist
+packages/*/dist
+*.log
+.vscode
+.idea

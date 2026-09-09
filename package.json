@@ -18,6 +18,9 @@
     "typecheck": "pnpm -r typecheck",
     "db:migrate": "pnpm --filter @agentur-tool/api db:migrate",
     "db:seed": "pnpm --filter @agentur-tool/api db:seed",
+    "backup": "pnpm --filter @agentur-tool/api backup",
+    "restore": "pnpm --filter @agentur-tool/api restore",
+    "user:set": "pnpm --filter @agentur-tool/api user:set",
     "db:studio": "pnpm --filter @agentur-tool/api db:studio",
     "db:verify": "pnpm --filter @agentur-tool/api db:verify",
     "db:reset": "pnpm --filter @agentur-tool/api db:reset"

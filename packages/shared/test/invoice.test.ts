@@ -1,16 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import {
   buyerDataToFormFields,
+  cancellationNote,
   customerToBuyerData,
   defaultInvoiceDates,
   emptyBuyerData,
   invoiceDisplayName,
   invoiceDraftInputSchema,
   invoiceItemInputSchema,
+  invoiceListQuerySchema,
+  isCancellable,
   isEditable,
   isOverdue,
 } from '../src/invoice.js';
-import { DISCOUNT_TYPE, INVOICE_STATUS } from '../src/enums.js';
+import { DISCOUNT_TYPE, DOCUMENT_TYPE, INVOICE_STATUS } from '../src/enums.js';
 import { toIsoDate } from '../src/date.js';
 import { parseQuantity, quantityToInput, centsToInput } from '../src/money.js';
 import type { CustomerResponse } from '../src/customer.js';
@@ -295,5 +298,63 @@ describe('Statushilfen', () => {
     // Bezahlte und stornierte Rechnungen werden nie überfällig.
     expect(isOverdue({ status: INVOICE_STATUS.PAID, dueDate: '2026-03-01' }, today)).toBe(false);
     expect(isOverdue({ status: INVOICE_STATUS.DRAFT, dueDate: '2026-03-01' }, today)).toBe(false);
+  });
+});
+
+describe('isCancellable', () => {
+  const base = {
+    status: INVOICE_STATUS.ISSUED,
+    documentType: DOCUMENT_TYPE.INVOICE,
+    cancelledByInvoiceId: null,
+  };
+
+  it('erlaubt das Storno einer ausgestellten und einer bezahlten Rechnung', () => {
+    expect(isCancellable(base)).toBe(true);
+    expect(isCancellable({ ...base, status: INVOICE_STATUS.PAID })).toBe(true);
+  });
+
+  it('lehnt Entwürfe ab — es gibt noch kein Dokument, das aufzuheben wäre', () => {
+    expect(isCancellable({ ...base, status: INVOICE_STATUS.DRAFT })).toBe(false);
+  });
+
+  it('lehnt eine bereits stornierte Rechnung ab', () => {
+    expect(isCancellable({ ...base, cancelledByInvoiceId: 7 })).toBe(false);
+    expect(isCancellable({ ...base, status: INVOICE_STATUS.CANCELLED })).toBe(false);
+  });
+
+  it('lehnt das Storno eines Stornos ab', () => {
+    // Eine Wiederherstellung gibt es bewusst nicht.
+    expect(isCancellable({ ...base, documentType: DOCUMENT_TYPE.CANCELLATION })).toBe(false);
+  });
+});
+
+describe('cancellationNote', () => {
+  it('nennt Nummer und Datum der aufgehobenen Rechnung', () => {
+    expect(cancellationNote('2026-013', toIsoDate('2026-03-01'))).toBe(
+      'Storno zur Rechnung 2026-013 vom 01.03.2026.',
+    );
+  });
+});
+
+describe('invoiceListQuerySchema', () => {
+  it('setzt Sortierung, Richtung und Seite vor', () => {
+    expect(invoiceListQuerySchema.parse({})).toMatchObject({
+      sort: 'invoiceDate',
+      order: 'desc',
+      page: 1,
+      overdue: false,
+    });
+  });
+
+  it('liest den Überfällig-Filter aus der Abfragezeichenkette', () => {
+    // In einer URL steht "true", nicht ein Wahrheitswert.
+    expect(invoiceListQuerySchema.parse({ overdue: 'true' }).overdue).toBe(true);
+    expect(invoiceListQuerySchema.parse({ overdue: 'false' }).overdue).toBe(false);
+    expect(invoiceListQuerySchema.parse({}).overdue).toBe(false);
+  });
+
+  it('lehnt ein unbekanntes Sortierfeld ab, statt es zu ignorieren', () => {
+    // Sonst käme der Feldname ungeprüft in die Datenbankabfrage.
+    expect(invoiceListQuerySchema.safeParse({ sort: 'grossCents' }).success).toBe(false);
   });
 });

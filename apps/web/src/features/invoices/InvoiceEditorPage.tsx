@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -15,12 +15,18 @@ import {
 } from '@agentur-tool/shared';
 import { ApiRequestError, apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
+import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
+import { formErrorOf, isNotFound } from '../../lib/errorMessage.js';
+import { ErrorNotice } from '../../components/ui/ErrorNotice.js';
+import { LoadingNote } from '../../components/ui/LoadingNote.js';
 import { Button } from '../../components/ui/Button.js';
 import { Card } from '../../components/ui/Card.js';
 import { Field } from '../../components/ui/Field.js';
 import { Input } from '../../components/ui/Input.js';
 import { Select } from '../../components/ui/Select.js';
 import { Textarea } from '../../components/ui/Textarea.js';
+import { saveFile } from './saveFile.js';
+import { InvoiceLifecycleCard } from './InvoiceLifecycleCard.js';
 import { InvoiceItemsTable } from './InvoiceItemsTable.js';
 import { InvoicePreview } from './InvoicePreview.js';
 import { useInvoiceTotals } from './useInvoiceTotals.js';
@@ -116,6 +122,64 @@ export function InvoiceEditorPage(): JSX.Element {
     },
   });
 
+  /**
+   * Das PDF zum aktuellen Stand.
+   *
+   * Bei einem Entwurf gehen die Werte aus dem Formular mit — auch die noch
+   * nicht gespeicherten. Sonst müsste man vor jedem Blick auf den
+   * Seitenumbruch erst speichern, und genau dafür ist der Blick da. Eine
+   * ausgestellte Rechnung liefert der Server dagegen aus ihren eingefrorenen
+   * Daten; ein Formularstand wäre dort bedeutungslos.
+   */
+  const downloadPdf = useMutation({
+    mutationFn: (values: InvoiceFormValues) =>
+      editable
+        ? apiClient.downloadFromPost(
+            '/invoices/preview/pdf',
+            toInvoicePayload(values),
+            'Rechnungsentwurf.pdf',
+          )
+        : apiClient.download(`/invoices/${invoiceId}/pdf`, `Rechnung-${invoiceId}.pdf`),
+    onSuccess: saveFile,
+  });
+
+  /**
+   * Ausstellen: Nummer, eingefrorene Daten, abgelegtes PDF.
+   *
+   * Ungespeicherte Änderungen werden vorher gespeichert. Das Backend
+   * finalisiert, was in der Datenbank steht — ohne diesen Schritt bekäme man
+   * eine Rechnung, die anders aussieht als das Formular davor.
+   */
+  const finalize = useMutation({
+    mutationFn: async (values: InvoiceFormValues) => {
+      if (form.formState.isDirty) {
+        await apiClient.patch<InvoiceResponse>(`/invoices/${invoiceId}`, toInvoicePayload(values));
+      }
+      return apiClient.post<InvoiceResponse>(`/invoices/${invoiceId}/finalize`, {});
+    },
+    onSuccess: async (updated) => {
+      queryClient.setQueryData(queryKeys.invoices.byId(invoiceId), updated);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.invoices.all });
+      form.reset(toInvoiceFormValues(updated));
+    },
+  });
+
+  const unfinalize = useMutation({
+    mutationFn: () => apiClient.post<InvoiceResponse>(`/invoices/${invoiceId}/unfinalize`, {}),
+    onSuccess: async (updated) => {
+      queryClient.setQueryData(queryKeys.invoices.byId(invoiceId), updated);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.invoices.all });
+      form.reset(toInvoiceFormValues(updated));
+    },
+  });
+
+  const regeneratePdf = useMutation({
+    mutationFn: () => apiClient.post<InvoiceResponse>(`/invoices/${invoiceId}/regenerate-pdf`, {}),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(queryKeys.invoices.byId(invoiceId), updated);
+    },
+  });
+
   const remove = useMutation({
     mutationFn: () => apiClient.delete<void>(`/invoices/${invoiceId}`),
     onSuccess: async () => {
@@ -126,24 +190,82 @@ export function InvoiceEditorPage(): JSX.Element {
     },
   });
 
+  useDocumentTitle(invoice.data === undefined ? undefined : invoiceDisplayName(invoice.data));
+
+  const isDirty = form.formState.isDirty;
+
+  /**
+   * Warnt, bevor ein Fenster mit ungespeicherten Änderungen zugeht.
+   *
+   * Der Browser bestimmt den Wortlaut selbst — eigener Text wird seit Jahren
+   * ignoriert; was wir beitragen können, ist die Frage überhaupt zu stellen.
+   * Innerhalb der Anwendung reicht der Hinweis „Ungespeicherte Änderungen"
+   * neben den Knöpfen: Ein Wechsel auf eine andere Seite lässt sich mit dem
+   * Zurück-Knopf beheben, ein geschlossenes Fenster nicht.
+   */
+  useEffect(() => {
+    if (!isDirty) return;
+
+    const warn = (event: BeforeUnloadEvent): void => event.preventDefault();
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [isDirty]);
+
+  /**
+   * Strg+S (bzw. Cmd+S) speichert.
+   *
+   * Wer eine Rechnung tippt, hat die Hände auf der Tastatur; der Griff zur
+   * Maus für den Speichern-Knopf ist der einzige Bruch darin. Der Browser
+   * würde sonst seinen Seite-speichern-Dialog öffnen — für diese Anwendung
+   * sinnlos.
+   */
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key !== 's' || !(event.metaKey || event.ctrlKey)) return;
+      event.preventDefault();
+
+      if (invoice.data === undefined || !isEditable(invoice.data.status)) return;
+      setSaved(false);
+      void form.handleSubmit((values) => save.mutate(values))();
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [form, invoice.data, save]);
+
   if (deleted || invoice.isLoading) {
-    return <p className="text-sm text-slate-500">Rechnung wird geladen …</p>;
+    return <LoadingNote>Rechnung wird geladen …</LoadingNote>;
   }
 
   if (invoice.isError || invoice.data === undefined) {
-    return (
-      <div className="rounded-lg border border-rose-200 bg-rose-50 p-5">
-        <p className="text-sm text-rose-800">Diese Rechnung wurde nicht gefunden.</p>
+    return isNotFound(invoice.error) ? (
+      <div className="rounded-lg border border-slate-200 bg-white p-5">
+        <p className="text-sm text-slate-700">Diese Rechnung wurde nicht gefunden.</p>
         <Link to="/invoices" className="mt-3 inline-block text-sm font-medium underline">
           Zurück zur Übersicht
         </Link>
       </div>
+    ) : (
+      <ErrorNotice
+        error={invoice.error}
+        title="Die Rechnung konnte nicht geladen werden."
+        onRetry={() => void invoice.refetch()}
+      />
     );
   }
 
   const data = invoice.data;
   const editable = isEditable(data.status);
   const saveError = save.error instanceof ApiRequestError ? save.error : null;
+  const saveMessage = formErrorOf(save.error);
+  const finalizeMessage = formErrorOf(finalize.error);
+  const downloadMessage = formErrorOf(downloadPdf.error);
+  const finalizeError = finalize.error instanceof ApiRequestError ? finalize.error : null;
+  const unfinalizeError = unfinalize.error instanceof ApiRequestError ? unfinalize.error : null;
+
+  // Die Liste der fehlenden Pflichtangaben kommt als `details` aus der API —
+  // dieselbe Liste, die `checkFinalizable` im geteilten Paket erzeugt.
+  const finalizeProblems = finalizeError?.details ?? [];
   const fieldErrors = saveError?.fieldErrors();
 
   const errorFor = (field: string): string | undefined => fieldErrors?.[field];
@@ -190,7 +312,10 @@ export function InvoiceEditorPage(): JSX.Element {
           setSaved(false);
           save.mutate(values);
         })}
-        className="min-w-0 space-y-6"
+        // Erst ab 2xl steht die Vorschau daneben. Darunter bekäme das
+        // Formular sonst die volle Breite des breiten Layouts — ein
+        // Eingabefeld über 1400 Pixel ist nicht großzügig, sondern unlesbar.
+        className="min-w-0 max-w-5xl space-y-6 2xl:max-w-none"
         noValidate
       >
         <div>
@@ -204,7 +329,7 @@ export function InvoiceEditorPage(): JSX.Element {
             </span>
             <button
               type="button"
-              className="ml-auto rounded border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:bg-slate-50"
+              className="ml-auto rounded border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
               onClick={() => setShowPreview((open) => !open)}
               aria-pressed={showPreview}
             >
@@ -220,8 +345,55 @@ export function InvoiceEditorPage(): JSX.Element {
         {!editable && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
             <p className="text-sm text-amber-900">
-              Diese Rechnung ist finalisiert und kann nicht mehr geändert werden.
+              Diese Rechnung ist ausgestellt und kann nicht mehr geändert werden. Für eine Korrektur
+              wird sie storniert und neu ausgestellt.
             </p>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              {data.canUnfinalize ? (
+                <Button
+                  variant="secondary"
+                  disabled={unfinalize.isPending}
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        `Finalisierung von ${invoiceDisplayName(data)} zurücknehmen? ` +
+                          'Die Nummer wird wieder freigegeben und das PDF gelöscht.',
+                      )
+                    ) {
+                      unfinalize.mutate();
+                    }
+                  }}
+                >
+                  Finalisierung zurücknehmen
+                </Button>
+              ) : (
+                <p className="text-sm text-amber-800">{data.unfinalizeBlocker}</p>
+              )}
+              {unfinalizeError !== null && (
+                <span role="alert" className="text-sm text-rose-600">
+                  {unfinalizeError.message}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {!editable && <InvoiceLifecycleCard invoice={data} />}
+
+        {data.documentMissing && (
+          <div className="rounded-lg border border-rose-200 bg-rose-50 p-4">
+            <p className="text-sm text-rose-900">
+              Zu dieser Rechnung fehlt die PDF-Datei. Sie lässt sich aus den gespeicherten Daten
+              unverändert neu erzeugen.
+            </p>
+            <Button
+              variant="secondary"
+              className="mt-3"
+              disabled={regeneratePdf.isPending}
+              onClick={() => regeneratePdf.mutate()}
+            >
+              {regeneratePdf.isPending ? 'wird erzeugt …' : 'PDF neu erzeugen'}
+            </Button>
           </div>
         )}
 
@@ -437,17 +609,65 @@ export function InvoiceEditorPage(): JSX.Element {
               {save.isPending ? 'wird gespeichert …' : 'Speichern'}
             </Button>
           )}
+          {editable && (
+            <Button
+              disabled={finalize.isPending}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    'Rechnung ausstellen? Sie bekommt die nächste Rechnungsnummer und ist ' +
+                      'danach nicht mehr änderbar.',
+                  )
+                ) {
+                  finalize.mutate(form.getValues());
+                }
+              }}
+            >
+              {finalize.isPending ? 'wird ausgestellt …' : 'Rechnung ausstellen'}
+            </Button>
+          )}
+          <Button
+            variant="secondary"
+            disabled={downloadPdf.isPending}
+            onClick={() => downloadPdf.mutate(form.getValues())}
+          >
+            {downloadPdf.isPending ? 'PDF wird erzeugt …' : 'PDF herunterladen'}
+          </Button>
+          {downloadMessage !== null && (
+            <span role="alert" className="text-sm text-rose-600">
+              {downloadMessage}
+            </span>
+          )}
           {saved && !form.formState.isDirty && (
-            <span className="text-sm text-emerald-700">Gespeichert.</span>
+            <span role="status" className="text-sm text-emerald-700">
+              Gespeichert.
+            </span>
           )}
           {form.formState.isDirty && (
             <span className="text-sm text-slate-500">Ungespeicherte Änderungen</span>
           )}
-          {saveError !== null && Object.keys(fieldErrors ?? {}).length === 0 && (
-            <span className="text-sm text-rose-600">{saveError.message}</span>
+          {saveMessage !== null && (
+            <span role="alert" className="text-sm text-rose-600">
+              {saveMessage}
+            </span>
           )}
-          {saveError !== null && Object.keys(fieldErrors ?? {}).length > 0 && (
-            <span className="text-sm text-rose-600">Bitte die markierten Felder prüfen.</span>
+
+          {finalizeProblems.length > 0 && (
+            <div role="alert" className="w-full rounded-lg border border-rose-200 bg-rose-50 p-4">
+              <p className="text-sm font-medium text-rose-900">
+                Diese Angaben fehlen noch, damit die Rechnung ausgestellt werden kann:
+              </p>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-rose-800">
+                {finalizeProblems.map((problem) => (
+                  <li key={`${problem.field}-${problem.message}`}>{problem.message}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {finalizeMessage !== null && finalizeProblems.length === 0 && (
+            <span role="alert" className="text-sm text-rose-600">
+              {finalizeMessage}
+            </span>
           )}
 
           {editable && (
@@ -477,7 +697,7 @@ export function InvoiceEditorPage(): JSX.Element {
          * als das Fenster — dann käme man an das Ende des Formulars nicht
          * mehr heran.
          */
-        <aside className="min-w-0 2xl:sticky 2xl:top-6 2xl:max-h-[calc(100vh-3rem)] 2xl:overflow-y-auto">
+        <aside className="min-w-0 max-w-5xl 2xl:sticky 2xl:top-6 2xl:max-h-[calc(100vh-3rem)] 2xl:overflow-y-auto">
           <h2 className="mb-2 text-base font-semibold text-slate-900">Vorschau</h2>
           <p className="mb-3 text-xs text-slate-500">
             Zeigt dasselbe Template, das später das PDF erzeugt. Der Seitenumbruch entsteht erst

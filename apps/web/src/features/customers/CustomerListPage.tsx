@@ -9,9 +9,12 @@ import {
 } from '@agentur-tool/shared';
 import { apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
+import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
 import { useDebounced } from '../../lib/useDebounced.js';
 import { Button } from '../../components/ui/Button.js';
 import { EmptyState } from '../../components/ui/EmptyState.js';
+import { ErrorNotice } from '../../components/ui/ErrorNotice.js';
+import { LoadingNote } from '../../components/ui/LoadingNote.js';
 import { Input } from '../../components/ui/Input.js';
 
 const FILTERS: { value: CustomerArchiveFilter; label: string }[] = [
@@ -21,6 +24,8 @@ const FILTERS: { value: CustomerArchiveFilter; label: string }[] = [
 ];
 
 export function CustomerListPage(): JSX.Element {
+  useDocumentTitle('Kunden');
+
   const [search, setSearch] = useState('');
   const [archived, setArchived] = useState<CustomerArchiveFilter>(CUSTOMER_ARCHIVE_FILTER.ACTIVE);
   const debouncedSearch = useDebounced(search);
@@ -64,14 +69,15 @@ export function CustomerListPage(): JSX.Element {
           className="sm:max-w-sm"
           aria-label="Kunden durchsuchen"
         />
-        <div className="flex rounded-md border border-slate-300 bg-white p-0.5">
+        <div className="flex max-w-full overflow-x-auto rounded-md border border-slate-300 bg-white p-0.5">
           {FILTERS.map((filter) => (
             <button
               key={filter.value}
               type="button"
               onClick={() => setArchived(filter.value)}
               className={[
-                'rounded px-3 py-1 text-sm transition-colors',
+                'whitespace-nowrap rounded px-3 py-1 text-sm transition-colors',
+                'focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300',
                 archived === filter.value
                   ? 'bg-slate-900 text-white'
                   : 'text-slate-600 hover:bg-slate-50',
@@ -83,12 +89,14 @@ export function CustomerListPage(): JSX.Element {
         </div>
       </div>
 
-      {customers.isLoading && <p className="text-sm text-slate-500">Kunden werden geladen …</p>}
+      {customers.isLoading && <LoadingNote>Kunden werden geladen …</LoadingNote>}
 
       {customers.isError && (
-        <div className="rounded-lg border border-rose-200 bg-rose-50 p-5">
-          <p className="text-sm text-rose-800">Die Kundenliste konnte nicht geladen werden.</p>
-        </div>
+        <ErrorNotice
+          error={customers.error}
+          title="Die Kundenliste konnte nicht geladen werden."
+          onRetry={() => void customers.refetch()}
+        />
       )}
 
       {customers.isSuccess && !hasResults && (
@@ -114,8 +122,8 @@ export function CustomerListPage(): JSX.Element {
       )}
 
       {customers.isSuccess && hasResults && (
-        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+          <table className="w-full min-w-[36rem] text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-4 py-2 font-medium">Kunde</th>

@@ -123,7 +123,11 @@ export function LogoUpload({ logoUrl }: LogoUploadProps): JSX.Element {
               wahrscheinlich unscharf.
             </p>
           )}
-          {error !== null && <p className="mt-1 text-sm text-rose-600">{error}</p>}
+          {error !== null && (
+            <p role="alert" className="mt-1 text-sm text-rose-600">
+              {error}
+            </p>
+          )}
         </div>
       </div>
     </div>

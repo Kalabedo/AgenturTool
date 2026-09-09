@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   DISCOUNT_TYPE,
   DISCOUNT_TYPE_VALUES,
+  DOCUMENT_TYPE,
   DOCUMENT_TYPE_VALUES,
   INVOICE_STATUS,
   INVOICE_STATUS_VALUES,
@@ -9,10 +10,11 @@ import {
   type DocumentType,
   type InvoiceStatus,
 } from './enums.js';
-import { addDays, isoDateSchema, todayIso, type IsoDate } from './date.js';
+import { addDays, formatDateDe, isoDateSchema, todayIso, type IsoDate } from './date.js';
 import { parseCents, parsePercentToBasisPoints, parseQuantity } from './money.js';
 import { CURRENT_SNAPSHOT_VERSION, type BuyerData, type TotalsSnapshot } from './snapshots.js';
 import type { CustomerResponse } from './customer.js';
+import { pageQuerySchema, type PaginatedResponse } from './pagination.js';
 
 /**
  * Verträge für Rechnungen — in diesem Schritt ausschließlich für Entwürfe.
@@ -229,6 +231,40 @@ export const invoiceDraftInputSchema = z
     }
   });
 
+/**
+ * „Bezahlt am" setzen oder entfernen.
+ *
+ * Ein Kalendertag, kein Zeitstempel: Wann das Geld da war, steht auf dem
+ * Kontoauszug als Datum — und `PAID` ist in V1 genau dieses eine Feld (D7).
+ */
+export const invoicePaymentInputSchema = z.object({
+  paidAt: z
+    .union([z.string().trim(), z.null()])
+    .transform((value) => (value === null || value === '' ? null : value))
+    .pipe(isoDateSchema.nullable()),
+});
+export type InvoicePaymentPayload = z.output<typeof invoicePaymentInputSchema>;
+
+/**
+ * „Versendet" setzen oder entfernen.
+ *
+ * Anders als das Zahldatum ein echter Zeitstempel — er hält fest, wann die
+ * Rechnung das Haus verlassen hat. Fehlt die Angabe, gilt „jetzt": Der
+ * übliche Fall ist der Klick unmittelbar nach dem Versenden.
+ */
+export const invoiceSentInputSchema = z.object({
+  sentAt: z
+    .union([z.string().trim(), z.null()])
+    .optional()
+    .transform((value) => {
+      if (value === null) return null;
+      if (value === undefined || value === '') return new Date().toISOString();
+      return value;
+    })
+    .pipe(z.string().datetime().nullable()),
+});
+export type InvoiceSentPayload = z.output<typeof invoiceSentInputSchema>;
+
 export type InvoiceDraftInput = z.input<typeof invoiceDraftInputSchema>;
 export type InvoiceDraftPayload = z.output<typeof invoiceDraftInputSchema>;
 
@@ -272,6 +308,23 @@ export interface InvoiceResponse {
   /** Vom Server berechnet — maßgeblich, auch wenn das Formular mitrechnet. */
   totals: TotalsSnapshot;
 
+  /** Bei einem Storno: die Rechnung, die es aufhebt. */
+  cancelsInvoiceId: number | null;
+  /** Bei einer stornierten Rechnung: das Storno-Dokument dazu. */
+  cancelledByInvoiceId: number | null;
+
+  /** Ob ein gespeichertes PDF vorliegt (entsteht beim Finalisieren). */
+  hasDocument: boolean;
+  /**
+   * Datensatz vorhanden, Datei nicht — reparierbar, weil der Snapshot alles
+   * enthält, was das Dokument braucht (Abschnitt 13).
+   */
+  documentMissing: boolean;
+  /** Ob „Finalisierung zurücknehmen" gerade erlaubt ist. */
+  canUnfinalize: boolean;
+  /** Warum nicht — `null`, wenn es erlaubt ist. */
+  unfinalizeBlocker: string | null;
+
   issuedAt: string | null;
   sentAt: string | null;
   paidAt: string | null;
@@ -281,13 +334,57 @@ export interface InvoiceResponse {
   updatedAt: string;
 }
 
-export const invoiceListQuerySchema = z.object({
+/**
+ * Wonach sich die Übersicht sortieren lässt.
+ *
+ * Bewusst nur drei Felder, und alle drei sind Spalten in der Datenbank: Nach
+ * dem Betrag zu sortieren klingt naheliegend, hieße aber, alle Rechnungen zu
+ * laden und im Speicher zu sortieren — die Summe steht je nach Zustand in
+ * einem JSON-Snapshot oder wird berechnet. Das wäre eine Sortierung, die bei
+ * tausend Rechnungen langsam wird, für eine Frage, die man selten stellt.
+ */
+export const INVOICE_SORT_FIELD = {
+  INVOICE_DATE: 'invoiceDate',
+  DUE_DATE: 'dueDate',
+  NUMBER: 'number',
+} as const;
+export type InvoiceSortField = (typeof INVOICE_SORT_FIELD)[keyof typeof INVOICE_SORT_FIELD];
+export const INVOICE_SORT_FIELD_VALUES = Object.values(INVOICE_SORT_FIELD);
+
+export const INVOICE_SORT_LABELS: Record<InvoiceSortField, string> = {
+  invoiceDate: 'Rechnungsdatum',
+  dueDate: 'Fälligkeit',
+  number: 'Nummer',
+};
+
+export const SORT_ORDER = { ASC: 'asc', DESC: 'desc' } as const;
+export type SortOrder = (typeof SORT_ORDER)[keyof typeof SORT_ORDER];
+
+export const invoiceListQuerySchema = pageQuerySchema.extend({
   q: z.string().trim().max(200).optional(),
   status: z.enum(INVOICE_STATUS_VALUES as [InvoiceStatus, ...InvoiceStatus[]]).optional(),
+  documentType: z.enum(DOCUMENT_TYPE_VALUES as [DocumentType, ...DocumentType[]]).optional(),
   customerId: z.coerce.number().int().positive().optional(),
   year: z.coerce.number().int().min(1900).max(9999).optional(),
+
+  /**
+   * Nur überfällige: ausgestellt und Fälligkeitsdatum vorbei.
+   *
+   * Als Filter und nicht als Status, weil „überfällig" nichts ist, was
+   * gespeichert wird — es ergibt sich aus dem heutigen Datum (Abschnitt 8).
+   */
+  overdue: z
+    .union([z.boolean(), z.string()])
+    .optional()
+    .transform((value) => value === true || value === 'true' || value === '1'),
+
+  sort: z
+    .enum(INVOICE_SORT_FIELD_VALUES as [InvoiceSortField, ...InvoiceSortField[]])
+    .default(INVOICE_SORT_FIELD.INVOICE_DATE),
+  order: z.enum(['asc', 'desc']).default('desc'),
 });
 export type InvoiceListQuery = z.output<typeof invoiceListQuerySchema>;
+export type InvoiceListResponse = PaginatedResponse<InvoiceResponse>;
 
 /**
  * Kopiert die Kundendaten in die Rechnung (D9).
@@ -379,6 +476,29 @@ export function isOverdue(
   today: IsoDate = todayIso(),
 ): boolean {
   return invoice.status === INVOICE_STATUS.ISSUED && invoice.dueDate < today;
+}
+
+/**
+ * Ob zu dieser Rechnung ein Storno erzeugt werden darf.
+ *
+ * Ausgestellt oder bezahlt, noch nicht storniert, und selbst kein Storno:
+ * Ein Storno auf ein Storno wäre eine Wiederherstellung, und die gibt es
+ * bewusst nicht — wer die Leistung doch abrechnen will, dupliziert die
+ * Originalrechnung und stellt sie neu aus.
+ */
+export function isCancellable(
+  invoice: Pick<InvoiceResponse, 'status' | 'documentType' | 'cancelledByInvoiceId'>,
+): boolean {
+  return (
+    invoice.documentType === DOCUMENT_TYPE.INVOICE &&
+    (invoice.status === INVOICE_STATUS.ISSUED || invoice.status === INVOICE_STATUS.PAID) &&
+    invoice.cancelledByInvoiceId === null
+  );
+}
+
+/** Der Hinweistext, der auf dem Storno-Dokument steht. */
+export function cancellationNote(number: string, invoiceDate: IsoDate): string {
+  return `Storno zur Rechnung ${number} vom ${formatDateDe(invoiceDate)}.`;
 }
 
 export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {

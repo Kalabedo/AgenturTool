@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import type { TaxProfilePayload, TaxProfileResponse } from '@agentur-tool/shared';
-import { ApiRequestError, apiClient } from '../../../lib/apiClient.js';
+import { apiClient } from '../../../lib/apiClient.js';
+import { fieldErrorsOf, formErrorOf } from '../../../lib/errorMessage.js';
 import { queryKeys } from '../../../lib/queryKeys.js';
 import { TaxProfileForm, emptyTaxProfileValues } from './TaxProfileForm.js';
 
@@ -18,8 +19,6 @@ export function NewTaxProfilePage(): JSX.Element {
     },
   });
 
-  const error = create.error instanceof ApiRequestError ? create.error : null;
-
   return (
     <div className="space-y-6">
       <div>
@@ -34,10 +33,8 @@ export function NewTaxProfilePage(): JSX.Element {
         submitLabel="Profil anlegen"
         isSubmitting={create.isPending}
         onSubmit={(payload) => create.mutate(payload)}
-        fieldErrors={error?.fieldErrors()}
-        generalError={
-          error !== null && Object.keys(error.fieldErrors()).length === 0 ? error.message : null
-        }
+        fieldErrors={fieldErrorsOf(create.error)}
+        generalError={formErrorOf(create.error)}
         secondaryActions={
           <Link to="/settings/tax-profiles" className="text-sm text-slate-600 hover:underline">
             Abbrechen

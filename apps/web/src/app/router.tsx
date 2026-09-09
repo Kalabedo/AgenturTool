@@ -8,15 +8,20 @@ import { NewCustomerPage } from '../features/customers/NewCustomerPage';
 import { InvoiceEditorPage } from '../features/invoices/InvoiceEditorPage';
 import { InvoiceListPage } from '../features/invoices/InvoiceListPage';
 import { SettingsLayout } from '../features/settings/SettingsLayout';
+import { BackupPage } from '../features/settings/backup/BackupPage';
 import { EditTaxProfilePage } from '../features/settings/tax-profiles/EditTaxProfilePage';
 import { NewTaxProfilePage } from '../features/settings/tax-profiles/NewTaxProfilePage';
 import { TaxProfileListPage } from '../features/settings/tax-profiles/TaxProfileListPage';
 import { NotFoundPage } from './NotFoundPage';
+import { RouteErrorPage } from './RouteErrorPage';
 
 export const router = createBrowserRouter([
   {
     path: '/',
     element: <AppLayout />,
+    // Die Fehlerseite hängt am Layout, nicht an jeder Route: So bleiben
+    // Kopfzeile und Navigation stehen, und der Weg zurück ist ein Klick.
+    errorElement: <AppLayout error={<RouteErrorPage />} />,
     children: [
       { index: true, element: <DashboardPage /> },
       { path: 'invoices', element: <InvoiceListPage /> },
@@ -33,6 +38,7 @@ export const router = createBrowserRouter([
           { path: 'tax-profiles', element: <TaxProfileListPage /> },
           { path: 'tax-profiles/new', element: <NewTaxProfilePage /> },
           { path: 'tax-profiles/:id', element: <EditTaxProfilePage /> },
+          { path: 'backup', element: <BackupPage /> },
         ],
       },
       { path: '*', element: <NotFoundPage /> },

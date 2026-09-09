@@ -32,8 +32,25 @@ export class StorageConfig {
     return path.join(this.dataDir, 'tmp');
   }
 
+  /**
+   * Dateien ohne Datensatz landen hier statt im Papierkorb.
+   *
+   * Ein PDF, zu dem die Datenbank nichts weiß, ist entweder Rest eines
+   * abgebrochenen Vorgangs oder das Wertvollste, was vom Backup übrig ist.
+   * Gelöscht wird es deshalb nie automatisch.
+   */
+  get orphansDir(): string {
+    return path.join(this.dataDir, 'orphans');
+  }
+
   ensureDirectories(): void {
-    for (const dir of [this.dataDir, this.assetsDir, this.invoicesDir, this.tmpDir]) {
+    for (const dir of [
+      this.dataDir,
+      this.assetsDir,
+      this.invoicesDir,
+      this.tmpDir,
+      this.orphansDir,
+    ]) {
       fs.mkdirSync(dir, { recursive: true });
     }
   }

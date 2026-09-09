@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, type Invoice, type InvoiceItem } from '@prisma/client';
 import {
+  DOCUMENT_TYPE,
   INVOICE_EVENT_TYPE,
+  INVOICE_STATUS,
+  paginate,
+  todayIso,
+  unfinalizeBlocker,
   buyerDataSchema,
   calculateInvoice,
   customerToBuyerData,
@@ -15,6 +20,9 @@ import {
   type DocumentType,
   type InvoiceDraftPayload,
   type InvoiceListQuery,
+  type InvoiceListResponse,
+  type InvoicePaymentPayload,
+  type InvoiceSentPayload,
   type InvoiceResponse,
   type InvoiceStatus,
   type TotalsSnapshot,
@@ -22,22 +30,76 @@ import {
 import { ApiError } from '../common/api-error';
 import { PrismaService } from '../common/prisma.service';
 import { CompanyService } from '../company/company.service';
+import { InvoiceDocumentsService } from '../pdf/invoice-documents.service';
+import { InvoiceNumbersService } from './invoice-numbers.service';
 
-type InvoiceWithItems = Invoice & { items: InvoiceItem[] };
+type InvoiceWithItems = Invoice & {
+  items: InvoiceItem[];
+  documents: { path: string }[];
+  cancelledByInvoice: { id: number } | null;
+};
 
-const WITH_ITEMS = { include: { items: { orderBy: { position: 'asc' } } } } as const;
+/**
+ * Was zu einer Rechnung immer mitgeladen wird.
+ *
+ * Die beiden Beziehungen neben den Positionen kosten wenig und beantworten
+ * zwei Fragen, die die Oberfläche sonst einzeln stellen müsste: Gibt es ein
+ * gespeichertes PDF, und ist die Rechnung bereits storniert?
+ */
+const WITH_ITEMS = {
+  include: {
+    items: { orderBy: { position: 'asc' } },
+    documents: { select: { path: true } },
+    cancelledByInvoice: { select: { id: true } },
+  },
+} as const;
 
 @Injectable()
 export class InvoicesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly company: CompanyService,
+    private readonly numbers: InvoiceNumbersService,
+    private readonly documents: InvoiceDocumentsService,
   ) {}
 
-  async list(query: InvoiceListQuery): Promise<InvoiceResponse[]> {
+  /**
+   * Die Übersicht: filtern, sortieren, blättern.
+   *
+   * Alle Filter arbeiten auf Spalten, nicht auf berechneten Werten — auch
+   * „überfällig", das sich aus Status und Fälligkeitsdatum ergibt und
+   * deshalb ein Vergleich mit dem heutigen Tag ist statt eines gespeicherten
+   * Zustands (Abschnitt 8).
+   */
+  async list(query: InvoiceListQuery): Promise<InvoiceListResponse> {
+    const where = this.buildWhere(query);
+
+    const [total, invoices] = await this.prisma.$transaction([
+      this.prisma.invoice.count({ where }),
+      this.prisma.invoice.findMany({
+        where,
+        orderBy: this.buildOrder(query),
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+        ...WITH_ITEMS,
+      }),
+    ]);
+
+    const nextValues = await this.numbers.allNextValues();
+
+    return paginate(
+      invoices.map((invoice) => this.toResponse(invoice, nextValues)),
+      total,
+      query.page,
+      query.pageSize,
+    );
+  }
+
+  private buildWhere(query: InvoiceListQuery): Prisma.InvoiceWhereInput {
     const where: Prisma.InvoiceWhereInput = {};
 
     if (query.status !== undefined) where.status = query.status;
+    if (query.documentType !== undefined) where.documentType = query.documentType;
     if (query.customerId !== undefined) where.customerId = query.customerId;
     if (query.year !== undefined) {
       // Kalenderdaten liegen als ISO-Strings, deshalb Präfixvergleich statt
@@ -45,24 +107,35 @@ export class InvoicesService {
       where.invoiceDate = { startsWith: String(query.year) };
     }
 
+    if (query.overdue) {
+      // Bezahlte und stornierte Rechnungen sind nie überfällig, ein Entwurf
+      // erst recht nicht — überfällig ist genau eine offene ausgestellte
+      // Rechnung, deren Fälligkeitsdatum vorbei ist.
+      where.status = INVOICE_STATUS.ISSUED;
+      where.dueDate = { lt: todayIso() };
+    }
+
     const term = query.q?.trim();
     if (term !== undefined && term !== '') {
       where.OR = [{ number: { contains: term } }, { buyerData: { contains: term } }];
     }
 
-    const invoices = await this.prisma.invoice.findMany({
-      where,
-      // Entwürfe zuerst, danach absteigend nach Datum — was offen ist, sieht
-      // man zuerst.
-      orderBy: [{ invoiceDate: 'desc' }, { id: 'desc' }],
-      ...WITH_ITEMS,
-    });
+    return where;
+  }
 
-    return invoices.map((invoice) => this.toResponse(invoice));
+  /**
+   * Die Sortierung, immer mit `id` als letztem Kriterium.
+   *
+   * Ohne dieses zweite Kriterium wäre die Reihenfolge zweier Rechnungen mit
+   * demselben Datum nicht festgelegt — beim Blättern könnte dieselbe
+   * Rechnung dann auf Seite 1 und auf Seite 2 auftauchen oder ganz fehlen.
+   */
+  private buildOrder(query: InvoiceListQuery): Prisma.InvoiceOrderByWithRelationInput[] {
+    return [{ [query.sort]: query.order }, { id: query.order }];
   }
 
   async findById(id: number): Promise<InvoiceResponse> {
-    return this.toResponse(await this.load(id));
+    return this.respond(await this.load(id));
   }
 
   /**
@@ -130,7 +203,7 @@ export class InvoicesService {
       return created;
     });
 
-    return this.toResponse(invoice);
+    return this.respond(invoice);
   }
 
   /**
@@ -197,7 +270,7 @@ export class InvoicesService {
       return tx.invoice.findUniqueOrThrow({ where: { id }, ...WITH_ITEMS });
     });
 
-    return this.toResponse(invoice);
+    return this.respond(invoice);
   }
 
   /** Holt den aktuellen Stammdatenstand des Kunden in den Entwurf (D9). */
@@ -230,7 +303,168 @@ export class InvoicesService {
       ...WITH_ITEMS,
     });
 
-    return this.toResponse(invoice);
+    return this.respond(invoice);
+  }
+
+  /**
+   * „Bezahlt am" setzen oder entfernen (D7).
+   *
+   * `PAID` ist ein gespeicherter Status, aber ein abgeleiteter: Datum
+   * gesetzt heißt bezahlt, Datum leer heißt wieder offen. Deshalb gibt es
+   * keinen eigenen Endpunkt „als bezahlt markieren" — es gibt nur dieses
+   * eine Feld, und der Status folgt ihm.
+   */
+  async setPayment(id: number, payload: InvoicePaymentPayload): Promise<InvoiceResponse> {
+    const existing = await this.load(id);
+
+    if (existing.status === INVOICE_STATUS.DRAFT) {
+      throw ApiError.validation('Ein Entwurf ist noch nicht gestellt und kann nicht bezahlt sein.');
+    }
+    if (existing.status === INVOICE_STATUS.CANCELLED) {
+      throw ApiError.invoiceNotEditable(
+        'Diese Rechnung ist storniert; eine Zahlung lässt sich darauf nicht mehr vermerken.',
+      );
+    }
+
+    const invoice = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.invoice.update({
+        where: { id },
+        data: {
+          paidAt: payload.paidAt,
+          status: payload.paidAt === null ? INVOICE_STATUS.ISSUED : INVOICE_STATUS.PAID,
+        },
+        ...WITH_ITEMS,
+      });
+
+      await tx.invoiceEvent.create({
+        data: {
+          invoiceId: id,
+          type:
+            payload.paidAt === null
+              ? INVOICE_EVENT_TYPE.PAYMENT_CLEARED
+              : INVOICE_EVENT_TYPE.PAYMENT_SET,
+          metadata: JSON.stringify({ paidAt: payload.paidAt }),
+        },
+      });
+
+      return updated;
+    });
+
+    return this.respond(invoice);
+  }
+
+  /**
+   * „Versendet" setzen oder entfernen.
+   *
+   * Kein Status, sondern ein Zeitstempel: Versendet und bezahlt sind
+   * unabhängig voneinander, und eine versendete Rechnung ist weiterhin offen
+   * oder bezahlt — nicht „versendet".
+   */
+  async setSent(id: number, payload: InvoiceSentPayload): Promise<InvoiceResponse> {
+    const existing = await this.load(id);
+
+    if (existing.status === INVOICE_STATUS.DRAFT) {
+      throw ApiError.validation(
+        'Ein Entwurf hat noch keine Nummer und wird nicht versendet. Zuerst ausstellen.',
+      );
+    }
+
+    const invoice = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.invoice.update({
+        where: { id },
+        data: { sentAt: payload.sentAt === null ? null : new Date(payload.sentAt) },
+        ...WITH_ITEMS,
+      });
+
+      await tx.invoiceEvent.create({
+        data: {
+          invoiceId: id,
+          type: INVOICE_EVENT_TYPE.SENT_MARKED,
+          metadata: JSON.stringify({ note: payload.sentAt ?? 'zurückgenommen' }),
+        },
+      });
+
+      return updated;
+    });
+
+    return this.respond(invoice);
+  }
+
+  /**
+   * Legt einen neuen Entwurf mit den Inhalten dieser Rechnung an.
+   *
+   * Der Weg für wiederkehrende Leistungen und für die Korrektur nach einem
+   * Storno. Kopiert werden Empfänger, Positionen und Texte; **nicht**
+   * kopiert werden Nummer, Snapshots, Zahlungs- und Versandvermerke sowie
+   * die interne Notiz — sie gehören zu dem Vorgang, der abgeschlossen ist.
+   * Die Daten werden neu gesetzt: Ein Duplikat ist eine Rechnung von heute.
+   */
+  async duplicate(id: number): Promise<InvoiceResponse> {
+    const source = await this.load(id);
+
+    if (source.documentType === DOCUMENT_TYPE.CANCELLATION) {
+      throw ApiError.validation(
+        'Ein Storno lässt sich nicht duplizieren. Für eine Neuausstellung wird die ursprüngliche Rechnung dupliziert.',
+      );
+    }
+
+    const company = await this.company.get();
+    const customer =
+      source.customerId === null
+        ? null
+        : await this.prisma.customer.findUnique({ where: { id: source.customerId } });
+
+    const dates = defaultInvoiceDates(
+      resolvePaymentTermDays(
+        customer?.defaultPaymentTermDays ?? null,
+        company.defaultPaymentTermDays,
+      ),
+    );
+
+    const invoice = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.invoice.create({
+        data: {
+          customerId: source.customerId,
+          taxProfileId: source.taxProfileId,
+          currency: source.currency,
+          buyerData: source.buyerData,
+          invoiceDate: dates.invoiceDate,
+          serviceDate: dates.serviceDate,
+          dueDate: dates.dueDate,
+          notes: source.notes,
+          footerNote: source.footerNote,
+          items: {
+            create: source.items.map((item) => ({
+              position: item.position,
+              description: item.description,
+              quantity: item.quantity,
+              unit: item.unit,
+              unitPriceCents: item.unitPriceCents,
+              discountType: item.discountType,
+              discountValue: item.discountValue,
+              taxRateBasisPoints: item.taxRateBasisPoints,
+              lineDiscountCents: item.lineDiscountCents,
+              lineNetCents: item.lineNetCents,
+            })),
+          },
+        },
+        ...WITH_ITEMS,
+      });
+
+      await tx.invoiceEvent.create({
+        data: {
+          invoiceId: created.id,
+          type: INVOICE_EVENT_TYPE.CREATED,
+          metadata: JSON.stringify({
+            note: `Dupliziert aus ${source.number ?? `Entwurf #${source.id}`}`,
+          }),
+        },
+      });
+
+      return created;
+    });
+
+    return this.respond(invoice);
   }
 
   async deleteDraft(id: number): Promise<void> {
@@ -280,7 +514,18 @@ export class InvoicesService {
     return invoice;
   }
 
-  private toResponse(invoice: InvoiceWithItems): InvoiceResponse {
+  /**
+   * Antwort für eine einzelne Rechnung.
+   *
+   * Holt die Zählerstände nach, die `toResponse` für „darf zurückgenommen
+   * werden" braucht. Es sind wenige Zeilen — eine je Jahr —, deshalb ist die
+   * eine Abfrage billiger als ein Sonderweg.
+   */
+  private async respond(invoice: InvoiceWithItems): Promise<InvoiceResponse> {
+    return this.toResponse(invoice, await this.numbers.allNextValues());
+  }
+
+  private toResponse(invoice: InvoiceWithItems, nextValues: Map<number, number>): InvoiceResponse {
     const calculation = calculateInvoice(
       invoice.items.map((item) => ({
         quantity: item.quantity,
@@ -294,6 +539,15 @@ export class InvoicesService {
     // Bei einer finalisierten Rechnung gilt der eingefrorene Snapshot, nicht
     // die Neuberechnung — sonst änderte eine spätere Anpassung der
     // Rechenlogik rückwirkend ein ausgestelltes Dokument.
+    const blocker = unfinalizeBlocker({
+      status: invoice.status,
+      numberSeq: invoice.numberSeq,
+      sequenceNextValue:
+        invoice.numberYear === null ? null : (nextValues.get(invoice.numberYear) ?? null),
+      sentAt: invoice.sentAt?.toISOString() ?? null,
+      hasCancellation: invoice.cancelledByInvoice !== null,
+    });
+
     const totals: TotalsSnapshot =
       invoice.totalsSnapshot === null
         ? toTotalsSnapshot(calculation)
@@ -329,6 +583,17 @@ export class InvoicesService {
         lineNetCents: item.lineNetCents,
       })),
       totals,
+      cancelsInvoiceId: invoice.cancelsInvoiceId,
+      cancelledByInvoiceId: invoice.cancelledByInvoice?.id ?? null,
+
+      hasDocument: invoice.documents.length > 0,
+      // Ein Blick ins Dateisystem je Rechnung. Ein `stat` ist billig, und
+      // die Alternative wäre, dem Benutzer eine Datei anzubieten, die es
+      // nicht mehr gibt.
+      documentMissing: invoice.documents.some((document) => !this.documents.exists(document.path)),
+      canUnfinalize: blocker === null,
+      unfinalizeBlocker: blocker,
+
       issuedAt: invoice.issuedAt?.toISOString() ?? null,
       sentAt: invoice.sentAt?.toISOString() ?? null,
       paidAt: invoice.paidAt,
