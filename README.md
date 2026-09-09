@@ -3,7 +3,7 @@
 Eigene Rechnungssoftware — selbst gehostet, unabhängig von externen
 Rechnungsdiensten. Rechnungen erstellen, verwalten und als PDF exportieren.
 
-**Status:** Schritte 0 bis 13 umgesetzt — alltagstauglich, gesichert und deploy-fähig. Rechnungen lassen sich erfassen und ausstellen (Nummer, eingefrorene Stammdaten, abgelegtes PDF), als versendet und bezahlt vermerken, stornieren und duplizieren; die Übersicht filtert, sortiert und blättert, das Dashboard zeigt Entwürfe, offene und überfällige Rechnungen. Ein Backup umfasst Datenbank, Logos und alle PDFs in einer ZIP-Datei; der Weg zurück ist einmal wirklich getestet. Anmeldung (argon2id, serverseitige Sitzungen) lässt sich per `AUTH_ENABLED` zuschalten, und ein Docker-Image bringt API, Frontend und Chromium zusammen. Es fehlt nur noch die Politur (Schritt 14).
+**Status:** V1 — alle 15 Schritte der Roadmap sind umgesetzt. Rechnungen lassen sich erfassen und ausstellen (Nummer, eingefrorene Stammdaten, abgelegtes PDF), als versendet und bezahlt vermerken, stornieren und duplizieren; die Übersicht filtert, sortiert und blättert, das Dashboard zeigt Entwürfe, offene und überfällige Rechnungen. Ein Backup umfasst Datenbank, Logos und alle PDFs in einer ZIP-Datei; der Weg zurück ist einmal wirklich getestet. Anmeldung (argon2id, serverseitige Sitzungen) lässt sich per `AUTH_ENABLED` zuschalten, und ein Docker-Image bringt API, Frontend und Chromium zusammen. Die Oberfläche sagt, wenn etwas schiefgeht, lässt sich mit der Tastatur bedienen und läuft vom Telefon bis zum breiten Bildschirm.
 
 ## Architektur
 

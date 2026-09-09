@@ -21,9 +21,12 @@ import {
 } from '@agentur-tool/shared';
 import { apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
+import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
 import { useDebounced } from '../../lib/useDebounced.js';
 import { Button } from '../../components/ui/Button.js';
 import { EmptyState } from '../../components/ui/EmptyState.js';
+import { ErrorNotice } from '../../components/ui/ErrorNotice.js';
+import { LoadingNote } from '../../components/ui/LoadingNote.js';
 import { Input } from '../../components/ui/Input.js';
 import { Select } from '../../components/ui/Select.js';
 
@@ -53,6 +56,8 @@ function selectableYears(): number[] {
 }
 
 export function InvoiceListPage(): JSX.Element {
+  useDocumentTitle('Rechnungen');
+
   /*
    * Filter, Sortierung und Seite stehen in der Adresszeile, nicht im
    * Komponentenzustand. Damit ist eine Auswahl teilbar und überlebt das
@@ -151,11 +156,16 @@ export function InvoiceListPage(): JSX.Element {
   };
 
   const sortableHeader = (field: InvoiceSortField, label: string, align = 'left'): JSX.Element => (
-    <th className={`px-4 py-2 font-medium ${align === 'right' ? 'text-right' : ''}`}>
+    <th
+      className={`px-4 py-2 font-medium ${align === 'right' ? 'text-right' : ''}`}
+      // Ohne aria-sort ist eine sortierte Tabelle für einen Screenreader eine
+      // unsortierte: Der Pfeil daneben ist nur ein Zeichen ohne Bedeutung.
+      aria-sort={sort === field ? (order === 'asc' ? 'ascending' : 'descending') : 'none'}
+    >
       <button
         type="button"
         onClick={() => sortBy(field)}
-        className="inline-flex items-center gap-1 uppercase tracking-wide hover:text-slate-900"
+        className="inline-flex items-center gap-1 rounded uppercase tracking-wide hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
         aria-label={`Nach ${label} sortieren`}
       >
         {label}
@@ -168,7 +178,7 @@ export function InvoiceListPage(): JSX.Element {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">Rechnungen</h1>
           <p className="mt-1 text-sm text-slate-500">
@@ -190,14 +200,15 @@ export function InvoiceListPage(): JSX.Element {
           aria-label="Rechnungen durchsuchen"
         />
 
-        <div className="flex rounded-md border border-slate-300 bg-white p-0.5">
+        <div className="flex max-w-full overflow-x-auto rounded-md border border-slate-300 bg-white p-0.5">
           {FILTERS.map((entry) => (
             <button
               key={entry.value}
               type="button"
               onClick={() => update({ filter: entry.value })}
               className={[
-                'rounded px-3 py-1 text-sm transition-colors',
+                'whitespace-nowrap rounded px-3 py-1 text-sm transition-colors',
+                'focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300',
                 filter === entry.value
                   ? 'bg-slate-900 text-white'
                   : 'text-slate-600 hover:bg-slate-50',
@@ -223,7 +234,17 @@ export function InvoiceListPage(): JSX.Element {
         </Select>
       </div>
 
-      {invoices.isLoading && <p className="text-sm text-slate-500">Wird geladen …</p>}
+      {invoices.isLoading && <LoadingNote>Rechnungen werden geladen …</LoadingNote>}
+
+      {invoices.isError && (
+        <ErrorNotice
+          error={invoices.error}
+          title="Die Rechnungen konnten nicht geladen werden."
+          onRetry={() => void invoices.refetch()}
+        />
+      )}
+
+      {create.isError && <ErrorNotice error={create.error} title="Anlegen fehlgeschlagen" />}
 
       {invoices.isSuccess && !hasResults && (
         <EmptyState
@@ -247,8 +268,11 @@ export function InvoiceListPage(): JSX.Element {
 
       {result !== undefined && hasResults && (
         <div className="space-y-3">
-          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-            <table className="w-full text-sm">
+          {/* Sechs Spalten passen auf ein Telefon nicht nebeneinander. Statt
+              Spalten zu verstecken — und damit ausgerechnet Betrag oder Status —
+              darf die Tabelle in ihrem eigenen Kasten scrollen. */}
+          <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+            <table className="w-full min-w-[44rem] text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   {sortableHeader(INVOICE_SORT_FIELD.NUMBER, 'Rechnung')}
@@ -309,7 +333,7 @@ export function InvoiceListPage(): JSX.Element {
             </table>
           </div>
 
-          <div className="flex items-center justify-between text-sm text-slate-500">
+          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
             <span>{describeRange(result)}</span>
             {result.pageCount > 1 && (
               <div className="flex items-center gap-2">

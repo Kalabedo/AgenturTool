@@ -2,10 +2,13 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { TaxProfilePayload, TaxProfileResponse } from '@agentur-tool/shared';
-import { ApiRequestError, apiClient } from '../../../lib/apiClient.js';
+import { apiClient } from '../../../lib/apiClient.js';
 import { queryKeys } from '../../../lib/queryKeys.js';
 import { Button } from '../../../components/ui/Button.js';
 import { TaxProfileForm, toTaxProfileValues } from './TaxProfileForm.js';
+import { ErrorNotice } from '../../../components/ui/ErrorNotice.js';
+import { LoadingNote } from '../../../components/ui/LoadingNote.js';
+import { fieldErrorsOf, formErrorOf, isNotFound } from '../../../lib/errorMessage.js';
 
 export function EditTaxProfilePage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
@@ -55,13 +58,13 @@ export function EditTaxProfilePage(): JSX.Element {
   });
 
   if (deleted || profile.isLoading) {
-    return <p className="text-sm text-slate-500">Steuerprofil wird geladen …</p>;
+    return <LoadingNote>Steuerprofil wird geladen …</LoadingNote>;
   }
 
   if (profile.isError || profile.data === undefined) {
-    return (
-      <div className="rounded-lg border border-rose-200 bg-rose-50 p-5">
-        <p className="text-sm text-rose-800">Dieses Steuerprofil wurde nicht gefunden.</p>
+    return isNotFound(profile.error) ? (
+      <div className="rounded-lg border border-slate-200 bg-white p-5">
+        <p className="text-sm text-slate-700">Dieses Steuerprofil wurde nicht gefunden.</p>
         <Link
           to="/settings/tax-profiles"
           className="mt-3 inline-block text-sm font-medium underline"
@@ -69,14 +72,19 @@ export function EditTaxProfilePage(): JSX.Element {
           Zurück zur Übersicht
         </Link>
       </div>
+    ) : (
+      <ErrorNotice
+        error={profile.error}
+        title="Das Steuerprofil konnte nicht geladen werden."
+        onRetry={() => void profile.refetch()}
+      />
     );
   }
 
   const data = profile.data;
   const isArchived = data.archivedAt !== null;
   const usageCount = data.invoiceCount + data.customerCount;
-  const saveError = save.error instanceof ApiRequestError ? save.error : null;
-  const removeError = remove.error instanceof ApiRequestError ? remove.error : null;
+  const removeError = formErrorOf(remove.error);
 
   return (
     <div className="space-y-6">
@@ -121,12 +129,8 @@ export function EditTaxProfilePage(): JSX.Element {
           setSaved(false);
           save.mutate(payload);
         }}
-        fieldErrors={saveError?.fieldErrors()}
-        generalError={
-          saveError !== null && Object.keys(saveError.fieldErrors()).length === 0
-            ? saveError.message
-            : null
-        }
+        fieldErrors={fieldErrorsOf(save.error)}
+        generalError={formErrorOf(save.error)}
         secondaryActions={
           saved ? <span className="text-sm text-emerald-700">Gespeichert.</span> : null
         }
@@ -167,7 +171,9 @@ export function EditTaxProfilePage(): JSX.Element {
         </div>
 
         {removeError !== null && (
-          <p className="mt-3 text-sm text-rose-600">{removeError.message}</p>
+          <p role="alert" className="mt-3 text-sm text-rose-600">
+            {removeError}
+          </p>
         )}
       </div>
     </div>

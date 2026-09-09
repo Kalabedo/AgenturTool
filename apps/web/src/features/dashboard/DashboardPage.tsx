@@ -14,7 +14,10 @@ import {
 } from '@agentur-tool/shared';
 import { apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
+import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
 import { Card } from '../../components/ui/Card.js';
+import { ErrorNotice } from '../../components/ui/ErrorNotice.js';
+import { LoadingNote } from '../../components/ui/LoadingNote.js';
 
 /**
  * Einstieg in die Anwendung.
@@ -53,6 +56,7 @@ function StatTile({
       to={to}
       className={[
         'rounded-lg border p-5 transition-colors',
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300',
         tone === 'warning'
           ? 'border-amber-200 bg-amber-50 hover:bg-amber-100'
           : 'border-slate-200 bg-white hover:bg-slate-50',
@@ -65,6 +69,8 @@ function StatTile({
 }
 
 export function DashboardPage(): JSX.Element {
+  useDocumentTitle('Dashboard');
+
   const company = useQuery({
     queryKey: queryKeys.company,
     queryFn: () => apiClient.get<CompanyResponse>('/company'),
@@ -76,6 +82,15 @@ export function DashboardPage(): JSX.Element {
   const latest = useInvoiceQuery('pageSize=5&sort=invoiceDate&order=desc');
 
   const missing = company.data === undefined ? [] : missingCompanyFieldsForInvoicing(company.data);
+
+  /**
+   * Vier Abfragen, eine Meldung.
+   *
+   * Sie treffen denselben Server; fällt er aus, fallen alle aus. Vier
+   * gleichlautende rote Kästen untereinander wären nur lauter, nicht
+   * hilfreicher.
+   */
+  const failed = [drafts, open, overdue, latest, company].find((query) => query.isError);
 
   return (
     <div className="space-y-6">
@@ -100,6 +115,20 @@ export function DashboardPage(): JSX.Element {
             Jetzt ergänzen
           </Link>
         </div>
+      )}
+
+      {failed !== undefined && (
+        <ErrorNotice
+          error={failed.error}
+          title="Die Übersicht konnte nicht geladen werden."
+          onRetry={() => {
+            void drafts.refetch();
+            void open.refetch();
+            void overdue.refetch();
+            void latest.refetch();
+            void company.refetch();
+          }}
+        />
       )}
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -127,7 +156,10 @@ export function DashboardPage(): JSX.Element {
         <Card title="Überfällig" description="Ausgestellt, Fälligkeit vorbei, noch nicht bezahlt">
           <ul className="divide-y divide-slate-100 text-sm">
             {overdue.data?.items.map((invoice) => (
-              <li key={invoice.id} className="flex items-center justify-between gap-4 py-2">
+              <li
+                key={invoice.id}
+                className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2"
+              >
                 <Link to={`/invoices/${invoice.id}`} className="font-medium hover:underline">
                   {invoiceDisplayName(invoice)}
                 </Link>
@@ -145,7 +177,9 @@ export function DashboardPage(): JSX.Element {
       )}
 
       <Card title="Zuletzt" description="Die fünf neuesten Rechnungen">
-        {latest.data?.items.length === 0 ? (
+        {latest.isLoading ? (
+          <LoadingNote />
+        ) : latest.data?.items.length === 0 ? (
           <p className="text-sm text-slate-500">
             Noch keine Rechnung angelegt —{' '}
             <Link to="/invoices" className="underline">
@@ -156,7 +190,10 @@ export function DashboardPage(): JSX.Element {
         ) : (
           <ul className="divide-y divide-slate-100 text-sm">
             {latest.data?.items.map((invoice) => (
-              <li key={invoice.id} className="flex items-center justify-between gap-4 py-2">
+              <li
+                key={invoice.id}
+                className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2"
+              >
                 <Link to={`/invoices/${invoice.id}`} className="font-medium hover:underline">
                   {invoiceDisplayName(invoice)}
                 </Link>

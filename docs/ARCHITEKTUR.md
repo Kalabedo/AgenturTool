@@ -209,6 +209,71 @@ debounced aktualisiert.
 
 ---
 
+## 5a. Politur: Fehler, Leere, Tastatur, Breite (Schritt 14)
+
+Der letzte Schritt hat nichts Neues gebaut, sondern die Kanten abgerundet, an
+denen die Anwendung im Alltag hängen bleibt.
+
+### Fehler sagen, was los ist
+
+Vorher wurde ein Fehler beim Speichern über
+`error instanceof ApiRequestError ? … : null` ausgewertet. Das ist genau dann
+falsch, wenn es darauf ankommt: Ein abgestürzter Server wirft im Browser einen
+`TypeError`, keinen `ApiRequestError` — der Klick auf „Speichern" sah damit aus
+wie gar nichts. `formErrorOf` (in `lib/errorMessage.ts`) fängt beide Fälle und
+übersetzt „Failed to fetch" in einen Satz, der eine Handlung nahelegt.
+
+Dieselbe Trennung an anderer Stelle: Ein 404 heißt „diesen Datensatz gibt es
+nicht" und führt zurück zur Liste; alles andere heißt „gerade nicht erreichbar"
+und bekommt einen Knopf zum erneuten Versuch (`isNotFound`). Vorher stand bei
+einem abgestürzten Server „Dieser Kunde wurde nicht gefunden" — eine Auskunft,
+die jemanden glauben lässt, seine Daten seien weg.
+
+Zwei Netze darunter: Der Router bekommt eine `errorElement`-Seite innerhalb des
+Layouts (Kopfzeile und Navigation bleiben stehen, der Weg zurück ist ein
+Klick), und ganz außen steht eine `ErrorBoundary` als Klassenkomponente — die
+einzige Bauart, mit der React Renderfehler abfängt. Ohne sie bliebe ein weißes
+Fenster.
+
+### Leerzustände und Ladezustände sind zweierlei
+
+`latest.data?.items.length === 0` ist während des Ladens ebenfalls wahr — die
+Seite behauptete für einen Moment, es gebe nichts. Jetzt kommt zuerst der
+Ladehinweis (`LoadingNote`, `aria-live="polite"`), dann der Leerzustand mit dem
+nächsten Schritt darin (Anlegen, Filter zurücksetzen).
+
+### Tastatur
+
+- Ein Sprunglink „Zum Inhalt springen" als erste Station — sonst führt jeder
+  Seitenwechsel wieder durch die ganze Navigation.
+- Sichtbarer Fokus überall: Tailwinds Preflight nimmt Links den Rahmen des
+  Browsers weg, eine Regel in `index.css` gibt ihn zurück (`:focus-visible`,
+  nicht `:focus` — der Rahmen gehört zur Tastatur, nicht zur Maus).
+- Strg/Cmd+S speichert die Rechnung, statt den Seite-speichern-Dialog des
+  Browsers zu öffnen.
+- „Position hinzufügen" setzt den Cursor in die neue Zeile.
+- `aria-sort` an den sortierbaren Spalten (der Pfeil daneben ist für einen
+  Screenreader nur ein Zeichen), `role="alert"` an Fehlermeldungen.
+- Ein `beforeunload`-Hinweis, wenn ein Fenster mit ungespeicherten Änderungen
+  zugeht. Innerhalb der Anwendung genügt der sichtbare Hinweis: Ein
+  Seitenwechsel lässt sich zurücknehmen, ein geschlossenes Fenster nicht.
+
+### Breite
+
+Nachgemessen statt geschätzt: Ein Skript fährt mit Chromium jede Seite in 1440
+und in 390 Pixeln an und meldet, wenn das Dokument breiter wird als das
+Fenster. Zwei Stellen taten das — die Hauptnavigation und die Filterleiste der
+Rechnungsliste; beide scrollen jetzt in sich selbst, statt die Seite zu
+verbreitern. Breite Tabellen scrollen ebenso in ihrem eigenen Kasten: Spalten
+zu verstecken hieße, ausgerechnet Betrag oder Status zu verstecken.
+
+Der Rechnungseditor ist der Sonderfall. Seine Vorschau steht erst ab `2xl`
+daneben; darunter bekam das Formular trotzdem die volle Breite des breiten
+Layouts — Eingabefelder über 1400 Pixel. Jetzt bleibt es auf Lesebreite, bis
+die zweite Spalte tatsächlich erscheint.
+
+---
+
 ## 6. Backend-Architektur
 
 **NestJS**, Module entlang der Domäne:
@@ -1295,7 +1360,7 @@ Jeder Schritt endet mit etwas Lauffähigem.
 | 11 ✅ | Rechnungsübersicht mit Filter/Sortierung + Dashboard                       | Alltagstauglich                 |
 | 12 ✅ | Backup-Export/Restore + Restore-Test                                       | Datensicherheit                 |
 | 13 ✅ | Docker-Image + Auth-Modul (per `AUTH_ENABLED`), Tailscale-Anbindung        | deploy-fähig                    |
-| 14    | Politur: Fehlerbehandlung, Leerzustände, Tastaturbedienung, Responsiveness | V1                              |
+| 14 ✅ | Politur: Fehlerbehandlung, Leerzustände, Tastaturbedienung, Responsiveness | **V1**                          |
 
 Tests bewusst schmal, aber gezielt: Berechnungen und Nummernvergabe mit
 Unit-Tests, Finalisierung als Integrationstest, ein PDF-Snapshot-Test.
@@ -1420,9 +1485,16 @@ Womit wir prüfen, dass es wirklich funktioniert — nicht nur kompiliert.
 
 ---
 
-## Nächster Schritt
+## Stand
 
-Alle Entscheidungen sind getroffen (D1–D20). Die Implementierung folgt der
-Reihenfolge aus Abschnitt 20, beginnend mit Schritt 0 (Monorepo-Gerüst) und
-Schritt 1 (Schema + Migrationen). Neue Entscheidungen von Tragweite, die
-während der Umsetzung auftauchen, werden wie bisher vorher abgestimmt.
+Die Reihenfolge aus Abschnitt 20 ist abgearbeitet: Schritte 0 bis 14 sind
+umgesetzt, V1 steht. Was während der Umsetzung an Entscheidungen dazukam,
+steht in den Abschnitten mit Buchstaben-Suffix (5a, 13a, 16a) bei dem Thema,
+zu dem es gehört.
+
+Was bewusst offen bleibt, steht in Abschnitt 21 — unter anderem Mahnwesen,
+wiederkehrende Rechnungen, E-Rechnung (XRechnung/ZUGFeRD), Mehrbenutzerbetrieb
+und Auswertungen. Nichts davon ist verbaut: Die Snapshots tragen die Historie,
+das Auth-Modul kennt bereits eine `User`-Tabelle, und die Berechnung liegt in
+`shared` und nicht in der Oberfläche. Neue Entscheidungen von Tragweite werden
+wie bisher vorher abgestimmt.

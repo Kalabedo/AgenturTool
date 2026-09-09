@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { NavLink, Outlet, useMatch } from 'react-router-dom';
 
 import { LogoutButton } from '../features/auth/LogoutButton.js';
@@ -9,7 +10,12 @@ const NAVIGATION = [
   { to: '/settings/company', label: 'Einstellungen' },
 ];
 
-export function AppLayout(): JSX.Element {
+/**
+ * @param error Wird anstelle der Route gezeigt, wenn der Router einen Fehler
+ *   auffängt. Kopfzeile und Navigation bleiben dabei stehen — eine Fehlerseite
+ *   ohne Ausweg wäre eine Sackgasse.
+ */
+export function AppLayout({ error }: { error?: ReactNode }): JSX.Element {
   /**
    * Der Rechnungseditor bekommt mehr Breite als der Rest der Anwendung.
    *
@@ -21,17 +27,31 @@ export function AppLayout(): JSX.Element {
    * lesen.
    */
   const wideLayout = useMatch('/invoices/:id') !== null;
+  const width = wideLayout ? 'max-w-[104rem]' : 'max-w-5xl';
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* Erst mit der Tastatur sichtbar: Wer sich durch die Seite tabbt, soll
+          die Navigation überspringen können, statt sie auf jeder Seite erneut
+          durchlaufen zu müssen. */}
+      <a
+        href="#inhalt"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-slate-900 focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white"
+      >
+        Zum Inhalt springen
+      </a>
+
       <header className="border-b border-slate-200 bg-white">
         <div
-          className={`mx-auto flex items-center gap-8 px-6 py-4 ${
-            wideLayout ? 'max-w-[104rem]' : 'max-w-5xl'
-          }`}
+          className={`mx-auto flex flex-wrap items-center gap-x-8 gap-y-2 px-4 py-4 sm:px-6 ${width}`}
         >
           <span className="text-base font-semibold tracking-tight text-slate-900">AgenturTool</span>
-          <nav className="flex items-center gap-1">
+          {/* Auf schmalen Bildschirmen darf die Navigation waagerecht
+              scrollen, statt die Kopfzeile in vier Zeilen zu zerlegen. */}
+          <nav
+            aria-label="Hauptnavigation"
+            className="-mx-1 flex max-w-full items-center gap-1 overflow-x-auto px-1"
+          >
             {NAVIGATION.map((item) => (
               <NavLink
                 key={item.to}
@@ -39,7 +59,8 @@ export function AppLayout(): JSX.Element {
                 end={item.end}
                 className={({ isActive }) =>
                   [
-                    'rounded-md px-3 py-1.5 text-sm transition-colors',
+                    'whitespace-nowrap rounded-md px-3 py-1.5 text-sm transition-colors',
+                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300',
                     isActive
                       ? 'bg-slate-100 font-medium text-slate-900'
                       : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
@@ -54,8 +75,8 @@ export function AppLayout(): JSX.Element {
         </div>
       </header>
 
-      <main className={`mx-auto px-6 py-8 ${wideLayout ? 'max-w-[104rem]' : 'max-w-5xl'}`}>
-        <Outlet />
+      <main id="inhalt" className={`mx-auto px-4 py-8 sm:px-6 ${width}`}>
+        {error ?? <Outlet />}
       </main>
     </div>
   );

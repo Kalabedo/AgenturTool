@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatBytes, type BackupStatusResponse, type BackupSummary } from '@agentur-tool/shared';
-import { ApiRequestError, apiClient } from '../../../lib/apiClient.js';
+import { apiClient } from '../../../lib/apiClient.js';
 import { queryKeys } from '../../../lib/queryKeys.js';
 import { Button } from '../../../components/ui/Button.js';
 import { Card } from '../../../components/ui/Card.js';
 import { EmptyState } from '../../../components/ui/EmptyState.js';
+import { ErrorNotice } from '../../../components/ui/ErrorNotice.js';
+import { LoadingNote } from '../../../components/ui/LoadingNote.js';
 import { saveFile } from '../../invoices/saveFile.js';
 
 /**
@@ -39,9 +41,7 @@ export function BackupPage(): JSX.Element {
     onSuccess: saveFile,
   });
 
-  const error = [create.error, download.error].find(
-    (candidate): candidate is ApiRequestError => candidate instanceof ApiRequestError,
-  );
+  const error = [create.error, download.error].find((candidate) => candidate !== null);
 
   return (
     <div className="space-y-6">
@@ -65,13 +65,21 @@ export function BackupPage(): JSX.Element {
               </span>
             )}
           </div>
-          {error !== undefined && <p className="text-sm text-rose-600">{error.message}</p>}
+          {error !== undefined && error !== null && (
+            <ErrorNotice error={error} title="Das Backup ist fehlgeschlagen." />
+          )}
         </div>
       </Card>
 
       <Card title="Vorhandene Archive" description={status.data?.directory}>
-        {status.data === undefined ? (
-          <p className="text-sm text-slate-500">Wird geladen …</p>
+        {status.isError ? (
+          <ErrorNotice
+            error={status.error}
+            title="Die vorhandenen Archive konnten nicht gelesen werden."
+            onRetry={() => void status.refetch()}
+          />
+        ) : status.data === undefined ? (
+          <LoadingNote />
         ) : status.data.backups.length === 0 ? (
           <EmptyState
             title="Noch kein Backup"
@@ -80,7 +88,10 @@ export function BackupPage(): JSX.Element {
         ) : (
           <ul className="divide-y divide-slate-100 text-sm">
             {status.data.backups.map((entry) => (
-              <li key={entry.filename} className="flex items-center justify-between gap-4 py-2">
+              <li
+                key={entry.filename}
+                className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2"
+              >
                 <span className="truncate font-medium text-slate-900">{entry.filename}</span>
                 <span className="whitespace-nowrap text-slate-500">
                   {new Date(entry.createdAt).toLocaleString('de-DE')}

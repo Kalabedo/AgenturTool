@@ -2,10 +2,13 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { CustomerPayload, CustomerResponse } from '@agentur-tool/shared';
-import { ApiRequestError, apiClient } from '../../lib/apiClient.js';
+import { apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 import { Button } from '../../components/ui/Button.js';
 import { CustomerForm, toCustomerValues } from './CustomerForm.js';
+import { ErrorNotice } from '../../components/ui/ErrorNotice.js';
+import { LoadingNote } from '../../components/ui/LoadingNote.js';
+import { fieldErrorsOf, formErrorOf, isNotFound } from '../../lib/errorMessage.js';
 
 export function EditCustomerPage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
@@ -59,25 +62,32 @@ export function EditCustomerPage(): JSX.Element {
   });
 
   if (deleted || customer.isLoading) {
-    return <p className="text-sm text-slate-500">Kunde wird geladen …</p>;
+    return <LoadingNote>Kunde wird geladen …</LoadingNote>;
   }
 
   if (customer.isError || customer.data === undefined) {
-    return (
-      <div className="rounded-lg border border-rose-200 bg-rose-50 p-5">
-        <p className="text-sm text-rose-800">Dieser Kunde wurde nicht gefunden.</p>
+    // Zwei verschiedene Lagen, zwei verschiedene Antworten: „gibt es nicht"
+    // führt zurück zur Liste, „geht gerade nicht" lädt noch einmal.
+    return isNotFound(customer.error) ? (
+      <div className="rounded-lg border border-slate-200 bg-white p-5">
+        <p className="text-sm text-slate-700">Dieser Kunde wurde nicht gefunden.</p>
         <Link to="/customers" className="mt-3 inline-block text-sm font-medium underline">
           Zurück zur Kundenliste
         </Link>
       </div>
+    ) : (
+      <ErrorNotice
+        error={customer.error}
+        title="Der Kunde konnte nicht geladen werden."
+        onRetry={() => void customer.refetch()}
+      />
     );
   }
 
   const data = customer.data;
   const isArchived = data.archivedAt !== null;
   const canDelete = data.invoiceCount === 0;
-  const saveError = save.error instanceof ApiRequestError ? save.error : null;
-  const removeError = remove.error instanceof ApiRequestError ? remove.error : null;
+  const removeError = formErrorOf(remove.error);
 
   return (
     <div className="space-y-6">
@@ -120,12 +130,8 @@ export function EditCustomerPage(): JSX.Element {
           setSaved(false);
           save.mutate(payload);
         }}
-        fieldErrors={saveError?.fieldErrors()}
-        generalError={
-          saveError !== null && Object.keys(saveError.fieldErrors()).length === 0
-            ? saveError.message
-            : null
-        }
+        fieldErrors={fieldErrorsOf(save.error)}
+        generalError={formErrorOf(save.error)}
         secondaryActions={
           saved ? <span className="text-sm text-emerald-700">Gespeichert.</span> : null
         }
@@ -172,7 +178,9 @@ export function EditCustomerPage(): JSX.Element {
         </div>
 
         {removeError !== null && (
-          <p className="mt-3 text-sm text-rose-600">{removeError.message}</p>
+          <p role="alert" className="mt-3 text-sm text-rose-600">
+            {removeError}
+          </p>
         )}
       </div>
     </div>

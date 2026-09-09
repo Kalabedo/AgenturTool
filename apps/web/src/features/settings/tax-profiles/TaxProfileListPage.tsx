@@ -11,6 +11,8 @@ import { apiClient } from '../../../lib/apiClient.js';
 import { queryKeys } from '../../../lib/queryKeys.js';
 import { Button } from '../../../components/ui/Button.js';
 import { EmptyState } from '../../../components/ui/EmptyState.js';
+import { ErrorNotice } from '../../../components/ui/ErrorNotice.js';
+import { LoadingNote } from '../../../components/ui/LoadingNote.js';
 
 export function TaxProfileListPage(): JSX.Element {
   const [includeArchived, setIncludeArchived] = useState(false);
@@ -57,7 +59,15 @@ export function TaxProfileListPage(): JSX.Element {
         </div>
       )}
 
-      {profiles.isLoading && <p className="text-sm text-slate-500">Wird geladen …</p>}
+      {profiles.isLoading && <LoadingNote>Steuerprofile werden geladen …</LoadingNote>}
+
+      {profiles.isError && (
+        <ErrorNotice
+          error={profiles.error}
+          title="Die Steuerprofile konnten nicht geladen werden."
+          onRetry={() => void profiles.refetch()}
+        />
+      )}
 
       {profiles.isSuccess && profiles.data.length === 0 && (
         <EmptyState
@@ -72,8 +82,8 @@ export function TaxProfileListPage(): JSX.Element {
       )}
 
       {profiles.isSuccess && profiles.data.length > 0 && (
-        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+          <table className="w-full min-w-[40rem] text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-4 py-2 font-medium">Profil</th>

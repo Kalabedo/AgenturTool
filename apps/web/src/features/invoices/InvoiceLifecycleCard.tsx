@@ -176,7 +176,11 @@ export function InvoiceLifecycleCard({ invoice }: { invoice: InvoiceResponse }):
           )}
         </div>
 
-        {error !== undefined && <p className="text-sm text-rose-600">{error.message}</p>}
+        {error !== undefined && (
+          <p role="alert" className="text-sm text-rose-600">
+            {error.message}
+          </p>
+        )}
       </div>
     </Card>
   );

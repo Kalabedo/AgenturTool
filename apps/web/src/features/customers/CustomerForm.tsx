@@ -308,7 +308,11 @@ export function CustomerForm({
           {isSubmitting ? 'wird gespeichert …' : submitLabel}
         </Button>
         {secondaryActions}
-        {generalError != null && <span className="text-sm text-rose-600">{generalError}</span>}
+        {generalError != null && (
+          <span role="alert" className="text-sm text-rose-600">
+            {generalError}
+          </span>
+        )}
       </div>
     </form>
   );

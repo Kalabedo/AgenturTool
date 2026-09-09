@@ -68,7 +68,11 @@ export function LoginPage(): JSX.Element {
           />
         </Field>
 
-        {error !== null && <p className="text-sm text-rose-600">{error.message}</p>}
+        {error !== null && (
+          <p role="alert" className="text-sm text-rose-600">
+            {error.message}
+          </p>
+        )}
 
         <Button type="submit" className="w-full" disabled={login.isPending}>
           {login.isPending ? 'wird geprüft …' : 'Anmelden'}

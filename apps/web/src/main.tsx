@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from 'react-router-dom';
 import { router } from './app/router.js';
 import { AuthGate } from './features/auth/AuthGate.js';
+import { ErrorBoundary } from './app/ErrorBoundary.js';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -25,10 +26,12 @@ if (!container) {
 
 createRoot(container).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <AuthGate>
-        <RouterProvider router={router} />
-      </AuthGate>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthGate>
+          <RouterProvider router={router} />
+        </AuthGate>
+      </QueryClientProvider>
+    </ErrorBoundary>
   </StrictMode>,
 );

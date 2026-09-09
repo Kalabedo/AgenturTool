@@ -1,1 +1,32 @@
 @import 'tailwindcss';
+
+/*
+ * Ein sichtbarer Fokus, überall.
+ *
+ * Tailwinds Preflight nimmt dem Browser seinen eigenen Fokusrahmen weg;
+ * Knöpfe und Felder bringen ihren eigenen mit, Links im Fließtext aber nicht.
+ * Ohne diese Regel wüsste man beim Tabben durch eine Rechnungsliste nicht,
+ * wo man gerade steht. `:focus-visible` statt `:focus`: Der Rahmen soll bei
+ * der Tastatur erscheinen, nicht nach jedem Mausklick.
+ */
+a:focus-visible {
+  outline: 2px solid var(--color-slate-500);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/*
+ * Wer im Betriebssystem weniger Bewegung eingestellt hat, meint es ernst —
+ * für manche Menschen lösen Übergänge Übelkeit aus. Die Anwendung braucht
+ * ihre Animationen nicht, um verständlich zu sein.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -138,7 +138,7 @@ export function InvoiceItemsTable({
                         aria-label={`Position ${index + 1} nach oben`}
                         disabled={index === 0}
                         onClick={() => move(index, index - 1)}
-                        className="rounded px-1 text-xs text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:hover:bg-transparent"
+                        className="rounded px-1 text-xs text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 disabled:opacity-30 disabled:hover:bg-transparent"
                       >
                         ▲
                       </button>
@@ -147,7 +147,7 @@ export function InvoiceItemsTable({
                         aria-label={`Position ${index + 1} nach unten`}
                         disabled={index === fields.length - 1}
                         onClick={() => move(index, index + 1)}
-                        className="rounded px-1 text-xs text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:hover:bg-transparent"
+                        className="rounded px-1 text-xs text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 disabled:opacity-30 disabled:hover:bg-transparent"
                       >
                         ▼
                       </button>
@@ -156,7 +156,7 @@ export function InvoiceItemsTable({
                       type="button"
                       aria-label={`Position ${index + 1} entfernen`}
                       onClick={() => remove(index)}
-                      className="rounded px-1 text-xs text-slate-400 hover:bg-rose-50 hover:text-rose-700"
+                      className="rounded px-1 text-xs text-slate-400 hover:bg-rose-50 hover:text-rose-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-200"
                     >
                       entfernen
                     </button>
@@ -183,6 +183,7 @@ export function InvoiceItemsTable({
             // Der Steuersatz der letzten Zeile ist der wahrscheinlichste für
             // die nächste — sonst tippt man ihn bei jeder Position neu.
             const previous = form.getValues('items').at(-1);
+            const index = fields.length;
             append({
               description: '',
               quantity: '1',
@@ -191,6 +192,17 @@ export function InvoiceItemsTable({
               discountType: DISCOUNT_TYPE.PERCENT,
               discountValue: '',
               taxRateBasisPoints: previous?.taxRateBasisPoints ?? '19',
+            });
+
+            // Der Cursor springt in die neue Zeile. Ohne das müsste man nach
+            // jedem Klick erst wieder ins Feld tippen oder sich dorthin
+            // tabben — bei einer Rechnung mit zehn Positionen zehnmal.
+            // Über den Namen statt über eine Ref, weil react-hook-form die
+            // Felder selbst registriert und erst der nächste Frame sie kennt.
+            requestAnimationFrame(() => {
+              document
+                .querySelector<HTMLInputElement>(`input[name="items.${index}.description"]`)
+                ?.focus();
             });
           }}
         >
