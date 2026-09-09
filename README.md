@@ -53,6 +53,7 @@ Weitere Befehle:
 | ------------------------------- | ------------------------------------------------------------- |
 | `pnpm test`                     | Unit- und Integrationstests                                   |
 | `pnpm lint` / `pnpm typecheck`  | Statische Prüfungen                                           |
+| `pnpm verify`                   | Alle Prüfungen und den Produktions-Build ausführen            |
 | `pnpm build`                    | Alle Pakete und Apps bauen                                    |
 | `pnpm db:studio`                | Daten im Browser ansehen                                      |
 | `pnpm db:verify`                | Prüft, dass alle CHECK-Constraints und Trigger vorhanden sind |
@@ -89,7 +90,7 @@ Netzwerk hängen.
 ```bash
 cp .env.example .env      # AUTH_ENABLED=true setzen
 docker compose up -d --build
-docker compose exec app apps/api/node_modules/.bin/tsx apps/api/scripts/user.ts chef@example.de
+docker compose exec app pnpm user:set chef@example.de
 ```
 
 Das Image enthält API, gebautes Frontend und Chromium. Der gesamte Zustand —
@@ -97,14 +98,28 @@ Datenbank, Logos, PDFs, Sicherungen — liegt im Volume unter `/data` und
 überlebt jedes `docker compose up --build`. Der Port ist an `127.0.0.1` des
 Hosts gebunden: Erreichbar wird die Anwendung erst durch Tailscale.
 
+Beim ersten Start legt der Container die Datenbank und die benötigten
+Grundeinstellungen selbst an. Bei späteren Starts entsteht vor den Migrationen
+automatisch ein Backup im Volume. Solange noch kein Benutzer existiert, zeigt
+die Anmeldeseite den dafür nötigen Kommandozeilenbefehl statt eines rätselhaften
+Login-Fehlers.
+
 Aktualisieren:
 
 ```bash
-git pull && docker compose up -d --build
+git pull
+docker compose up -d --build
+docker compose ps             # Status muss „healthy" sein
 ```
 
-Migrationen laufen beim Start des Containers (`prisma migrate deploy`); ein
-Backup vorher schadet trotzdem nie: `docker compose exec app pnpm backup`.
+Migrationen und die idempotenten Grunddaten laufen beim Start des Containers.
+Vor einem größeren Update empfiehlt sich zusätzlich ein extern gespeichertes
+Archiv: `docker compose exec app pnpm backup`, anschließend im Browser unter
+„Einstellungen → Backup“ herunterladen.
+
+Die CI-Konfiguration unter `.github/workflows/ci.yml` prüft bei jedem Push und
+Pull Request Linting, Typen, Tests, Formatierung, Produktions-Build und den
+Docker-Build. Damit fällt ein nicht mehr deploybares Image vor dem Update auf.
 
 ### Tailscale
 

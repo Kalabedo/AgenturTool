@@ -26,6 +26,9 @@ import { isoDateSchema, type IsoDate } from './date.js';
 /** Länge eines Rasterschritts in Minuten. */
 export const TIME_GRID_MINUTES = 15;
 
+/** Genug für eine aussagekräftige Tätigkeit, begrenzt für Listen und PDFs. */
+export const TIME_ENTRY_DESCRIPTION_MAX_LENGTH = 500;
+
 /** Minuten eines Tages; 24:00 ist als Ende erlaubt, als Beginn nicht. */
 export const MINUTES_PER_DAY = 24 * 60;
 
@@ -142,6 +145,10 @@ const breakMinutesSchema = z
 const optionalText = z
   .string()
   .trim()
+  .max(
+    TIME_ENTRY_DESCRIPTION_MAX_LENGTH,
+    `Die Tätigkeit darf höchstens ${TIME_ENTRY_DESCRIPTION_MAX_LENGTH} Zeichen lang sein`,
+  )
   .transform((value) => (value === '' ? null : value))
   .nullable()
   .optional()

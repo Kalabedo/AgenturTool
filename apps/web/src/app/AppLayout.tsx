@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { NavLink, Outlet, useMatch } from 'react-router-dom';
+import { Link, NavLink, Outlet, useMatch } from 'react-router-dom';
 
 import { LogoutButton } from '../features/auth/LogoutButton.js';
 
@@ -46,7 +46,9 @@ export function AppLayout({ error }: { error?: ReactNode }): JSX.Element {
         <div
           className={`mx-auto flex flex-wrap items-center gap-x-8 gap-y-2 px-4 py-4 sm:px-6 ${width}`}
         >
-          <span className="text-base font-semibold tracking-tight text-slate-900">AgenturTool</span>
+          <Link to="/" className="text-base font-semibold tracking-tight text-slate-900">
+            AgenturTool
+          </Link>
           {/* Auf schmalen Bildschirmen darf die Navigation waagerecht
               scrollen, statt die Kopfzeile in vier Zeilen zu zerlegen. */}
           <nav

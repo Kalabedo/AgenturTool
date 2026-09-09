@@ -1,20 +1,52 @@
 import { createBrowserRouter } from 'react-router-dom';
 import { AppLayout } from './AppLayout';
-import { DashboardPage } from '../features/dashboard/DashboardPage';
-import { CompanyPage } from '../features/settings/company/CompanyPage';
-import { CustomerListPage } from '../features/customers/CustomerListPage';
-import { EditCustomerPage } from '../features/customers/EditCustomerPage';
-import { NewCustomerPage } from '../features/customers/NewCustomerPage';
-import { InvoiceEditorPage } from '../features/invoices/InvoiceEditorPage';
-import { InvoiceListPage } from '../features/invoices/InvoiceListPage';
-import { TimeTrackingPage } from '../features/time-tracking/TimeTrackingPage';
 import { SettingsLayout } from '../features/settings/SettingsLayout';
-import { BackupPage } from '../features/settings/backup/BackupPage';
-import { EditTaxProfilePage } from '../features/settings/tax-profiles/EditTaxProfilePage';
-import { NewTaxProfilePage } from '../features/settings/tax-profiles/NewTaxProfilePage';
-import { TaxProfileListPage } from '../features/settings/tax-profiles/TaxProfileListPage';
 import { NotFoundPage } from './NotFoundPage';
 import { RouteErrorPage } from './RouteErrorPage';
+
+// Die Seiten werden erst bei ihrer ersten Navigation geladen. Besonders der
+// Rechnungseditor bringt das vollständige Druck-Template mit; ohne diese
+// Trennung müsste selbst die Anmeldeseite den größten Teil der Anwendung
+// herunterladen.
+const dashboardPage = async () => ({
+  Component: (await import('../features/dashboard/DashboardPage')).DashboardPage,
+});
+const invoiceListPage = async () => ({
+  Component: (await import('../features/invoices/InvoiceListPage')).InvoiceListPage,
+});
+const invoiceEditorPage = async () => ({
+  Component: (await import('../features/invoices/InvoiceEditorPage')).InvoiceEditorPage,
+});
+const timeTrackingPage = async () => ({
+  Component: (await import('../features/time-tracking/TimeTrackingPage')).TimeTrackingPage,
+});
+const customerListPage = async () => ({
+  Component: (await import('../features/customers/CustomerListPage')).CustomerListPage,
+});
+const newCustomerPage = async () => ({
+  Component: (await import('../features/customers/NewCustomerPage')).NewCustomerPage,
+});
+const editCustomerPage = async () => ({
+  Component: (await import('../features/customers/EditCustomerPage')).EditCustomerPage,
+});
+const companyPage = async () => ({
+  Component: (await import('../features/settings/company/CompanyPage')).CompanyPage,
+});
+const taxProfileListPage = async () => ({
+  Component: (await import('../features/settings/tax-profiles/TaxProfileListPage'))
+    .TaxProfileListPage,
+});
+const newTaxProfilePage = async () => ({
+  Component: (await import('../features/settings/tax-profiles/NewTaxProfilePage'))
+    .NewTaxProfilePage,
+});
+const editTaxProfilePage = async () => ({
+  Component: (await import('../features/settings/tax-profiles/EditTaxProfilePage'))
+    .EditTaxProfilePage,
+});
+const backupPage = async () => ({
+  Component: (await import('../features/settings/backup/BackupPage')).BackupPage,
+});
 
 export const router = createBrowserRouter([
   {
@@ -24,23 +56,23 @@ export const router = createBrowserRouter([
     // Kopfzeile und Navigation stehen, und der Weg zurück ist ein Klick.
     errorElement: <AppLayout error={<RouteErrorPage />} />,
     children: [
-      { index: true, element: <DashboardPage /> },
-      { path: 'invoices', element: <InvoiceListPage /> },
-      { path: 'invoices/:id', element: <InvoiceEditorPage /> },
-      { path: 'time-tracking', element: <TimeTrackingPage /> },
-      { path: 'customers', element: <CustomerListPage /> },
-      { path: 'customers/new', element: <NewCustomerPage /> },
-      { path: 'customers/:id', element: <EditCustomerPage /> },
+      { index: true, lazy: dashboardPage },
+      { path: 'invoices', lazy: invoiceListPage },
+      { path: 'invoices/:id', lazy: invoiceEditorPage },
+      { path: 'time-tracking', lazy: timeTrackingPage },
+      { path: 'customers', lazy: customerListPage },
+      { path: 'customers/new', lazy: newCustomerPage },
+      { path: 'customers/:id', lazy: editCustomerPage },
       {
         path: 'settings',
         element: <SettingsLayout />,
         children: [
-          { index: true, element: <CompanyPage /> },
-          { path: 'company', element: <CompanyPage /> },
-          { path: 'tax-profiles', element: <TaxProfileListPage /> },
-          { path: 'tax-profiles/new', element: <NewTaxProfilePage /> },
-          { path: 'tax-profiles/:id', element: <EditTaxProfilePage /> },
-          { path: 'backup', element: <BackupPage /> },
+          { index: true, lazy: companyPage },
+          { path: 'company', lazy: companyPage },
+          { path: 'tax-profiles', lazy: taxProfileListPage },
+          { path: 'tax-profiles/new', lazy: newTaxProfilePage },
+          { path: 'tax-profiles/:id', lazy: editTaxProfilePage },
+          { path: 'backup', lazy: backupPage },
         ],
       },
       { path: '*', element: <NotFoundPage /> },

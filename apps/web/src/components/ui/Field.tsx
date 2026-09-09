@@ -1,4 +1,9 @@
-import type { ReactNode } from 'react';
+import { cloneElement, isValidElement, useId, type ReactElement } from 'react';
+
+interface FieldControlProps {
+  'aria-describedby'?: string;
+  'aria-required'?: boolean;
+}
 
 interface FieldProps {
   label: string;
@@ -6,7 +11,7 @@ interface FieldProps {
   error?: string;
   hint?: string;
   required?: boolean;
-  children: ReactNode;
+  children: ReactElement<FieldControlProps>;
   className?: string;
 }
 
@@ -19,19 +24,39 @@ export function Field({
   children,
   className = '',
 }: FieldProps): JSX.Element {
+  const generatedId = useId();
+  const messageId = `${htmlFor ?? generatedId}-message`;
+  const hasMessage = error !== undefined || hint !== undefined;
+  const control = isValidElement(children)
+    ? cloneElement(children, {
+        'aria-describedby': hasMessage
+          ? [children.props['aria-describedby'], messageId].filter(Boolean).join(' ')
+          : children.props['aria-describedby'],
+        'aria-required': required || children.props['aria-required'] || undefined,
+      })
+    : children;
+
   return (
     <div className={className}>
       <label htmlFor={htmlFor} className="block text-sm font-medium text-slate-700">
         {label}
-        {required && <span className="ml-0.5 text-rose-600">*</span>}
+        {required && (
+          <span aria-hidden="true" className="ml-0.5 text-rose-600">
+            *
+          </span>
+        )}
       </label>
-      <div className="mt-1">{children}</div>
+      <div className="mt-1">{control}</div>
       {/* Der Hinweis verschwindet, sobald ein Fehler dasteht — zwei Zeilen
           Text unter einem Feld lesen sich sonst wie ein Widerspruch. */}
       {error !== undefined ? (
-        <p className="mt-1 text-sm text-rose-600">{error}</p>
+        <p id={messageId} className="mt-1 text-sm text-rose-600">
+          {error}
+        </p>
       ) : hint !== undefined ? (
-        <p className="mt-1 text-sm text-slate-500">{hint}</p>
+        <p id={messageId} className="mt-1 text-sm text-slate-500">
+          {hint}
+        </p>
       ) : null}
     </div>
   );

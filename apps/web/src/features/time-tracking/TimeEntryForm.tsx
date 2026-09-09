@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   TIME_GRID_MINUTES,
+  TIME_ENTRY_DESCRIPTION_MAX_LENGTH,
   formatDuration,
   formatTimeOfDay,
   gridTimes,
@@ -232,6 +233,7 @@ export function TimeEntryForm({
             <Input
               id="description"
               placeholder="z. B. Konzept Startseite"
+              maxLength={TIME_ENTRY_DESCRIPTION_MAX_LENGTH}
               invalid={errorFor('description') !== undefined}
               {...form.register('description')}
             />

@@ -29,10 +29,34 @@ export class AuthConfig {
   readonly loginWindowMs: number;
 
   constructor(config: ConfigService) {
-    this.enabled = config.get<string>('AUTH_ENABLED') === 'true';
-    this.sessionTtlDays = Number(config.get<string>('SESSION_TTL_DAYS') ?? 30);
-    this.cookieSecure = config.get<string>('COOKIE_SECURE') !== 'false' && this.enabled;
-    this.maxLoginAttempts = Number(config.get<string>('LOGIN_MAX_ATTEMPTS') ?? 10);
-    this.loginWindowMs = Number(config.get<string>('LOGIN_WINDOW_MINUTES') ?? 15) * 60_000;
+    this.enabled = booleanSetting(config, 'AUTH_ENABLED', false);
+    this.sessionTtlDays = integerSetting(config, 'SESSION_TTL_DAYS', 30, 1, 365);
+    this.cookieSecure = booleanSetting(config, 'COOKIE_SECURE', this.enabled) && this.enabled;
+    this.maxLoginAttempts = integerSetting(config, 'LOGIN_MAX_ATTEMPTS', 10, 1, 100);
+    this.loginWindowMs = integerSetting(config, 'LOGIN_WINDOW_MINUTES', 15, 1, 24 * 60) * 60_000;
   }
+}
+
+function booleanSetting(config: ConfigService, key: string, fallback: boolean): boolean {
+  const value = config.get<string>(key);
+  if (value === undefined || value === '') return fallback;
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  throw new Error(`${key} muss "true" oder "false" sein (erhalten: ${value}).`);
+}
+
+function integerSetting(
+  config: ConfigService,
+  key: string,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+): number {
+  const raw = config.get<string>(key);
+  if (raw === undefined || raw === '') return fallback;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < minimum || value > maximum) {
+    throw new Error(`${key} muss eine ganze Zahl zwischen ${minimum} und ${maximum} sein.`);
+  }
+  return value;
 }

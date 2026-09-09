@@ -8,6 +8,7 @@ import { EmptyState } from '../../../components/ui/EmptyState.js';
 import { ErrorNotice } from '../../../components/ui/ErrorNotice.js';
 import { LoadingNote } from '../../../components/ui/LoadingNote.js';
 import { saveFile } from '../../invoices/saveFile.js';
+import { useDocumentTitle } from '../../../lib/useDocumentTitle.js';
 
 /**
  * Datensicherung.
@@ -22,6 +23,7 @@ import { saveFile } from '../../invoices/saveFile.js';
  * dessen Wirkung sich nicht zurücknehmen lässt.
  */
 export function BackupPage(): JSX.Element {
+  useDocumentTitle('Backup');
   const queryClient = useQueryClient();
 
   const status = useQuery({

@@ -40,6 +40,16 @@ async function createUser(service: AuthService, password: string): Promise<void>
 }
 
 describe('Anmeldung', () => {
+  it('weist unsichere oder ungültige Produktionswerte früh zurück', () => {
+    expect(() => configFor({ AUTH_ENABLED: 'yes' })).toThrow(/AUTH_ENABLED/u);
+    expect(() => configFor({ AUTH_ENABLED: 'true', SESSION_TTL_DAYS: '0' })).toThrow(
+      /SESSION_TTL_DAYS/u,
+    );
+    expect(() => configFor({ AUTH_ENABLED: 'true', LOGIN_MAX_ATTEMPTS: 'NaN' })).toThrow(
+      /LOGIN_MAX_ATTEMPTS/u,
+    );
+  });
+
   it('meldet mit richtigem Passwort an und legt eine Sitzung an', async () => {
     const service = new AuthService(prisma as never, configFor(ENABLED));
     await createUser(service, 'ein-langes-passwort');

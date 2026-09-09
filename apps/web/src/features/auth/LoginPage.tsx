@@ -15,7 +15,7 @@ import { Input } from '../../components/ui/Input.js';
  * Ein Zurücksetzen per E-Mail bräuchte einen Mailversand — und wäre ein
  * zweiter Weg hinein, den niemand bewacht.
  */
-export function LoginPage(): JSX.Element {
+export function LoginPage({ hasUser }: { hasUser: boolean }): JSX.Element {
   const queryClient = useQueryClient();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -38,13 +38,28 @@ export function LoginPage(): JSX.Element {
         className="w-full max-w-sm space-y-5 rounded-lg border border-slate-200 bg-white p-6"
         onSubmit={(event) => {
           event.preventDefault();
-          login.mutate();
+          if (hasUser) login.mutate();
         }}
       >
         <div>
           <h1 className="text-lg font-semibold text-slate-900">AgenturTool</h1>
-          <p className="mt-1 text-sm text-slate-500">Bitte anmelden.</p>
+          <p className="mt-1 text-sm text-slate-500">
+            {hasUser ? 'Bitte anmelden.' : 'Die Anmeldung muss einmalig eingerichtet werden.'}
+          </p>
         </div>
+
+        {!hasUser && (
+          <div role="status" className="rounded-md border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm font-medium text-amber-900">Noch kein Benutzer angelegt</p>
+            <p className="mt-1 text-sm text-amber-800">
+              Führe auf dem Server{' '}
+              <code className="break-all font-mono text-xs">
+                docker compose exec app pnpm user:set deine@email.de
+              </code>{' '}
+              aus und lade diese Seite danach neu.
+            </p>
+          </div>
+        )}
 
         <Field label="E-Mail" htmlFor="email">
           <Input
@@ -54,6 +69,7 @@ export function LoginPage(): JSX.Element {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             required
+            disabled={!hasUser}
           />
         </Field>
 
@@ -65,6 +81,7 @@ export function LoginPage(): JSX.Element {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             required
+            disabled={!hasUser}
           />
         </Field>
 
@@ -74,7 +91,7 @@ export function LoginPage(): JSX.Element {
           </p>
         )}
 
-        <Button type="submit" className="w-full" disabled={login.isPending}>
+        <Button type="submit" className="w-full" disabled={!hasUser || login.isPending}>
           {login.isPending ? 'wird geprüft …' : 'Anmelden'}
         </Button>
       </form>

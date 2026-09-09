@@ -125,6 +125,12 @@ describe('Eingabe eines Zeiteintrags', () => {
     expect(input({ description: '   ' }).description).toBeNull();
     expect(input({ description: ' Konzept ' }).description).toBe('Konzept');
   });
+
+  it('begrenzt die Tätigkeit auf eine PDF-taugliche Länge', () => {
+    expect(
+      timeEntryInputSchema.safeParse({ ...rawInput(), description: 'x'.repeat(501) }).success,
+    ).toBe(false);
+  });
 });
 
 function rawInput(): Record<string, unknown> {

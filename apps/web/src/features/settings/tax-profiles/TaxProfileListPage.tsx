@@ -9,12 +9,14 @@ import {
 } from '@agentur-tool/shared';
 import { apiClient } from '../../../lib/apiClient.js';
 import { queryKeys } from '../../../lib/queryKeys.js';
-import { Button } from '../../../components/ui/Button.js';
+import { buttonClassName } from '../../../components/ui/Button.js';
 import { EmptyState } from '../../../components/ui/EmptyState.js';
 import { ErrorNotice } from '../../../components/ui/ErrorNotice.js';
 import { LoadingNote } from '../../../components/ui/LoadingNote.js';
+import { useDocumentTitle } from '../../../lib/useDocumentTitle.js';
 
 export function TaxProfileListPage(): JSX.Element {
+  useDocumentTitle('Steuerprofile');
   const [includeArchived, setIncludeArchived] = useState(false);
 
   const profiles = useQuery({
@@ -36,8 +38,8 @@ export function TaxProfileListPage(): JSX.Element {
             möglich bleiben.
           </p>
         </div>
-        <Link to="/settings/tax-profiles/new">
-          <Button>Neues Profil</Button>
+        <Link to="/settings/tax-profiles/new" className={buttonClassName()}>
+          Neues Profil
         </Link>
       </div>
 
@@ -74,8 +76,8 @@ export function TaxProfileListPage(): JSX.Element {
           title="Keine Steuerprofile"
           description="Ohne Profil lässt sich später keine Rechnung erstellen."
           action={
-            <Link to="/settings/tax-profiles/new">
-              <Button>Neues Profil</Button>
+            <Link to="/settings/tax-profiles/new" className={buttonClassName()}>
+              Neues Profil
             </Link>
           }
         />

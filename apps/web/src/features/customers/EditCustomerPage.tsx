@@ -9,6 +9,7 @@ import { CustomerForm, toCustomerValues } from './CustomerForm.js';
 import { ErrorNotice } from '../../components/ui/ErrorNotice.js';
 import { LoadingNote } from '../../components/ui/LoadingNote.js';
 import { fieldErrorsOf, formErrorOf, isNotFound } from '../../lib/errorMessage.js';
+import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
 
 export function EditCustomerPage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
@@ -27,6 +28,7 @@ export function EditCustomerPage(): JSX.Element {
     queryFn: () => apiClient.get<CustomerResponse>(`/customers/${customerId}`),
     enabled: Number.isInteger(customerId) && !deleted,
   });
+  useDocumentTitle(customer.data?.companyName ?? 'Kunde');
 
   const invalidate = async (updated: CustomerResponse): Promise<void> => {
     queryClient.setQueryData(queryKeys.customers.byId(customerId), updated);

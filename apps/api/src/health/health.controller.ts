@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { Public } from '../auth/public.decorator';
 
@@ -16,16 +16,18 @@ export class HealthController {
   @Public()
   @Get()
   async check(): Promise<{ status: string; database: string; timestamp: string }> {
-    let database = 'ok';
     try {
       await this.prisma.$queryRaw`SELECT 1`;
     } catch {
-      database = 'unreachable';
+      // Ein 200er wäre für Docker und Reverse Proxys weiterhin „gesund".
+      // 503 sorgt dafür, dass kein Verkehr an einen Prozess mit unerreichbarer
+      // Datenbank geschickt wird.
+      throw new ServiceUnavailableException('Die Datenbank ist nicht erreichbar.');
     }
 
     return {
-      status: database === 'ok' ? 'ok' : 'degraded',
-      database,
+      status: 'ok',
+      database: 'ok',
       timestamp: new Date().toISOString(),
     };
   }

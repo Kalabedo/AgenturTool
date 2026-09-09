@@ -13,23 +13,22 @@ const VARIANTS: Record<Variant, string> = {
   danger: 'border border-rose-300 bg-white text-rose-700 hover:bg-rose-50 focus:ring-rose-200',
 };
 
+/** Dieselbe Optik für echte Links — ohne einen Button in einen Link zu verschachteln. */
+export function buttonClassName(variant: Variant = 'primary', className = ''): string {
+  return [
+    'inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium',
+    'transition-colors focus:outline-none focus:ring-2',
+    'disabled:cursor-not-allowed disabled:opacity-50',
+    VARIANTS[variant],
+    className,
+  ].join(' ');
+}
+
 export function Button({
   variant = 'primary',
   className = '',
   type = 'button',
   ...props
 }: ButtonProps): JSX.Element {
-  return (
-    <button
-      type={type}
-      className={[
-        'inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium',
-        'transition-colors focus:outline-none focus:ring-2',
-        'disabled:cursor-not-allowed disabled:opacity-50',
-        VARIANTS[variant],
-        className,
-      ].join(' ')}
-      {...props}
-    />
-  );
+  return <button type={type} className={buttonClassName(variant, className)} {...props} />;
 }

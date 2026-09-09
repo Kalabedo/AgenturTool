@@ -5,8 +5,10 @@ import { apiClient } from '../../../lib/apiClient.js';
 import { fieldErrorsOf, formErrorOf } from '../../../lib/errorMessage.js';
 import { queryKeys } from '../../../lib/queryKeys.js';
 import { TaxProfileForm, emptyTaxProfileValues } from './TaxProfileForm.js';
+import { useDocumentTitle } from '../../../lib/useDocumentTitle.js';
 
 export function NewTaxProfilePage(): JSX.Element {
+  useDocumentTitle('Neues Steuerprofil');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 

@@ -9,6 +9,7 @@ import { TaxProfileForm, toTaxProfileValues } from './TaxProfileForm.js';
 import { ErrorNotice } from '../../../components/ui/ErrorNotice.js';
 import { LoadingNote } from '../../../components/ui/LoadingNote.js';
 import { fieldErrorsOf, formErrorOf, isNotFound } from '../../../lib/errorMessage.js';
+import { useDocumentTitle } from '../../../lib/useDocumentTitle.js';
 
 export function EditTaxProfilePage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
@@ -23,6 +24,7 @@ export function EditTaxProfilePage(): JSX.Element {
     queryFn: () => apiClient.get<TaxProfileResponse>(`/tax-profiles/${profileId}`),
     enabled: Number.isInteger(profileId) && !deleted,
   });
+  useDocumentTitle(profile.data?.name ?? 'Steuerprofil');
 
   const refresh = async (updated: TaxProfileResponse): Promise<void> => {
     queryClient.setQueryData(queryKeys.taxProfiles.byId(profileId), updated);

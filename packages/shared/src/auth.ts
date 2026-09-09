@@ -30,6 +30,8 @@ export interface AuthUser {
  */
 export interface AuthSessionResponse {
   enabled: boolean;
+  /** Ob mindestens ein Benutzer angelegt wurde; verhindert eine Login-Sackgasse. */
+  hasUser: boolean;
   user: AuthUser | null;
 }
 

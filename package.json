@@ -9,13 +9,18 @@
   },
   "scripts": {
     "dev": "pnpm --parallel --filter \"./packages/**\" --filter \"./apps/**\" dev",
-    "build": "pnpm --filter \"./packages/**\" build && pnpm --filter \"./apps/**\" build",
+    "generate": "pnpm --filter @agentur-tool/api exec prisma generate",
+    "build:packages": "pnpm --filter \"./packages/**\" build",
+    "prepare:workspace": "pnpm generate && pnpm build:packages",
+    "build": "pnpm prepare:workspace && pnpm --filter \"./apps/**\" build",
+    "pretest": "pnpm prepare:workspace",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "pnpm prepare:workspace && pnpm -r typecheck",
+    "verify": "pnpm prepare:workspace && pnpm lint && pnpm -r typecheck && vitest run && pnpm --filter \"./apps/**\" build && pnpm format:check",
     "db:migrate": "pnpm --filter @agentur-tool/api db:migrate",
     "db:seed": "pnpm --filter @agentur-tool/api db:seed",
     "backup": "pnpm --filter @agentur-tool/api backup",
@@ -37,6 +42,10 @@
     "vitest": "^2.1.0"
   },
   "pnpm": {
+    "overrides": {
+      "deepmerge-ts": "8.0.2",
+      "multer": "2.3.0"
+    },
     "onlyBuiltDependencies": [
       "@nestjs/core",
       "@prisma/client",

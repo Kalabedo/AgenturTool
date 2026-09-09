@@ -4,6 +4,8 @@ import type { AuthSessionResponse } from '@agentur-tool/shared';
 import { SESSION_EXPIRED_EVENT, apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 import { LoginPage } from './LoginPage.js';
+import { Button } from '../../components/ui/Button.js';
+import { ErrorNotice } from '../../components/ui/ErrorNotice.js';
 
 /**
  * Entscheidet, ob die Anwendung oder das Anmeldeformular erscheint.
@@ -36,11 +38,30 @@ export function AuthGate({ children }: { children: JSX.Element }): JSX.Element {
   }, [queryClient]);
 
   if (session.isLoading) {
-    return <div className="p-6 text-sm text-slate-500">Wird geladen …</div>;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
+        <p aria-live="polite" className="text-sm text-slate-500">
+          AgenturTool wird geladen …
+        </p>
+      </div>
+    );
+  }
+
+  if (session.isError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
+        <div className="w-full max-w-md space-y-4">
+          <ErrorNotice error={session.error} title="AgenturTool ist gerade nicht erreichbar." />
+          <Button variant="secondary" onClick={() => void session.refetch()}>
+            Erneut verbinden
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   if (session.data?.enabled === true && session.data.user === null) {
-    return <LoginPage />;
+    return <LoginPage hasUser={session.data.hasUser} />;
   }
 
   return children;

@@ -19,6 +19,7 @@ import { LogoUpload } from './LogoUpload.js';
 import { ErrorNotice } from '../../../components/ui/ErrorNotice.js';
 import { formErrorOf } from '../../../lib/errorMessage.js';
 import { LoadingNote } from '../../../components/ui/LoadingNote.js';
+import { useDocumentTitle } from '../../../lib/useDocumentTitle.js';
 
 /**
  * Der Eingabetyp des geteilten Schemas ist zugleich der Formulartyp.
@@ -51,6 +52,7 @@ function toFormValues(company: CompanyResponse): FormValues {
 }
 
 export function CompanyPage(): JSX.Element {
+  useDocumentTitle('Unternehmensdaten');
   const queryClient = useQueryClient();
   const [saved, setSaved] = useState(false);
 

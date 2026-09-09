@@ -11,7 +11,7 @@ import { apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
 import { useDebounced } from '../../lib/useDebounced.js';
-import { Button } from '../../components/ui/Button.js';
+import { Button, buttonClassName } from '../../components/ui/Button.js';
 import { EmptyState } from '../../components/ui/EmptyState.js';
 import { ErrorNotice } from '../../components/ui/ErrorNotice.js';
 import { LoadingNote } from '../../components/ui/LoadingNote.js';
@@ -55,8 +55,8 @@ export function CustomerListPage(): JSX.Element {
             übernommen und lassen sich dort einmalig anpassen.
           </p>
         </div>
-        <Link to="/customers/new">
-          <Button>Neuer Kunde</Button>
+        <Link to="/customers/new" className={buttonClassName()}>
+          Neuer Kunde
         </Link>
       </div>
 
@@ -113,8 +113,8 @@ export function CustomerListPage(): JSX.Element {
                 Suche zurücksetzen
               </Button>
             ) : (
-              <Link to="/customers/new">
-                <Button>Neuer Kunde</Button>
+              <Link to="/customers/new" className={buttonClassName()}>
+                Neuer Kunde
               </Link>
             )
           }

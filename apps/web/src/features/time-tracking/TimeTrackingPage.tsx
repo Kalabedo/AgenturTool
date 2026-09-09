@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import {
   CUSTOMER_ARCHIVE_FILTER,
   addDays,
@@ -19,7 +20,7 @@ import { apiClient } from '../../lib/apiClient.js';
 import { fieldErrorsOf, formErrorOf } from '../../lib/errorMessage.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
-import { Button } from '../../components/ui/Button.js';
+import { Button, buttonClassName } from '../../components/ui/Button.js';
 import { Card } from '../../components/ui/Card.js';
 import { EmptyState } from '../../components/ui/EmptyState.js';
 import { ErrorNotice } from '../../components/ui/ErrorNotice.js';
@@ -100,7 +101,10 @@ export function TimeTrackingPage(): JSX.Element {
     placeholderData: (previous) => previous,
   });
 
-  const items = useMemo(() => entries.data ?? [], [entries.data]);
+  const items = useMemo(
+    () => (rangeIsValid ? (entries.data ?? []) : []),
+    [entries.data, rangeIsValid],
+  );
   const summary = useMemo(() => summarizeTimeEntries(items), [items]);
 
   /** Nach dem Speichern zurück zum leeren Formular — der nächste Tag folgt gleich. */
@@ -116,7 +120,8 @@ export function TimeTrackingPage(): JSX.Element {
         : apiClient.patch<TimeEntryResponse>(`/time-entries/${editingId}`, payload),
     onSuccess: async (entry) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.timeEntries.all });
-      resetForm(entry.date);
+      setEditingId(null);
+      setValues(emptyTimeEntryValues(entry.date, String(entry.customerId)));
     },
   });
 
@@ -184,6 +189,7 @@ export function TimeTrackingPage(): JSX.Element {
               {customerOptions.map((customer) => (
                 <option key={customer.id} value={customer.id}>
                   {customer.companyName}
+                  {customer.archivedAt === null ? '' : ' (archiviert)'}
                 </option>
               ))}
             </Select>
@@ -221,12 +227,27 @@ export function TimeTrackingPage(): JSX.Element {
         )}
       </Card>
 
+      {customers.isLoading && <LoadingNote>Kunden werden geladen …</LoadingNote>}
+
+      {customers.isError && (
+        <ErrorNotice
+          error={customers.error}
+          title="Die Kundenauswahl konnte nicht geladen werden."
+          onRetry={() => void customers.refetch()}
+        />
+      )}
+
       {customers.isSuccess && customerOptions.length === 0 ? (
         <EmptyState
           title="Noch keine Kunden"
           description="Zeiten werden immer für einen Kunden erfasst. Lege zuerst einen Kunden an."
+          action={
+            <Link to="/customers/new" className={buttonClassName()}>
+              Ersten Kunden anlegen
+            </Link>
+          }
         />
-      ) : (
+      ) : customers.isSuccess ? (
         <TimeEntryForm
           values={values}
           customers={customerOptions}
@@ -236,7 +257,7 @@ export function TimeTrackingPage(): JSX.Element {
           onCancelEdit={() => resetForm()}
           fieldErrors={fieldErrorsOf(save.error)}
         />
-      )}
+      ) : null}
 
       {formErrorOf(save.error) !== null && (
         <ErrorNotice error={save.error} title="Der Eintrag konnte nicht gespeichert werden." />
@@ -256,7 +277,7 @@ export function TimeTrackingPage(): JSX.Element {
         />
       )}
 
-      {entries.isSuccess && items.length === 0 && (
+      {rangeIsValid && entries.isSuccess && items.length === 0 && (
         <EmptyState
           title="Keine Zeiten in diesem Zeitraum"
           description={`Zwischen ${formatDateDe(range.from as IsoDate)} und ${formatDateDe(

@@ -5,8 +5,10 @@ import { apiClient } from '../../lib/apiClient.js';
 import { fieldErrorsOf, formErrorOf } from '../../lib/errorMessage.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 import { CustomerForm, emptyCustomerValues } from './CustomerForm.js';
+import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
 
 export function NewCustomerPage(): JSX.Element {
+  useDocumentTitle('Neuer Kunde');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 

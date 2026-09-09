@@ -29,10 +29,11 @@ export class AuthController {
   @Public()
   @Get('session')
   async session(@Req() request: AuthenticatedRequest): Promise<AuthSessionResponse> {
-    if (!this.config.enabled) return { enabled: false, user: null };
+    if (!this.config.enabled) return { enabled: false, hasUser: true, user: null };
 
     const token = readCookie(request.headers.cookie, this.config.cookieName);
-    return { enabled: true, user: await this.auth.userForToken(token) };
+    const [user, hasUser] = await Promise.all([this.auth.userForToken(token), this.auth.hasUser()]);
+    return { enabled: true, hasUser, user };
   }
 
   @Public()
@@ -54,7 +55,7 @@ export class AuthController {
       }),
     );
 
-    return { enabled: true, user };
+    return { enabled: true, hasUser: true, user };
   }
 
   /**

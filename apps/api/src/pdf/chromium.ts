@@ -54,7 +54,17 @@ export class ChromiumConfig {
 
   constructor(config: ConfigService) {
     this.configuredPath = config.get<string>('PUPPETEER_EXECUTABLE_PATH') ?? null;
-    this.disableSandbox = config.get<string>('PUPPETEER_NO_SANDBOX') === 'true';
-    this.timeoutMs = Number(config.get<string>('PDF_TIMEOUT_MS') ?? 30_000);
+    const sandbox = config.get<string>('PUPPETEER_NO_SANDBOX') ?? 'false';
+    if (sandbox !== 'true' && sandbox !== 'false') {
+      throw new Error('PUPPETEER_NO_SANDBOX muss "true" oder "false" sein.');
+    }
+    this.disableSandbox = sandbox === 'true';
+
+    const rawTimeout = config.get<string>('PDF_TIMEOUT_MS') ?? '30000';
+    const parsedTimeout = Number(rawTimeout);
+    if (!Number.isInteger(parsedTimeout) || parsedTimeout < 1_000 || parsedTimeout > 300_000) {
+      throw new Error('PDF_TIMEOUT_MS muss eine ganze Zahl zwischen 1000 und 300000 sein.');
+    }
+    this.timeoutMs = parsedTimeout;
   }
 }

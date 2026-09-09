@@ -1,5 +1,6 @@
 # Alles, was im Image nichts zu suchen hat: Zustand, Geheimnisse, Baureste.
 .git
+.github
 .env
 data
 backups

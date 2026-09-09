@@ -24,6 +24,11 @@ export async function createTestDatabase(): Promise<TestDatabase> {
   const file = path.join(dir, 'test.sqlite');
   const url = `file:${file}`;
 
+  // Prisma 6.19 legt die Datei bei `migrate deploy` je nach Plattform nicht
+  // selbst an. Der Container tut beim ersten Start dasselbe; damit prüft die
+  // Testsuite genau den produktiven Pfad.
+  fs.closeSync(fs.openSync(file, 'wx'));
+
   execFileSync('pnpm', ['exec', 'prisma', 'migrate', 'deploy'], {
     cwd: apiRoot,
     env: { ...process.env, DATABASE_URL: url },

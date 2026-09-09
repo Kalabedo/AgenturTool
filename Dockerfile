@@ -26,8 +26,8 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-# Der Prisma-Client wird aus dem Schema erzeugt, nicht aus dem Paket geladen.
-RUN pnpm --filter @agentur-tool/api exec prisma generate
+# `pnpm build` erzeugt zuerst den Prisma-Client und die beiden internen
+# Pakete. Damit ist derselbe Befehl lokal, in CI und im Image reproduzierbar.
 RUN pnpm build
 
 # Die Entwicklungsabhängigkeiten fliegen wieder raus. Was bleibt, ist das, was
@@ -40,6 +40,10 @@ RUN pnpm prune --prod
 # Laufzeit
 # ---------------------------------------------------------------------------
 FROM node:22-bookworm-slim AS runtime
+
+# Die Wartungsbefehle in der Dokumentation (`pnpm backup`, `pnpm user:set`)
+# müssen auch im fertigen Container ohne Download beim ersten Aufruf laufen.
+RUN corepack enable && corepack install --global pnpm@10.33.0
 
 # Chromium und die Schriften kommen aus Debian, nicht aus Puppeteers Download
 # (D32): So bekommt das Image die Sicherheitsaktualisierungen der Distribution,
@@ -82,6 +86,11 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 
 USER node
 EXPOSE 3000
+
+# Gilt auch bei `docker run` ohne Compose; Compose überschreibt dieselbe
+# Prüfung mit seinen eigenen Zeitwerten.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 # tini als PID 1: Chromium hinterlässt Kindprozesse, und ohne einen
 # init-Prozess, der sie einsammelt, füllen sich Zombies an.
