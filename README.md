@@ -34,14 +34,20 @@ Die zwei prägenden Architekturprinzipien:
 
 ## Entwicklung
 
-Voraussetzungen: Node 22+, pnpm 10+ und ein Chromium für die PDF-Erzeugung
-(`chromium`, `chromium-browser` oder Google Chrome). Liegt es nicht an einem
-der üblichen Orte, zeigt `PUPPETEER_EXECUTABLE_PATH` in der `.env` darauf.
-Ohne Chromium läuft alles außer dem PDF; die Rendertests überspringen sich.
+Voraussetzungen: Node 22+, pnpm 10+ und ein Chromium für die PDF-Erzeugung.
+Ein bereits installierter Browser wird an den üblichen Orten gefunden —
+Chromium, Google Chrome und, als Rückfall, Microsoft Edge. Ist keiner da,
+lädt `pnpm chromium:install` eines nach `~/.cache/puppeteer`, wo die
+Anwendung ebenfalls nachsieht. Für jeden anderen Chromium-Abkömmling (Brave,
+Vivaldi, Opera) oder einen Browser an einem ungewöhnlichen Ort zeigt
+`PUPPETEER_EXECUTABLE_PATH` in der `.env` darauf; Firefox und Safari gehen
+nicht, das PDF entsteht über Chromiums Druckweg. Ohne Chromium läuft alles
+außer dem PDF; die Rendertests überspringen sich.
 
 ```bash
 pnpm install
 cp .env.example .env
+pnpm chromium:install # nur nötig, wenn kein Chromium installiert ist
 pnpm db:migrate      # Schema anlegen
 pnpm db:seed         # Steuerprofile und Grundeinstellungen
 pnpm dev             # API auf :3000, Web auf :5173
@@ -55,6 +61,7 @@ Weitere Befehle:
 | `pnpm lint` / `pnpm typecheck`  | Statische Prüfungen                                           |
 | `pnpm verify`                   | Alle Prüfungen und den Produktions-Build ausführen            |
 | `pnpm build`                    | Alle Pakete und Apps bauen                                    |
+| `pnpm chromium:install`         | Chromium für die PDF-Erzeugung laden, falls keines da ist     |
 | `pnpm db:studio`                | Daten im Browser ansehen                                      |
 | `pnpm db:verify`                | Prüft, dass alle CHECK-Constraints und Trigger vorhanden sind |
 | `pnpm db:reset`                 | Datenbank verwerfen und neu aufbauen                          |

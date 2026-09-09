@@ -113,7 +113,8 @@ export class PdfService implements OnModuleDestroy {
     const executablePath = findChromiumExecutable(this.config.configuredPath);
     if (executablePath === null) {
       throw ApiError.pdfRenderFailed(
-        'Es wurde kein Chromium gefunden. Bitte Chromium installieren oder ' +
+        'Es wurde kein Chromium gefunden. „pnpm chromium:install" lädt eines, ' +
+          'alternativ Chromium über die Paketverwaltung installieren oder ' +
           'PUPPETEER_EXECUTABLE_PATH auf die ausführbare Datei setzen.',
       );
     }
