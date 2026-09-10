@@ -14,14 +14,16 @@
  * Programm streiten könnte.
  */
 import path from 'node:path';
-import { BrowserWindow, app, dialog, shell } from 'electron';
+import { BrowserWindow, app, dialog, session, shell } from 'electron';
 import type { INestApplication } from '@nestjs/common';
 import { bootstrap } from '@agentur-tool/api/dist/main';
 import { pdfTimeoutMs } from './config';
 import { prepareDatabase } from './database';
 import { buildMenu } from './menu';
+import { blockOutboundRequests } from './network';
 import { resolvePaths } from './paths';
 import { ElectronPdfRenderer } from './pdf-renderer';
+import { readWindowState, saveWindowState } from './window-state';
 
 // Vor allem anderen: Der Name bestimmt, wo `userData` liegt — auf einem
 // Mac `~/Library/Application Support/AgenturTool`. Ohne ihn nähme Electron
@@ -31,16 +33,16 @@ app.setName('AgenturTool');
 
 // Die Anwendung ist selbst gehostet und hat keinen Grund, beim Start
 // irgendwo anzuklopfen; Chromium täte das von sich aus. Die beiden
-// Schalter nehmen den größten Teil davon weg — vollständig ist es nicht:
-// Gemessen bleibt ein Versuch beim Start übrig. Wer ihn auch noch
-// abstellen will, braucht einen webRequest-Filter auf der Standard-Session
-// des Fensters, wie ihn der PDF-Renderer für seine eigene schon hat.
+// Schalter nehmen den größten Teil davon weg, den Rest der Filter in
+// `network.ts` — er hängt an der Session und wird unten gesetzt, sobald
+// `app` bereit ist.
 app.commandLine.appendSwitch('disable-background-networking');
 app.commandLine.appendSwitch('disable-component-update');
 
 let api: INestApplication | null = null;
 let window: BrowserWindow | null = null;
 let apiUrl = '';
+let stateDir = '';
 
 // Eine Instanz, eine Datenbank. Ein zweiter Start holt das bestehende
 // Fenster nach vorn, statt eine zweite Anwendung auf dieselbe SQLite-Datei
@@ -95,9 +97,22 @@ const devUrl = process.env.AGENTUR_TOOL_DEV_URL;
 
 async function start(): Promise<void> {
   const paths = resolvePaths();
+  stateDir = paths.stateDir;
   const log = (message: string): void => {
     process.stdout.write(`${message}\n`);
   };
+
+  // Nichts verlässt diesen Rechner. Vor dem ersten Fenster, damit auch
+  // dessen erste Anfrage schon durch den Filter geht.
+  blockOutboundRequests(session.defaultSession, (url) => {
+    log(`Anfrage nach außen abgewiesen: ${url}`);
+  });
+
+  app.setAboutPanelOptions({
+    applicationName: 'AgenturTool',
+    applicationVersion: app.getVersion(),
+    copyright: '© Tom Wenczel',
+  });
 
   try {
     await prepareDatabase({
@@ -133,6 +148,11 @@ async function start(): Promise<void> {
     api = running.app;
     apiUrl = running.url;
 
+    // Die Adresse in einer erkennbaren Zeile: Der Port wird bei jedem
+    // Start neu vergeben, und die Rauchprobe (scripts/rauchprobe.mjs)
+    // muss wissen, wohin sie ihre Anfragen schickt.
+    log(`AGENTUR_TOOL_URL ${apiUrl}`);
+
     buildMenu({ dataDir: paths.dataDir, onBackup: createBackup });
 
     // Im Entwicklungsbetrieb zeigt das Fenster auf den Vite-Server, damit
@@ -149,9 +169,13 @@ async function start(): Promise<void> {
 }
 
 function openWindow(url: string): void {
+  const state = readWindowState(stateDir);
+
   window = new BrowserWindow({
-    width: 1280,
-    height: 860,
+    width: state.width,
+    height: state.height,
+    x: state.x,
+    y: state.y,
     minWidth: 900,
     minHeight: 600,
     title: 'AgenturTool',
@@ -165,8 +189,20 @@ function openWindow(url: string): void {
     },
   });
 
+  if (state.maximized) {
+    window.maximize();
+  }
+
   window.once('ready-to-show', () => {
     window?.show();
+  });
+
+  // Beim Schließen, nicht laufend: `getNormalBounds()` steht auch dann
+  // noch, und ein Schreibvorgang je Sitzung genügt.
+  window.on('close', () => {
+    if (window !== null) {
+      saveWindowState(window, stateDir);
+    }
   });
 
   window.on('closed', () => {

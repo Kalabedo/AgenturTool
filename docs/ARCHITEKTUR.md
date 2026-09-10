@@ -11,38 +11,40 @@ sie hier korrigiert und nicht nur im Code.
 
 ### Getroffene Entscheidungen
 
-| ID  | Thema                | Gewählt                                                                                                                                                                       |
-| --- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | Betriebsmodell       | **Desktop-Anwendung** (Electron; Server im Hauptprozess, Daten in `userData`, Auth-Modul vorhanden aber deaktiviert) — ersetzt das ursprüngliche Docker-Image (Abschnitt 16a) |
-| D2  | Datenbank            | **SQLite** (portabel gehalten für späteren Postgres-Wechsel)                                                                                                                  |
-| D3  | DB-Zugriff           | **Prisma**                                                                                                                                                                    |
-| D4  | Backend              | **NestJS**                                                                                                                                                                    |
-| D5  | Rechnungsnummer      | **Erst beim Finalisieren** vergeben                                                                                                                                           |
-| D6  | Nach Finalisierung   | **Gesperrt + Storno**, plus eng begrenztes „Finalisierung zurücknehmen"                                                                                                       |
-| D7  | Zahlungen            | **Nur `paidAt`** (Teilzahlungen später)                                                                                                                                       |
-| D8  | Historische Daten    | **JSON-Snapshots auf der Rechnung**                                                                                                                                           |
-| D9  | Entwurfsdaten        | **Kunde kopiert** (editierbar + Refresh), **eigene Firmendaten live** bis zum Finalisieren                                                                                    |
-| D10 | Storno-Nummern       | **Dieselbe Sequenz** wie Rechnungen                                                                                                                                           |
-| D11 | Rabatt               | **Je Position**, umschaltbar Prozent ⇄ Betrag; kein Gesamtrabatt                                                                                                              |
-| D12 | Rundung              | **Steuer je Steuersatzgruppe** auf Summenebene                                                                                                                                |
-| D13 | PDF-Ablage           | **Dateisystem** + Metadaten/Hash in der DB                                                                                                                                    |
-| D14 | Vorschau             | **React-Template im iframe** (eine Implementierung, zwei Konsumenten)                                                                                                         |
-| D15 | Template-Optionen V1 | **Mittel**: Logo/-größe, Akzentfarbe, Schrift (2–3), Fußzeile, Standardtexte                                                                                                  |
-| D16 | Preiseingabe         | **Nur netto**                                                                                                                                                                 |
-| D17 | Auth in V1           | **Vorhanden, per `AUTH_ENABLED` deaktiviert** (folgt aus D1)                                                                                                                  |
-| D18 | ~~Späterer Zugriff~~ | ~~Tailscale + aktiver Login~~ — gegenstandslos mit D1 (Abschnitt 16)                                                                                                          |
-| D19 | Backup               | Button in der App **und** Skript für Cron; Offsite optional                                                                                                                   |
-| D20 | Tooling              | pnpm, kein Turborepo, Vitest, ESLint + Prettier                                                                                                                               |
-| D21 | Kalenderdaten        | **ISO-String `"YYYY-MM-DD"`**; echte Zeitstempel bleiben `DateTime`                                                                                                           |
-| D22 | Kundennummer         | **Freies Feld, optional, eindeutig wenn gesetzt**                                                                                                                             |
-| D23 | Primärschlüssel      | `Int @id @default(autoincrement())`                                                                                                                                           |
-| D24 | Build der Pakete     | `tsup` → ESM + CJS + `.d.ts` (NestJS läuft CJS, Vite ESM)                                                                                                                     |
-| D29 | Schrift im Dokument  | **Open Sans, als Base64 im Paket eingebettet** — kein Netzwerkzugriff beim PDF-Rendern                                                                                        |
-| D30 | Vorschau-Einbindung  | **iframe + React-Portal** (nicht `srcdoc`): dieselbe Komponente wie im PDF, inkrementell aktualisiert                                                                         |
-| D31 | Seitenränder         | **`@page`-Ränder im Druck**, Padding nur am Bildschirm — Padding wirkt sonst nur auf der ersten Seite                                                                         |
-| D32 | ~~Puppeteer-Paket~~  | ~~`puppeteer-core` mit gefundenem Chromium~~ — überholt durch D34                                                                                                             |
-| D33 | Backup-Format        | **ZIP** statt tar.gz — mit Bordmitteln auf Windows, macOS und iOS zu öffnen (Abschnitt 17)                                                                                    |
-| D34 | PDF-Renderer         | **Electrons `printToPDF`** statt eines ferngesteuerten Browsers — die Anwendung bringt ihr Chromium mit (Abschnitt 13a)                                                       |
+| ID  | Thema                    | Gewählt                                                                                                                                                                       |
+| --- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Betriebsmodell           | **Desktop-Anwendung** (Electron; Server im Hauptprozess, Daten in `userData`, Auth-Modul vorhanden aber deaktiviert) — ersetzt das ursprüngliche Docker-Image (Abschnitt 16a) |
+| D2  | Datenbank                | **SQLite** (portabel gehalten für späteren Postgres-Wechsel)                                                                                                                  |
+| D3  | DB-Zugriff               | **Prisma**                                                                                                                                                                    |
+| D4  | Backend                  | **NestJS**                                                                                                                                                                    |
+| D5  | Rechnungsnummer          | **Erst beim Finalisieren** vergeben                                                                                                                                           |
+| D6  | Nach Finalisierung       | **Gesperrt + Storno**, plus eng begrenztes „Finalisierung zurücknehmen"                                                                                                       |
+| D7  | Zahlungen                | **Nur `paidAt`** (Teilzahlungen später)                                                                                                                                       |
+| D8  | Historische Daten        | **JSON-Snapshots auf der Rechnung**                                                                                                                                           |
+| D9  | Entwurfsdaten            | **Kunde kopiert** (editierbar + Refresh), **eigene Firmendaten live** bis zum Finalisieren                                                                                    |
+| D10 | Storno-Nummern           | **Dieselbe Sequenz** wie Rechnungen                                                                                                                                           |
+| D11 | Rabatt                   | **Je Position**, umschaltbar Prozent ⇄ Betrag; kein Gesamtrabatt                                                                                                              |
+| D12 | Rundung                  | **Steuer je Steuersatzgruppe** auf Summenebene                                                                                                                                |
+| D13 | PDF-Ablage               | **Dateisystem** + Metadaten/Hash in der DB                                                                                                                                    |
+| D14 | Vorschau                 | **React-Template im iframe** (eine Implementierung, zwei Konsumenten)                                                                                                         |
+| D15 | Template-Optionen V1     | **Mittel**: Logo/-größe, Akzentfarbe, Schrift (2–3), Fußzeile, Standardtexte                                                                                                  |
+| D16 | Preiseingabe             | **Nur netto**                                                                                                                                                                 |
+| D17 | Auth in V1               | **Vorhanden, per `AUTH_ENABLED` deaktiviert** (folgt aus D1)                                                                                                                  |
+| D18 | ~~Späterer Zugriff~~     | ~~Tailscale + aktiver Login~~ — gegenstandslos mit D1 (Abschnitt 16)                                                                                                          |
+| D19 | Backup                   | Button in der App **und** Skript für Cron; Offsite optional                                                                                                                   |
+| D20 | Tooling                  | pnpm, kein Turborepo, Vitest, ESLint + Prettier                                                                                                                               |
+| D21 | Kalenderdaten            | **ISO-String `"YYYY-MM-DD"`**; echte Zeitstempel bleiben `DateTime`                                                                                                           |
+| D22 | Kundennummer             | **Freies Feld, optional, eindeutig wenn gesetzt**                                                                                                                             |
+| D23 | Primärschlüssel          | `Int @id @default(autoincrement())`                                                                                                                                           |
+| D24 | Build der Pakete         | `tsup` → ESM + CJS + `.d.ts` (NestJS läuft CJS, Vite ESM)                                                                                                                     |
+| D29 | Schrift im Dokument      | **Open Sans, als Base64 im Paket eingebettet** — kein Netzwerkzugriff beim PDF-Rendern                                                                                        |
+| D30 | Vorschau-Einbindung      | **iframe + React-Portal** (nicht `srcdoc`): dieselbe Komponente wie im PDF, inkrementell aktualisiert                                                                         |
+| D31 | Seitenränder             | **`@page`-Ränder im Druck**, Padding nur am Bildschirm — Padding wirkt sonst nur auf der ersten Seite                                                                         |
+| D32 | ~~Puppeteer-Paket~~      | ~~`puppeteer-core` mit gefundenem Chromium~~ — überholt durch D34                                                                                                             |
+| D33 | Backup-Format            | **ZIP** statt tar.gz — mit Bordmitteln auf Windows, macOS und iOS zu öffnen (Abschnitt 17)                                                                                    |
+| D34 | PDF-Renderer             | **Electrons `printToPDF`** statt eines ferngesteuerten Browsers — die Anwendung bringt ihr Chromium mit (Abschnitt 13a)                                                       |
+| D35 | asar-Archiv              | **Keins.** Prisma startet und lädt seine Engines über selbst gebildete Pfade, an Electrons asar-Umleitung vorbei (Abschnitt 16a)                                              |
+| D36 | Netzverkehr des Fensters | **Alles außer der Rückschleife wird abgewiesen** — ein `webRequest`-Filter, wie ihn der PDF-Renderer schon hat (Abschnitt 16)                                                 |
 
 Zu D21: Rechnungs-, Leistungs- und Fälligkeitsdatum sind Kalendertage, keine
 Zeitpunkte. Als `DateTime` müsste an jeder Grenze zwischen Browser, API und
@@ -1184,6 +1186,16 @@ Grundsätze unabhängig vom Betriebsmodell:
 - Rechnungs-Template rendert nur Text (React escapt), kein `dangerouslySetInnerHTML`.
 - Der PDF-Renderer bekommt kein Netz: eigene Session, die alles außer
   `file:` und `data:` abweist (Abschnitt 13a).
+- Das Fenster bekommt es ebenso wenig (D36). Zwei Chromium-Schalter
+  (`disable-background-networking`, `disable-component-update`) nehmen den
+  größten Teil weg, aber gemessen blieb beim Start ein Versuch übrig.
+  `apps/desktop/src/network.ts` schließt die Lücke: erlaubt sind die
+  Rückschleife — der eigene Server auf wechselndem Port, im
+  Entwicklungsbetrieb Vite samt WebSocket — und was im Fenster selbst
+  entsteht (`devtools:`, `blob:`, `data:`, `file:`). Entschieden wird über
+  den Hostnamen und nicht über den Anfang der Zeichenkette; sonst käme
+  `http://127.0.0.1.angreifer.example/` durch. Alles Abgewiesene steht im
+  Protokoll, und die Rauchprobe verlangt, dass die Liste leer bleibt.
 
 ### Zugriffsmodell: der eigene Rechner (D18, überarbeitet)
 
@@ -1343,26 +1355,76 @@ nachgeladenen Bündeln. Über HTTP funktioniert all das unverändert; über
 
 `electron-builder`, gespeist aus einem eigens gebauten Verzeichnis
 (`apps/desktop/scripts/paket.mjs`). Der Umweg ist nötig, weil
-electron-builder dem virtuellen Store von pnpm nicht folgt: `pnpm deploy`
-löst die Symlinks in echte Verzeichnisse auf, und der Baum wird so
-angeordnet, dass Node `@agentur-tool/api` dort findet, wo es sie erwartet.
+electron-builder dem virtuellen Store von pnpm nicht folgt. `pnpm deploy
+--prod --node-linker=hoisted` legt stattdessen einen flachen Baum an, wie
+Node ihn erwartet — mit dem Schalter bleiben von 401 Symlinks neun übrig,
+allesamt Startskripte unter `.bin/`, die zur Laufzeit niemand ruft.
 
-Was nicht ins asar-Archiv darf, weil es zur Laufzeit als Datei geöffnet
-oder als Prozess gestartet wird: die nativen Bibliotheken (`*.node` —
-Prisma Query Engine und `@node-rs/argon2`), die Prisma-Schema-Engine und
-die Prisma-CLI.
+Vier Eigenheiten sind dabei nicht offensichtlich, und jede einzelne hat die
+Anwendung beim Start scheitern lassen, bevor sie erkannt war
+(`scripts/rauchprobe.mjs` prüft seitdem jede davon):
+
+**Der Prisma-Client muss im Abzug neu erzeugt werden.** `pnpm deploy`
+kopiert die Pakete unberührt aus dem Store, und `@prisma/client` ist dort
+eine Hülle, deren `default.js` nur `require('.prisma/client/default')`
+enthält. Der erzeugte Client liegt im Repository daneben und kommt nicht
+mit.
+
+**Und er muss danach umziehen.** `generate` schreibt ihn nach
+`node_modules/.prisma/client` — genau dieses Verzeichnis lässt
+electron-builder weg, mit jedem denkbaren `files`-Muster: Was in
+`node_modules` landet, bestimmt allein der Abhängigkeitsbaum, und ein
+Verzeichnis mit führendem Punkt steht in keinem. Der erzeugte Client ist
+ortsunabhängig — sein einziger Verweis nach draußen ist
+`@prisma/client/runtime/library.js` —, also zieht er in eben dieses Paket
+um und überschreibt die Hülle.
+
+**Gepackt wird das echte Paket, nicht ein erfundenes.** Ein erzeugtes
+Manifest ohne `dependencies` ergab ein `app.asar` von 61 kB, in dem der
+gesamte Server fehlte. Deshalb ist `paket/` der Abzug von
+`@agentur-tool/desktop` mit dessen eigener Abhängigkeitsliste. Das
+Frontend liegt bewusst daneben unter `web/` statt in `node_modules`: Als
+Abhängigkeit eingetragen brächte es React, den Router und alles Weitere
+mit, obwohl Vite genau das längst gebündelt hat.
+
+**Kein asar-Archiv (D35).** Prisma startet die Schema-Engine als eigenen
+Prozess und lädt die Query-Engine über `dlopen`; beide bekommen den Pfad
+von Prisma selbst und gehen an Electrons asar-Umleitung vorbei. Im Archiv
+endete der Start mit `ENOTDIR` auf einen Pfad innerhalb von `app.asar`.
+Sich herauszuwinden hieße, Prisma über `PRISMA_SCHEMA_ENGINE_BINARY` und
+`PRISMA_QUERY_ENGINE_LIBRARY` die entpackten Pfade einzeln zu nennen — und
+dafür die Plattformkennung jedes Engine-Dateinamens im Hauptprozess
+nachzubauen. Ohne Archiv stimmt jeder Pfad von selbst. Ein Schutz war das
+Archiv ohnehin nicht; es lässt sich mit einem Befehl öffnen.
 
 Gebaut wird je Plattform auf ihrer eigenen. Die Prisma-Engines ließen sich
 über Kreuz laden (`binaryTargets` im Schema nennt alle drei), die nativen
 Binärdateien von `@node-rs/argon2` kommen dagegen über
 plattformspezifische Optional-Dependencies, und pnpm installiert nur die
-des Wirtssystems.
+des Wirtssystems. Weil ohnehin je Plattform gebaut wird, räumt `paket.mjs`
+die Engines der übrigen Systeme wieder weg — zusammen mit den Kopien
+neben der Prisma-CLI, die im Betrieb nur `migrate deploy` ausführt und
+dafür die Schema-Engine benutzt. Das Verzeichnis der Anwendung sinkt damit
+von 408 auf 235 MB.
 
 Für macOS signiert und notarisiert. Der Hardened Runtime ist dafür Pflicht
 und verbietet standardmäßig genau das, was Chromium braucht — ohne
 `com.apple.security.cs.allow-jit` startet die JavaScript-Engine in der
 signierten Anwendung nicht, und das fällt erst beim ersten Start auf, nicht
 beim Bauen.
+
+### Die Rauchprobe
+
+`apps/desktop/scripts/rauchprobe.mjs` startet die gebaute Anwendung mit
+leerem Datenverzeichnis und arbeitet einmal durch: Migrationen, Grunddaten,
+Firmendaten, Kunde, Rechnung, Finalisierung, PDF, Backup. Am Ende prüft
+sie, dass keine einzige Anfrage nach außen gehen wollte.
+
+Sie prüft nicht Logik, sondern Form — jede der oben beschriebenen
+Eigenheiten ist in der Entwicklung beantwortet und im Paket neu zu stellen.
+Sie läuft gegen den Paketbaum (`--nur-baum`) wie gegen das fertig gepackte
+Programm; unter Linux gegen beides, auf den drei Plattform-Runnern gegen
+den Baum.
 
 ---
 

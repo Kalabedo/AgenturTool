@@ -76,6 +76,8 @@ Weitere Befehle:
 | `pnpm backup`                   | Archiv unter `data/backups/` erzeugen                         |
 | `pnpm restore <archiv> --force` | Datenbank und `data/` aus einem Archiv wiederherstellen       |
 | `pnpm user:set <e-mail>`        | Benutzer anlegen oder sein Passwort ändern                    |
+| `pnpm paket`                    | Die Anwendung für dieses System packen                        |
+| `pnpm rauchprobe`               | Die gepackte Anwendung starten und einmal durcharbeiten       |
 
 ### Warum es `db:verify` gibt
 
@@ -109,6 +111,15 @@ Darin: `db.sqlite`, `assets/` (Logos), `invoices/<Jahr>/` (die ausgestellten
 PDFs) und `backups/`. Das Menü führt unter „Ablage" direkt dorthin und legt
 auf Wunsch ein Archiv an.
 
+Fenstergröße und -position bleiben über Sitzungen hinweg erhalten. Liegt
+das gespeicherte Rechteck auf keinem angeschlossenen Bildschirm mehr — der
+zweite Monitor ist nicht da —, öffnet die Anwendung wieder mittig, statt
+außerhalb des Sichtbaren zu erscheinen.
+
+Nach außen spricht sie nicht. Über die beiden Chromium-Schalter hinaus
+weist ein Filter jede Anfrage ab, die nicht an die eigene Rückschleife
+geht; abgewiesene Versuche stehen im Protokoll.
+
 Der Server hört auf `127.0.0.1` und auf einem Port, den das Betriebssystem
 bei jedem Start neu vergibt. Es gibt keinen festen Port, um den sich eine
 zweite Instanz streiten könnte — und ein zweiter Start holt ohnehin das
@@ -123,7 +134,35 @@ pnpm build
 pnpm --filter @agentur-tool/desktop paket
 ```
 
-Das Ergebnis liegt unter `apps/desktop/release/`.
+Das Ergebnis liegt unter `apps/desktop/release/`. Gepackt wird nicht das
+Projektverzeichnis, sondern ein Abzug unter `apps/desktop/paket/` — warum,
+steht in `scripts/paket.mjs` und in Abschnitt 16a der Architektur.
+
+Das Programmsymbol entsteht aus demselben Zeichen wie das Favicon:
+
+```bash
+node apps/desktop/scripts/icon.mjs      # schreibt build/icon.png
+```
+
+### Prüfen, ob das Paket auch läuft
+
+Dass ein Paket entsteht, heißt nicht, dass es startet: Der gepackte Baum
+löst Module anders auf als das Repository, und Prisma sucht seine Engines
+neben sich. Dafür gibt es die Rauchprobe. Sie startet die Anwendung mit
+leerem Datenverzeichnis und arbeitet einmal durch — Migrationen,
+Grunddaten, Kunde, Rechnung, Ausstellung, PDF, Backup — und verlangt
+zuletzt, dass keine einzige Anfrage nach außen gehen wollte.
+
+```bash
+pnpm --filter @agentur-tool/desktop paket --nur-baum   # ohne zu packen
+node apps/desktop/scripts/rauchprobe.mjs               # gegen den Baum
+
+node apps/desktop/scripts/rauchprobe.mjs \
+  apps/desktop/release/mac-arm64/AgenturTool.app/Contents/MacOS/AgenturTool
+```
+
+Auf einem Rechner ohne Bildschirm — einem Bauserver — gehört `xvfb-run -a`
+davor. Die CI läuft beide Stufen bei jedem Push.
 
 Gebaut wird je Plattform auf ihrer eigenen: Die Prisma-Engines ließen sich
 über Kreuz laden, die nativen Binärdateien von `@node-rs/argon2` kommen

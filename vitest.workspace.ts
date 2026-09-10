@@ -1,1 +1,1 @@
-export default ['packages/*', 'apps/api', 'apps/web'];
+export default ['packages/*', 'apps/api', 'apps/web', 'apps/desktop'];

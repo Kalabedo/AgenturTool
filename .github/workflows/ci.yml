@@ -11,7 +11,8 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Großzügig: Die Rauchproben packen die Anwendung zweimal.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -25,6 +26,32 @@ jobs:
       # Rendertests stillschweigend übersprungen — genau die, die prüfen,
       # dass das Dokument noch aussieht wie festgehalten.
       - run: xvfb-run -a pnpm verify
+        env:
+          # Electrons eigene Sandbox braucht unprivilegierte
+          # User-Namespaces, die auf den Runnern nicht überall offen sind.
+          # Ohne diesen Schalter hinge es vom Abbild ab, ob die Rendertests
+          # laufen — und das ist genau die Unschärfe, die sie beseitigen
+          # sollen.
+          ELECTRON_NO_SANDBOX: 'true'
+
+      # Und einmal die Anwendung selbst, in der Form, in der sie
+      # ausgeliefert wird.
+      #
+      # Das ist der Teil, den kein Unit-Test erreicht: ob der Paketbaum die
+      # API und den Prisma-Client findet, ob die Migrationen über Electrons
+      # eigenes Node laufen, ob ein PDF entsteht. Zuerst gegen den Baum,
+      # dann gegen das fertig gepackte Programm — der zweite Lauf prüft,
+      # was das Packen selbst noch verändert.
+      - name: Rauchprobe (Paketbaum)
+        run: |
+          pnpm --filter @agentur-tool/desktop paket --nur-baum
+          xvfb-run -a node apps/desktop/scripts/rauchprobe.mjs
+
+      - name: Rauchprobe (gepackt)
+        run: |
+          pnpm --filter @agentur-tool/desktop exec electron-builder --linux dir
+          xvfb-run -a node apps/desktop/scripts/rauchprobe.mjs \
+            apps/desktop/release/linux-unpacked/agentur-tool
 
   # Ein Paket, das sich nicht mehr bauen lässt, soll vor dem Ausliefern
   # auffallen und nicht erst beim Ausliefern. Jede Plattform baut auf ihrer
@@ -60,3 +87,11 @@ jobs:
       - run: pnpm --filter @agentur-tool/desktop paket
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      # Dass das Paket entsteht, heißt noch nicht, dass es läuft — und die
+      # Frage stellt sich je Plattform neu: Prisma lädt seine Engine für
+      # macOS anders als für Windows. Geprüft wird der Baum, nicht das
+      # fertige Programm: Dessen Pfad heißt auf jedem System anders, und
+      # der Unterschied zwischen beiden ist unter Linux bereits geprüft.
+      - name: Rauchprobe
+        run: node apps/desktop/scripts/rauchprobe.mjs

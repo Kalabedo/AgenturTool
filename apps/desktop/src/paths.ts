@@ -31,6 +31,24 @@ export interface AppPaths {
   databaseFile: string;
 }
 
+/**
+ * Das gebaute Frontend.
+ *
+ * Die eine Stelle, an der sich die beiden Formen wirklich unterscheiden.
+ * Im Repository liegt das Frontend als Schwesterpaket neben der API. Im
+ * Paket liegt es unter `web/` neben dem Hauptprozess, und zwar
+ * ausdrücklich außerhalb von `node_modules`: Was dort landet, bestimmt
+ * electron-builder allein aus den `dependencies`. Das Frontend als
+ * Abhängigkeit einzutragen, hätte auch React, den Router und alles
+ * Weitere mitgebracht — obwohl Vite genau das längst in `dist` gebündelt
+ * hat.
+ */
+function resolveWebRoot(apiDir: string): string {
+  return app.isPackaged
+    ? path.join(app.getAppPath(), 'web')
+    : path.join(apiDir, '..', 'web', 'dist');
+}
+
 export function resolvePaths(): AppPaths {
   const apiDir = path.dirname(require.resolve('@agentur-tool/api/package.json'));
 
@@ -43,8 +61,7 @@ export function resolvePaths(): AppPaths {
 
   return {
     apiDir,
-    // Das Frontend liegt neben der API, im Repository wie im Paket.
-    webRoot: path.join(apiDir, '..', 'web', 'dist'),
+    webRoot: resolveWebRoot(apiDir),
     prismaDir: path.join(apiDir, 'prisma'),
     // Aus dem Blickwinkel des API-Pakets aufgelöst: `prisma` ist dessen
     // Abhängigkeit, nicht die der Desktop-Hülle.

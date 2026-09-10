@@ -4,7 +4,15 @@ import globals from 'globals';
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/node_modules/**', '**/coverage/**', '**/*.d.ts'],
+    ignores: [
+      '**/dist/**',
+      '**/node_modules/**',
+      '**/coverage/**',
+      '**/*.d.ts',
+      // Erzeugte Bäume: der Abzug fürs Verpacken und das fertige Paket.
+      'apps/desktop/paket/**',
+      'apps/desktop/release/**',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
