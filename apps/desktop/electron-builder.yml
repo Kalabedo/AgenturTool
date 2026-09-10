@@ -7,10 +7,6 @@
 
 appId: de.agenturtool.app
 productName: AgenturTool
-# Der Dateiname des Programms. Ohne ihn leitet electron-builder ihn unter
-# Linux und Windows aus dem Paketnamen ab, und der lautet
-# „@agentur-tooldesktop".
-executableName: agentur-tool
 copyright: © Tom Wenczel
 
 # Kein Release-Ziel. Ohne diese Zeile sucht electron-builder eines, sobald
@@ -95,6 +91,16 @@ win:
   # nachrüsten.
 
 linux:
+  # Der Dateiname des Programms. Ohne ihn leitet electron-builder ihn aus
+  # dem Paketnamen ab, und der lautet „@agentur-tooldesktop".
+  #
+  # Hier und nicht weiter oben: `executableName` gilt sonst für alle
+  # Plattformen, und in einem macOS-Bundle hieße die Datei unter
+  # `Contents/MacOS/` dann nicht mehr wie die Anwendung. Das funktioniert
+  # zwar — das Info.plist zeigt darauf —, aber jeder, der den Pfad von
+  # Hand tippt, tippt ihn falsch.
+  executableName: agentur-tool
+
   # Nur für die Rauchprobe: Auf einem Rechner ohne Bildschirm lässt sich so
   # prüfen, ob das Paket überhaupt startet. Ausgeliefert wird Linux nicht.
   target:

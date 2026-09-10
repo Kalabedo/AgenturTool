@@ -158,7 +158,7 @@ pnpm --filter @agentur-tool/desktop paket --nur-baum   # ohne zu packen
 node apps/desktop/scripts/rauchprobe.mjs               # gegen den Baum
 
 node apps/desktop/scripts/rauchprobe.mjs \
-  apps/desktop/release/mac-arm64/AgenturTool.app/Contents/MacOS/AgenturTool
+  apps/desktop/release/mac-arm64/AgenturTool.app
 ```
 
 Auf einem Rechner ohne Bildschirm — einem Bauserver — gehört `xvfb-run -a`

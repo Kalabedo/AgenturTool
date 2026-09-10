@@ -11,11 +11,12 @@
  *
  * Aufruf:
  *
- *   node scripts/rauchprobe.mjs                     # gegen paket/dist/main.js
- *   node scripts/rauchprobe.mjs <programm|einstieg>  # gegen ein gebautes Paket
+ *   node scripts/rauchprobe.mjs                 # gegen paket/dist/main.js
+ *   node scripts/rauchprobe.mjs <ziel>          # gegen ein gebautes Paket
  *
- * Das Argument ist entweder eine `.js`-Datei (dann startet Electron sie)
- * oder ein fertiges Programm aus `release/` (dann startet es selbst).
+ * Das Ziel ist eine `.js`-Datei (dann startet Electron sie), ein
+ * macOS-Bundle (`release/mac-arm64/AgenturTool.app`) oder ein fertiges
+ * Programm aus `release/` (dann startet es selbst).
  *
  * Auf einem Rechner ohne Bildschirm über `xvfb-run -a` aufrufen.
  */
@@ -27,7 +28,35 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const desktopDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const target = path.resolve(process.argv[2] ?? path.join(desktopDir, 'paket/dist/main.js'));
+const target = resolveTarget(
+  path.resolve(process.argv[2] ?? path.join(desktopDir, 'paket/dist/main.js')),
+);
+
+/**
+ * Das Ziel auf etwas Startbares zurückführen.
+ *
+ * Ein macOS-Bundle ist ein Verzeichnis; das Programm darin heißt, was das
+ * Info.plist sagt, und das muss nicht der Name der Anwendung sein.
+ * Angegeben wird deshalb das `.app`, nicht der Pfad hinein — von Hand
+ * getippt ginge der ohnehin meist daneben.
+ */
+function resolveTarget(given) {
+  const plist = path.join(given, 'Contents/Info.plist');
+  if (fs.existsSync(plist)) {
+    const content = fs.readFileSync(plist, 'utf8');
+    const match = /<key>CFBundleExecutable<\/key>\s*<string>([^<]+)<\/string>/.exec(content);
+    const name = match?.[1] ?? path.basename(given, '.app');
+    return path.join(given, 'Contents/MacOS', name);
+  }
+
+  if (!fs.existsSync(given)) {
+    console.error(`✗ Das Ziel gibt es nicht: ${given}`);
+    console.error('  Erst packen: pnpm paket   (oder pnpm paket --nur-baum)');
+    process.exit(1);
+  }
+
+  return given;
+}
 
 /** Was der Lauf gesehen hat — am Ende die Grundlage des Urteils. */
 const blocked = [];
