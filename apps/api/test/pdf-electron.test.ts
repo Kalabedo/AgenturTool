@@ -1,10 +1,14 @@
 /**
- * Erzeugt Electron dasselbe Dokument wie Puppeteer?
+ * Das Dokument, wie es wirklich gedruckt wird.
  *
- * Das ist die eine Frage, an der der Umstieg auf die Desktop-Anwendung
- * hängt. Beantwortet wird sie gegen dieselbe Referenz und mit derselben
- * Messung wie `pdf-reference.test.ts` — nur eben durch den anderen
- * Renderer.
+ * Der einzige Test, der ein PDF durch ein echtes Chromium schickt und
+ * misst, was dabei herauskommt: Seitenzahl, Seitenmaß, Inhaltsflächen,
+ * eingebettete Schrift. Alles andere rund um PDFs prüft den Weg dorthin
+ * und kommt mit dem Stub aus `stub-renderer.ts` aus.
+ *
+ * Die Referenz, gegen die verglichen wird, entstand mit dem
+ * Puppeteer-Weg — der Beleg dafür, dass die Umstellung auf Electron das
+ * Dokument nicht verändert hat.
  *
  * Electron braucht ein BrowserWindow und damit seinen eigenen
  * Hauptprozess; Vitest kann den nicht hosten. Deshalb der Umweg über einen
@@ -12,9 +16,8 @@
  * als JSON und legt die PDFs in einem Ordner ab.
  *
  * Voraussetzung ist ein gebautes `apps/desktop` und die installierte
- * Electron-Binärdatei. Fehlt eines von beidem, wird übersprungen — genau
- * wie die Puppeteer-Tests ohne Chromium: Das ist eine Aussage über die
- * Umgebung, nicht über den Code.
+ * Electron-Binärdatei. Fehlt eines von beidem, wird übersprungen: Das ist
+ * eine Aussage über die Umgebung, nicht über den Code.
  */
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -28,6 +31,19 @@ const DESKTOP = path.join(__dirname, '..', '..', 'desktop');
 const HARNESS = path.join(DESKTOP, 'dist', 'render-harness.js');
 const ELECTRON = path.join(DESKTOP, 'node_modules', 'electron', 'dist', 'electron');
 const REFERENCE_FILE = path.join(__dirname, 'fixtures', 'pdf-reference.json');
+
+/**
+ * Die Referenz neu aufnehmen — ausdrücklich kein Routinegriff.
+ *
+ *   UPDATE_PDF_REFERENCE=1 xvfb-run -a npx vitest run \
+ *     --project @agentur-tool/api test/pdf-electron.test.ts
+ *
+ * Wer sie neu aufnimmt, erklärt damit, dass sich das Dokument ändern
+ * *durfte*. Die erste Aufnahme entstand mit dem Puppeteer-Weg, den es
+ * inzwischen nicht mehr gibt; sie ist damit der eingefrorene Vertrag über
+ * das, was einmal gedruckt wurde.
+ */
+const UPDATE = process.env.UPDATE_PDF_REFERENCE === '1';
 
 /**
  * Unter Linux braucht Electron einen X-Server, auch für ein verstecktes
@@ -44,7 +60,13 @@ interface DocumentGeometry {
   embedsOpenSans: boolean;
 }
 
-/** Identisch zu `pdf-reference.test.ts` — dieselbe Messung, anderer Renderer. */
+/**
+ * Auf ein Zehntel Punkt gerundet.
+ *
+ * Chromium rastert Inhaltsflächen in Gerätepixeln; die Umrechnung nach
+ * Punkt ergibt lange Nachkommazahlen, deren letzte Stellen zwischen
+ * Versionen wandern können, ohne dass sich am Dokument etwas ändert.
+ */
 function round(value: number): number {
   return Math.round(value * 10) / 10;
 }
@@ -71,9 +93,8 @@ function measure(bytes: Buffer): DocumentGeometry {
  *
  * Es steht hier und nicht in `reference-documents.ts`, weil es keine
  * Referenz ist, sondern ein Angriff: Ein manipuliertes Logo oder Template
- * darf keine Rechnungsdaten abfließen lassen. Puppeteer bekam dafür
- * `--host-resolver-rules=MAP * ~NOTFOUND`; hier muss die Session dieselbe
- * Zusicherung geben.
+ * darf keine Rechnungsdaten abfließen lassen. Die abgeschottete Session
+ * des Renderers muss das verhindern.
  */
 const PHONING_HOME = {
   name: 'greift-nach-aussen',
@@ -99,10 +120,9 @@ beforeAll(() => {
   const output = path.join(workDir, 'pdf');
   fs.writeFileSync(input, JSON.stringify([...referenceDocuments(), PHONING_HOME]), 'utf8');
 
-  // Dieselbe Abwägung wie PUPPETEER_NO_SANDBOX in D32: Läuft der Prozess
-  // als root — im Container —, verweigert Chromium seine eigene Sandbox.
-  // Als echtes Argument und nicht über die Umgebung, weil Electron die
-  // Sandbox prüft, bevor Anwendungscode läuft.
+  // Läuft der Prozess als root — in einem Container —, verweigert Chromium
+  // seine eigene Sandbox. Als echtes Argument und nicht über die Umgebung,
+  // weil Electron die Sandbox prüft, bevor Anwendungscode läuft.
   const switches = process.env.ELECTRON_NO_SANDBOX === 'true' ? ['--no-sandbox'] : [];
 
   // Alle Dokumente in einem Lauf: Electron zu starten kostet Sekunden, das
@@ -124,11 +144,30 @@ describe.skipIf(!available)('PDF über Electron', () => {
   const documents = referenceDocuments();
 
   function reference(): Record<string, DocumentGeometry> {
+    if (!fs.existsSync(REFERENCE_FILE)) {
+      throw new Error(
+        `Keine Referenz unter ${REFERENCE_FILE}. Einmalig aufnehmen mit UPDATE_PDF_REFERENCE=1.`,
+      );
+    }
     return JSON.parse(fs.readFileSync(REFERENCE_FILE, 'utf8')) as Record<string, DocumentGeometry>;
   }
 
+  if (UPDATE) {
+    it('nimmt die Referenz neu auf', () => {
+      const recorded: Record<string, DocumentGeometry> = {};
+      for (const doc of documents) {
+        recorded[doc.name] = measure(fs.readFileSync(path.join(workDir, 'pdf', `${doc.name}.pdf`)));
+      }
+
+      fs.mkdirSync(path.dirname(REFERENCE_FILE), { recursive: true });
+      fs.writeFileSync(REFERENCE_FILE, `${JSON.stringify(recorded, null, 2)}\n`, 'utf8');
+      expect(Object.keys(recorded)).toHaveLength(documents.length);
+    });
+    return;
+  }
+
   it.each(documents.map((doc) => doc.name))(
-    'erzeugt „%s" wie der Puppeteer-Weg',
+    'erzeugt „%s" wie festgehalten',
     (name) => {
       const bytes = fs.readFileSync(path.join(workDir, 'pdf', `${name}.pdf`));
 
@@ -137,6 +176,12 @@ describe.skipIf(!available)('PDF über Electron', () => {
     },
     60_000,
   );
+
+  it('deckt jedes aufgenommene Dokument ab', () => {
+    // Ein Dokument aus der Referenz zu entfernen, ohne es hier zu merken,
+    // hieße, eine Prüfung stillschweigend zu verlieren.
+    expect(documents.map((doc) => doc.name).sort()).toEqual(Object.keys(reference()).sort());
+  });
 
   it('weist den Griff nach außen ab', () => {
     expect(harnessOutput).toContain('BLOCKED http://example.invalid/logo.png');

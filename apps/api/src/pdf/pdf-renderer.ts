@@ -7,10 +7,9 @@
  * eigenständigen HTML-Dokument geworden (D29: Schrift und Logo stecken als
  * Data-URI darin, es gibt nichts nachzuladen).
  *
- * Dass sie schmal ist, ist der Grund, warum sich der Renderer austauschen
- * lässt: In der Desktop-Anwendung zeichnet Electrons eigenes Chromium über
- * `printToPDF`, statt dass ein zweiter Browser auf dem Rechner installiert
- * sein muss.
+ * Dass sie schmal ist, war der Grund, warum sich der Renderer austauschen
+ * ließ: Gezeichnet wird von Electrons eigenem Chromium über `printToPDF`,
+ * ohne dass ein zweiter Browser auf dem Rechner installiert sein muss.
  */
 
 /** Was ein Renderlauf über die Seite hinaus braucht. */
@@ -54,6 +53,6 @@ export const PDF_RENDERER = Symbol('PDF_RENDERER');
  * Getrennt von `PDF_RENDERER`, weil es zwei verschiedene Fragen sind: Was
  * benutzt wird (`PDF_RENDERER`) und was von außen angeboten wurde. Die
  * Desktop-Anwendung reicht hier ihren Electron-Renderer herein; auf der
- * Kommandozeile bleibt es `null`, und der Puppeteer-Weg übernimmt.
+ * Kommandozeile bleibt es `null`.
  */
 export const PDF_RENDERER_HOST = Symbol('PDF_RENDERER_HOST');

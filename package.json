@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "pnpm --parallel --filter \"./packages/**\" --filter \"./apps/**\" dev",
+    "dev:desktop": "pnpm build && pnpm --filter @agentur-tool/desktop dev:window",
     "generate": "pnpm --filter @agentur-tool/api exec prisma generate",
     "build:packages": "pnpm --filter \"./packages/**\" build",
     "prepare:workspace": "pnpm generate && pnpm build:packages",
@@ -23,7 +24,6 @@
     "verify": "pnpm prepare:workspace && pnpm lint && pnpm -r typecheck && vitest run && pnpm --filter \"./apps/**\" build && pnpm format:check",
     "db:migrate": "pnpm --filter @agentur-tool/api db:migrate",
     "db:seed": "pnpm --filter @agentur-tool/api db:seed",
-    "chromium:install": "pnpm --filter @agentur-tool/api chromium:install",
     "backup": "pnpm --filter @agentur-tool/api backup",
     "restore": "pnpm --filter @agentur-tool/api restore",
     "user:set": "pnpm --filter @agentur-tool/api user:set",

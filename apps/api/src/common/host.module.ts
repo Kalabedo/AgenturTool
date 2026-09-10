@@ -7,7 +7,8 @@ export interface HostOptions {
    * Der Renderer für PDFs.
    *
    * Die Desktop-Anwendung reicht hier ihren Electron-Renderer herein.
-   * Bleibt es leer, steuert Puppeteer einen installierten Browser fern.
+   * Bleibt es leer — der Kommandozeilenbetrieb —, gibt es keinen: Die
+   * PDF-Routen antworten dann mit einer Meldung statt mit einem Dokument.
    */
   pdfRenderer?: PdfRenderer;
 }

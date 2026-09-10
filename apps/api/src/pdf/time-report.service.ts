@@ -342,8 +342,16 @@ tfoot td {
 `;
   }
 
-  /** Fußzeile mit Seitenzahl; Chromium füllt die beiden Klassen selbst. */
-  private footerTemplate(title: string): string {
+  /**
+   * Fußzeile mit Seitenzahl; Chromium füllt die beiden Klassen selbst.
+   *
+   * Öffentlich aus demselben Grund wie `buildHtml`: Sie gehört zu dem, was
+   * beim Renderer ankommt. Der Zeitnachweis bringt ein eigenes `@page` mit
+   * (14 mm statt 12 mm Rand) und eine eigene Fußzeile — beides prüft
+   * `pdf-electron.test.ts` gegen die Referenzgeometrie, und dafür muss es
+   * das Dokument genau so zusammenbauen können, wie `render` es tut.
+   */
+  footerTemplate(title: string): string {
     return [
       `<div style="width:100%;box-sizing:border-box;padding:0 ${PAGE_MARGIN_MM}mm;`,
       'font-family:Helvetica,Arial,sans-serif;font-size:7.5pt;color:#6b7280;',

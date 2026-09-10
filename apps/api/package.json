@@ -13,7 +13,6 @@
     "db:studio": "prisma studio",
     "db:verify": "tsx prisma/verify.ts",
     "db:reset": "prisma migrate reset --force",
-    "chromium:install": "tsx scripts/chromium.ts",
     "backup": "tsx scripts/backup.ts",
     "restore": "tsx scripts/restore.ts",
     "user:set": "tsx scripts/user.ts"
@@ -29,7 +28,6 @@
     "@node-rs/argon2": "^2.2.0",
     "@prisma/client": "^6.2.0",
     "prisma": "^6.2.0",
-    "puppeteer-core": "^25.10.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "reflect-metadata": "^0.2.2",
@@ -42,7 +40,6 @@
   "devDependencies": {
     "@nestjs/cli": "^11.0.24",
     "@nestjs/schematics": "^11.1.0",
-    "@puppeteer/browsers": "^3.2.2",
     "@types/express": "^5.0.0",
     "@types/multer": "^2.2.0",
     "@types/react": "^18.3.31",

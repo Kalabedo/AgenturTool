@@ -1,9 +1,9 @@
 /**
  * Prüfstand für den Electron-Renderer.
  *
- * Kein Teil der Anwendung, sondern das Werkzeug, mit dem sich die eine
- * Frage beantworten lässt, die beim Wechsel des Renderers zählt: Erzeugt
- * Electron dasselbe Dokument wie Puppeteer?
+ * Kein Teil der Anwendung, sondern das Werkzeug, mit dem sich prüfen
+ * lässt, was der Renderer tatsächlich druckt — außerhalb der laufenden
+ * Anwendung und ohne Datenbank.
  *
  * Aufruf:
  *

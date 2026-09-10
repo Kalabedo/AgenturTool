@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
-    "start": "electron dist/main.js"
+    "start": "electron dist/main.js",
+    "dev:window": "node scripts/dev.mjs"
   },
   "dependencies": {
     "@agentur-tool/api": "workspace:*",

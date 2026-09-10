@@ -18,29 +18,28 @@ import { CompanyService } from '../src/company/company.service';
 import { FilesService } from '../src/files/files.service';
 import { TaxProfilesService } from '../src/tax-profiles/tax-profiles.service';
 import { TemplateSettingsService } from '../src/template-settings/template-settings.service';
-import { ChromiumConfig, findChromiumExecutable } from '../src/pdf/chromium';
 import { InvoiceDocumentsService } from '../src/pdf/invoice-documents.service';
 import { InvoicePdfService } from '../src/pdf/invoice-pdf.service';
-import { PdfService } from '../src/pdf/pdf.service';
 import { InvoiceFinalizeService } from '../src/invoices/invoice-finalize.service';
 import { InvoiceNumbersService } from '../src/invoices/invoice-numbers.service';
 import { InvoicesService } from '../src/invoices/invoices.service';
 import { createTestDatabase, resetInvoices, type TestDatabase } from './database.helper';
+import { StubPdfRenderer } from './stub-renderer';
 import { isPdf } from './pdf.helper';
 
 /**
  * Das Finalisieren als Integrationstest (Abschnitt 20: „Finalisierung als
  * Integrationstest").
  *
- * Ohne Chromium gibt es kein PDF und damit kein Finalisieren — die Datei
- * wird dann übersprungen statt rot. Wer sie laufen lassen will, setzt
- * PUPPETEER_EXECUTABLE_PATH.
+ * Geprüft wird der Vorgang, nicht das Dokument: Nummernvergabe, eingefrorene
+ * Stammdaten, Ablage unter `invoices/<Jahr>/`, Ereignisprotokoll und das
+ * Verhalten bei Abbruch. Dass dabei ein PDF entsteht, gehört dazu — wie es
+ * aussieht, nicht. Deshalb rendert hier ein Stub, und die Tests laufen ohne
+ * Browser.
  */
-const chromium = findChromiumExecutable(process.env.PUPPETEER_EXECUTABLE_PATH);
-
 let db: TestDatabase;
 let prisma: PrismaClient;
-let pdfService: PdfService;
+let pdfService: StubPdfRenderer;
 let documents: InvoiceDocumentsService;
 let finalizer: InvoiceFinalizeService;
 let numbers: InvoiceNumbersService;
@@ -58,9 +57,7 @@ beforeAll(async () => {
   const templateSettings = new TemplateSettingsService(prisma);
   const taxProfiles = new TaxProfilesService(prisma);
 
-  pdfService = new PdfService(
-    new ChromiumConfig({ get: (key: string) => process.env[key] } as never),
-  );
+  pdfService = new StubPdfRenderer();
   documents = new InvoiceDocumentsService(prisma, storage);
   numbers = new InvoiceNumbersService(prisma);
 
@@ -88,7 +85,6 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pdfService.onModuleDestroy();
   await db.cleanup();
   fs.rmSync(dataDir, { recursive: true, force: true });
 });
@@ -168,7 +164,7 @@ async function createDraft(overrides: Record<string, unknown> = {}): Promise<num
   return invoice.id;
 }
 
-describe.skipIf(chromium === null)('Finalisieren', () => {
+describe('Finalisieren', () => {
   it('vergibt Nummer, friert die Daten ein und legt das PDF ab', async () => {
     const id = await createDraft();
     await finalizer.finalize(id);
@@ -310,7 +306,7 @@ async function invoicePdfFor(id: number): Promise<Buffer> {
   return (await service.deliver(id)).bytes;
 }
 
-describe.skipIf(chromium === null)('Finalisierung zurücknehmen', () => {
+describe('Finalisierung zurücknehmen', () => {
   it('gibt die Nummer zurück und vergibt sie erneut', async () => {
     // Test 7 aus Abschnitt 22: Undo direkt nach dem Finalisieren, danach neu
     // finalisieren — dieselbe Nummer muss wieder herauskommen.
@@ -405,7 +401,7 @@ describe.skipIf(chromium === null)('Finalisierung zurücknehmen', () => {
   }, 90_000);
 });
 
-describe.skipIf(chromium === null)('PDF-Ablage', () => {
+describe('PDF-Ablage', () => {
   it('meldet eine fehlende Datei und erzeugt sie auf Wunsch neu', async () => {
     const id = await createDraft();
     await finalizer.finalize(id);

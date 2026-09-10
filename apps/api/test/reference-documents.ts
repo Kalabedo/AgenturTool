@@ -1,14 +1,15 @@
 /**
  * Die Dokumente, an denen der PDF-Weg gemessen wird.
  *
- * Kein Test, sondern die gemeinsame Eingabe zweier Tests: Sie beschreiben
- * fertige HTML-Dokumente samt Fußzeilenvorlage — genau das, was ein
- * `PdfRenderer` entgegennimmt. Dadurch prüft `pdf-reference.test.ts` den
- * Renderer und sonst nichts: keine Datenbank, kein Nest, keine Snapshots.
+ * Kein Test, sondern seine Eingabe: fertige HTML-Dokumente samt
+ * Fußzeilenvorlage — genau das, was ein `PdfRenderer` entgegennimmt.
+ * Dadurch prüft `pdf-electron.test.ts` den Renderer und sonst nichts:
+ * keine Datenbank, kein Nest, keine Snapshots.
  *
- * Das ist der Sinn der Sache. Beim Wechsel des Renderers (Puppeteer →
- * Electron) soll die Frage „erzeugt der neue Weg dasselbe Dokument?"
- * beantwortbar sein, ohne dass sich gleichzeitig die Eingabe ändert.
+ * Das ist der Sinn der Sache: Die Frage „erzeugt der Renderer noch dasselbe
+ * Dokument?" soll beantwortbar sein, ohne dass sich gleichzeitig die
+ * Eingabe ändert. Beim Wechsel von Puppeteer zu Electron hat genau das die
+ * Antwort geliefert.
  *
  * Die Zahlen sind an `packages/invoice-template/test/fixtures.ts` angelehnt:
  * eine echte Rechnung mit Reverse Charge und einer ausländischen Anschrift,
@@ -20,16 +21,20 @@ import {
   DOCUMENT_TYPE,
   TAX_PROFILE_KIND,
   toIsoDate,
+  summarizeTimeEntries,
   type BuyerData,
   type SellerSnapshot,
   type TaxSnapshot,
   type TemplateSnapshot,
+  type TimeEntryRangeQuery,
+  type TimeEntryResponse,
 } from '@agentur-tool/shared';
 import { buildRenderModel, type RenderModelSource } from '@agentur-tool/invoice-template';
 import {
   renderInvoiceDocument,
   renderInvoiceFooterTemplate,
 } from '@agentur-tool/invoice-template/server';
+import { TimeReportService } from '../src/pdf/time-report.service';
 
 /** Ein fertiges Dokument, so wie es beim Renderer ankommt. */
 export interface ReferenceDocument {
@@ -154,12 +159,75 @@ function document(name: string, source: RenderModelSource): ReferenceDocument {
 }
 
 /**
- * Vier Dokumente, die zusammen alles abdecken, was am Renderer schiefgehen
+ * Der Zeitnachweis als Dokument.
+ *
+ * Er ist der zweite Konsument des Renderers und bringt eigenes CSS und ein
+ * eigenes `@page` mit — 14 mm Rand statt 12 mm. Ohne ihn in der Referenz
+ * bliebe genau das ungeprüft.
+ *
+ * `buildHtml` und `footerTemplate` sind reine Funktionen ihrer Eingabe; der
+ * Dienst braucht seine beiden Abhängigkeiten nur in `render`, das hier
+ * nicht aufgerufen wird. Deshalb genügen Platzhalter — dasselbe Muster wie
+ * bei `new StorageConfig({ get: … } as never)` in den übrigen Tests.
+ */
+function timeReport(): ReferenceDocument {
+  const service = new TimeReportService(undefined as never, undefined as never);
+  const title = 'Zeitnachweis Alpha AG September 2026';
+
+  const query: TimeEntryRangeQuery = { from: '2026-09-01', to: '2026-09-30' } as never;
+  const entries: TimeEntryResponse[] = [
+    entry(1, '2026-09-07', 'Alpha AG', 540, 750, 30, 'Konzept und Abstimmung'),
+    entry(2, '2026-09-08', 'Alpha AG', 600, 720, 0, 'Umsetzung Startseite'),
+    entry(3, '2026-09-14', 'Zeta GmbH', 540, 600, 0, null),
+  ];
+
+  return {
+    name: 'zeitnachweis',
+    html: service.buildHtml({
+      title,
+      companyName: 'XYZ - Agentur',
+      query,
+      entries,
+      summary: summarizeTimeEntries(entries),
+    }),
+    footerTemplate: service.footerTemplate(title),
+  };
+}
+
+function entry(
+  id: number,
+  date: string,
+  customerName: string,
+  startMinutes: number,
+  endMinutes: number,
+  breakMinutes: number,
+  description: string | null,
+): TimeEntryResponse {
+  return {
+    id,
+    date,
+    customerId: customerName === 'Alpha AG' ? 1 : 2,
+    customerName,
+    startMinutes,
+    endMinutes,
+    breakMinutes,
+    durationMinutes: endMinutes - startMinutes - breakMinutes,
+    description,
+    billedAt: null,
+    createdAt: '2026-09-15T08:00:00.000Z',
+    updatedAt: '2026-09-15T08:00:00.000Z',
+  };
+}
+
+/**
+ * Fünf Dokumente, die zusammen alles abdecken, was am Renderer schiefgehen
  * kann: Seitenmaß, Seitenumbruch mit durchgehenden Rändern, eingebettete
- * Schrift, eingebettetes Bild und eine gefüllte Fußzeile.
+ * Schrift, eingebettetes Bild, eine gefüllte Fußzeile — und mit dem
+ * Zeitnachweis ein zweites Dokument mit eigenen Rändern.
  */
 export function referenceDocuments(): ReferenceDocument[] {
   return [
+    timeReport(),
     document('einseitig', BASE),
 
     // 34 Positionen erzwingen mehrere Umbrüche. Der Fall ist der Beleg für

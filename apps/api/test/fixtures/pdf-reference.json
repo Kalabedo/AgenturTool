@@ -1,4 +1,22 @@
 {
+  "zeitnachweis": {
+    "pages": 1,
+    "sizesPt": [
+      {
+        "widthPt": 595,
+        "heightPt": 841.9
+      }
+    ],
+    "contentAreasPt": [
+      {
+        "leftPt": 39.8,
+        "topPt": 39.8,
+        "widthPt": 515.9,
+        "heightPt": 756.9
+      }
+    ],
+    "embedsOpenSans": true
+  },
   "einseitig": {
     "pages": 1,
     "sizesPt": [

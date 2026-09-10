@@ -84,6 +84,14 @@ app.on('before-quit', (event) => {
   });
 });
 
+/**
+ * Die Adresse des Vite-Dev-Servers, wenn wir im Entwicklungsbetrieb sind.
+ *
+ * Gesetzt von `pnpm dev:desktop`. Ist sie leer, liefert der eingebaute
+ * Server das gebaute Frontend selbst aus — der Normalfall.
+ */
+const devUrl = process.env.AGENTUR_TOOL_DEV_URL;
+
 async function start(): Promise<void> {
   const paths = resolvePaths();
   const log = (message: string): void => {
@@ -106,7 +114,11 @@ async function start(): Promise<void> {
     process.env.DATABASE_URL = `file:${paths.databaseFile}`;
     process.env.WEB_ROOT = paths.webRoot;
     process.env.HOST = '127.0.0.1';
-    process.env.PORT = '0';
+    // Im Betrieb sucht sich das Betriebssystem einen freien Port. Im
+    // Entwicklungsbetrieb muss es 3000 sein: Dorthin leitet der Vite-Proxy
+    // seine `/api`-Anfragen (apps/web/vite.config.ts), und der kennt keinen
+    // Port, der sich bei jedem Start ändert.
+    process.env.PORT = devUrl === undefined ? '0' : '3000';
     // Ein Anmeldeformular ergäbe hier keinen Sinn: Der Server hört nur auf
     // die Rückschleife, und wer am Rechner sitzt, ist angemeldet.
     process.env.AUTH_ENABLED ??= 'false';
@@ -122,7 +134,11 @@ async function start(): Promise<void> {
     apiUrl = running.url;
 
     buildMenu({ dataDir: paths.dataDir, onBackup: createBackup });
-    openWindow(apiUrl);
+
+    // Im Entwicklungsbetrieb zeigt das Fenster auf den Vite-Server, damit
+    // Änderungen an der Oberfläche sofort nachladen. Der Server läuft
+    // trotzdem — er liefert die API und, über ihn, die PDFs.
+    openWindow(devUrl ?? apiUrl);
   } catch (error) {
     dialog.showErrorBox(
       'AgenturTool konnte nicht starten',
