@@ -1,0 +1,109 @@
+# Verpackung der Desktop-Anwendung.
+#
+# Gepackt wird nicht dieses Verzeichnis, sondern `paket/` — ein eigens
+# gebauter Baum mit echtem node_modules statt der Symlinks des virtuellen
+# pnpm-Stores, denen electron-builder nicht folgt. Wie er entsteht, steht
+# in scripts/paket.mjs.
+
+appId: de.agenturtool.app
+productName: AgenturTool
+copyright: © Tom Wenczel
+
+# Kein Release-Ziel. Ohne diese Zeile sucht electron-builder eines, sobald
+# in der Umgebung ein GH_TOKEN steht — in CI also regelmäßig.
+#
+# `null`, nicht `never`: `never` ist ein Wert der Kommandozeile. In der
+# Konfiguration sucht electron-builder danach ein Modul namens
+# `electron-publisher-never` und bricht ab.
+publish: null
+
+# Damit die drei Pakete aus der Build-Matrix auseinanderzuhalten sind.
+artifactName: ${productName}-${version}-${arch}.${ext}
+
+directories:
+  app: paket
+  output: release
+  buildResources: build
+
+# Verhindert auch dann ein Cross-Build, wenn electron-builder außerhalb von
+# `pnpm paket` direkt mit einem Architektur-Schalter aufgerufen wird.
+beforePack: scripts/before-pack.mjs
+
+# Was ins Paket kommt — außerhalb von `node_modules`.
+#
+# `node_modules` steht hier bewusst nicht: electron-builder stellt dessen
+# Inhalt allein aus den `dependencies` der App-package.json zusammen und
+# ignoriert `files`-Muster dafür. Genau daran ist der erste Versuch
+# gescheitert — `paket/package.json` war ein erzeugtes Manifest ohne
+# Abhängigkeiten, und heraus kam ein app.asar von 61 kB ohne den Server
+# darin. Seitdem ist `paket/` der Abzug des echten Pakets mit seiner
+# echten Abhängigkeitsliste.
+files:
+  - package.json
+  - dist/**/*
+  - web/**/*
+
+# Kein asar-Archiv.
+#
+# Das ist eine bewusste Abweichung von der Voreinstellung, und sie hat
+# einen gemessenen Grund. Prisma startet die Schema-Engine als eigenen
+# Prozess und lädt die Query-Engine über `dlopen`; beide Wege bekommen den
+# Pfad von Prisma selbst und gehen an Electrons asar-Umleitung vorbei. Im
+# Archiv endete der Start mit
+#
+#   Error: Schema engine exited. Command failed with ENOTDIR:
+#   …/app.asar/node_modules/@prisma/engines/schema-engine-…
+#
+# Sich herauszuwinden hieße, Prisma über PRISMA_SCHEMA_ENGINE_BINARY und
+# PRISMA_QUERY_ENGINE_LIBRARY die entpackten Pfade einzeln zu nennen — und
+# dafür die Plattformkennung jedes Engine-Dateinamens im Hauptprozess
+# nachzubauen. Ohne Archiv stimmt jeder Pfad von selbst.
+#
+# Was es kostet: Die Anwendung besteht aus vielen einzelnen Dateien statt
+# einer großen. Das Archiv war ohnehin nie eine Schutzmaßnahme — es lässt
+# sich mit einem Befehl öffnen.
+asar: false
+
+mac:
+  category: public.app-category.business
+  target: dmg
+  minimumSystemVersion: '13.0'
+  # Pflicht für die Notarisierung.
+  hardenedRuntime: true
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  notarize: true
+  # Die Anwendung liest und schreibt nur in ihrem eigenen Datenordner.
+  extendInfo:
+    NSHumanReadableCopyright: © Tom Wenczel
+
+win:
+  executableName: AgenturTool
+  target:
+    - target: nsis
+      arch:
+        - x64
+  # Pull-Request-Pakete bleiben bewusst unsigniert. `paket --release`
+  # erzwingt dagegen eine gültige Signatur.
+
+linux:
+  # Der Dateiname des Programms. Ohne ihn leitet electron-builder ihn aus
+  # dem Paketnamen ab, und der lautet „@agentur-tooldesktop".
+  #
+  # Hier und nicht weiter oben: `executableName` gilt sonst für alle
+  # Plattformen, und in einem macOS-Bundle hieße die Datei unter
+  # `Contents/MacOS/` dann nicht mehr wie die Anwendung. Das funktioniert
+  # zwar — das Info.plist zeigt darauf —, aber jeder, der den Pfad von
+  # Hand tippt, tippt ihn falsch.
+  executableName: agentur-tool
+
+  # Nur für die Rauchprobe: Auf einem Rechner ohne Bildschirm lässt sich so
+  # prüfen, ob das Paket überhaupt startet. Ausgeliefert wird Linux nicht.
+  target:
+    - dir
+  category: Office
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: false

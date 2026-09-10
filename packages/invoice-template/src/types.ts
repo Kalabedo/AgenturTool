@@ -14,7 +14,7 @@ import type {
  *
  * Bewusst vollständig aufgelöst: Ein Template führt keine Datenbankabfragen
  * und keine Berechnungen durch, es stellt nur dar. Dadurch ist dasselbe
- * Modell im Browser (Live-Vorschau) und im Backend (Puppeteer) verwendbar,
+ * Modell im Browser (Live-Vorschau) und im Backend (Druck) verwendbar,
  * und ein Snapshot einer alten Rechnung lässt sich unverändert einsetzen.
  */
 export interface InvoiceRenderModel {
@@ -38,7 +38,7 @@ export interface InvoiceRenderModel {
    * Quelle des Logos.
    *
    * In der Live-Vorschau eine API-Adresse (`/api/assets/7`), im PDF eine
-   * Data-URI. Puppeteer rendert in einem Container ohne Zugriff auf die
+   * Data-URI. Gerendert wird ohne Zugriff auf die
    * laufende API — ein Bild per URL bliebe dort leer, und zwar lautlos.
    */
   logoSrc: string | null;
@@ -66,7 +66,7 @@ export interface InvoiceRenderItem {
  *
  * Das CSS liegt als String daneben und nicht als Import in der Komponente,
  * weil es an zwei Orte muss, die kein Bundler bedient: in das <style> des
- * Vorschau-iframes und in das HTML-Dokument für Puppeteer.
+ * Vorschau-iframes und in das HTML-Dokument für den Druck.
  */
 export interface TemplateDefinition {
   key: string;

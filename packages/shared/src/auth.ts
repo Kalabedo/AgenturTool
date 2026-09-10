@@ -3,7 +3,8 @@ import { z } from 'zod';
 /**
  * Anmeldung (Abschnitt 16, D18).
  *
- * Zwei Schichten tragen unabhängig voneinander: das Netz (Tailscale) und
+ * Zwei Schichten tragen unabhängig voneinander: das Netz (der Server hört
+ * nur auf die Rückschleife) und
  * die Anwendung (dieser Login). Der Login ist auch dann sinnvoll, wenn der
  * Dienst nur im Tailnet hängt — ein verlorenes oder entwendetes Gerät ist
  * sonst ein offener Zugang zu allen Rechnungsdaten.

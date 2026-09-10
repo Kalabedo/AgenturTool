@@ -19,27 +19,25 @@ import { CompanyService } from '../src/company/company.service';
 import { FilesService } from '../src/files/files.service';
 import { TaxProfilesService } from '../src/tax-profiles/tax-profiles.service';
 import { TemplateSettingsService } from '../src/template-settings/template-settings.service';
-import { ChromiumConfig, findChromiumExecutable } from '../src/pdf/chromium';
 import { InvoiceDocumentsService } from '../src/pdf/invoice-documents.service';
 import { InvoicePdfService } from '../src/pdf/invoice-pdf.service';
-import { PdfService } from '../src/pdf/pdf.service';
 import { InvoiceFinalizeService } from '../src/invoices/invoice-finalize.service';
 import { InvoiceNumbersService } from '../src/invoices/invoice-numbers.service';
 import { InvoicesService } from '../src/invoices/invoices.service';
 import { createTestDatabase, resetInvoices, type TestDatabase } from './database.helper';
+import { StubPdfRenderer } from './stub-renderer';
 
 /**
  * Der Lebenszyklus nach dem Ausstellen: bezahlt, versendet, storniert,
  * dupliziert (Schritt 10).
  *
- * Die Storno-Tests brauchen Chromium, weil ein Storno ein eigenes Dokument
- * mit eigenem PDF ist. Ohne Browser werden sie übersprungen.
+ * Ein Storno ist ein eigenes Dokument mit eigenem PDF — geprüft wird aber,
+ * dass es entsteht und wo es liegt, nicht wie es gesetzt ist. Ein Stub
+ * genügt dafür, und die Tests brauchen keinen Browser.
  */
-const chromium = findChromiumExecutable(process.env.PUPPETEER_EXECUTABLE_PATH);
-
 let db: TestDatabase;
 let prisma: PrismaClient;
-let pdfService: PdfService;
+let pdfService: StubPdfRenderer;
 let finalizer: InvoiceFinalizeService;
 let invoices: InvoicesService;
 let dataDir: string;
@@ -57,9 +55,7 @@ beforeAll(async () => {
   const documents = new InvoiceDocumentsService(prisma, storage);
   const numbers = new InvoiceNumbersService(prisma);
 
-  pdfService = new PdfService(
-    new ChromiumConfig({ get: (key: string) => process.env[key] } as never),
-  );
+  pdfService = new StubPdfRenderer();
 
   const invoicePdf = new InvoicePdfService(
     prisma,
@@ -85,7 +81,6 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pdfService.onModuleDestroy();
   await db.cleanup();
   fs.rmSync(dataDir, { recursive: true, force: true });
 });
@@ -258,7 +253,7 @@ describe('Duplizieren', () => {
   });
 });
 
-describe.skipIf(chromium === null)('Stornieren', () => {
+describe('Stornieren', () => {
   async function issued(): Promise<number> {
     const id = await createDraft();
     await finalizer.finalize(id);

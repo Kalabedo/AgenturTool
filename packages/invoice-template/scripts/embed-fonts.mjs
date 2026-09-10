@@ -2,7 +2,7 @@
  * Erzeugt `src/fonts.generated.ts` aus den woff2-Dateien von @fontsource.
  *
  * Warum die Schrift als Base64 im Quelltext liegt und nicht als Datei
- * daneben: Puppeteer rendert das PDF in einem Container, der weder das
+ * daneben: Das PDF entsteht in einer Umgebung, die weder das
  * Internet noch zwingend eine brauchbare Schriftauswahl hat. Eine per URL
  * eingebundene Schrift würde dort still auf einen Ersatz zurückfallen — und
  * ein Ersatz bricht Zeilen anders um. Die Vorschau im Browser zeigte dann

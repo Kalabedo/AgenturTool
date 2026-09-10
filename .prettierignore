@@ -8,3 +8,7 @@ dist/
 **/dist/
 data/
 coverage/
+
+# Der Abzug fürs Verpacken und das fertige Paket
+apps/desktop/paket/
+apps/desktop/release/

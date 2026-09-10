@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Invoice, InvoiceItem } from '@prisma/client';
 import { z } from 'zod';
 import {
@@ -38,7 +38,7 @@ import { FilesService } from '../files/files.service';
 import { TaxProfilesService } from '../tax-profiles/tax-profiles.service';
 import { TemplateSettingsService } from '../template-settings/template-settings.service';
 import { InvoiceDocumentsService } from './invoice-documents.service';
-import { PdfService } from './pdf.service';
+import { PDF_RENDERER, type PdfRenderer } from './pdf-renderer';
 
 /** Ein fertiges Dokument samt Namen, unter dem es beim Herunterladen landet. */
 export interface RenderedInvoicePdf {
@@ -109,7 +109,7 @@ export class InvoicePdfService {
     private readonly taxProfiles: TaxProfilesService,
     private readonly files: FilesService,
     private readonly documents: InvoiceDocumentsService,
-    private readonly pdf: PdfService,
+    @Inject(PDF_RENDERER) private readonly pdf: PdfRenderer,
   ) {}
 
   /**

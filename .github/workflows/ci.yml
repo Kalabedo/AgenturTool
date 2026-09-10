@@ -8,10 +8,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: qualitaet-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -20,11 +24,114 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm verify
+      - run: xvfb-run -a pnpm verify
+        env:
+          ELECTRON_NO_SANDBOX: 'true'
 
-  container:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+      - name: Rauchprobe (Paketbaum)
+        run: |
+          pnpm --filter @agentur-tool/desktop paket --nur-baum
+          xvfb-run -a node apps/desktop/scripts/rauchprobe.mjs
+
+      - name: Rauchprobe (Linux-Paket)
+        run: |
+          pnpm --filter @agentur-tool/desktop exec electron-builder --config electron-builder.yml --linux dir
+          xvfb-run -a node apps/desktop/scripts/rauchprobe.mjs \
+            apps/desktop/release/linux-unpacked/agentur-tool
+
+  paket:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            ziel: macOS arm64
+            arch: arm64
+            artifact: unsigned-ci-macos-arm64
+            package: apps/desktop/release/AgenturTool-*-arm64.dmg
+          - os: macos-15-intel
+            ziel: macOS x64
+            arch: x64
+            artifact: unsigned-ci-macos-x64
+            package: apps/desktop/release/AgenturTool-*-x64.dmg
+          - os: windows-2025
+            ziel: Windows x64
+            arch: x64
+            artifact: unsigned-ci-windows-x64
+            package: apps/desktop/release/AgenturTool-*-x64.exe
+    name: Paket (${{ matrix.ziel }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-      - run: docker build --tag agentur-tool:ci .
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+      # Zweimal aus demselben Checkout: Ein abgebrochener Lauf darf keine
+      # Ausgabe hinterlassen, an der der nächste scheitert.
+      - name: Unsigiertes Paket zweimal bauen
+        run: |
+          pnpm --filter @agentur-tool/desktop paket
+          pnpm --filter @agentur-tool/desktop paket
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: DMG prüfen, einhängen und Anwendung zweimal starten
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          DMG_COUNT="$(find apps/desktop/release -maxdepth 1 -name 'AgenturTool-*-${{ matrix.arch }}.dmg' | wc -l | tr -d ' ')"
+          test "$DMG_COUNT" = 1
+          DMG="$(find apps/desktop/release -maxdepth 1 -name 'AgenturTool-*-${{ matrix.arch }}.dmg' -print -quit)"
+          hdiutil verify "$DMG"
+
+          MOUNT_POINT="$RUNNER_TEMP/agentur-tool-dmg"
+          DATA_DIR="$RUNNER_TEMP/agentur-tool-smoke"
+          mkdir -p "$MOUNT_POINT" "$DATA_DIR"
+          hdiutil attach "$DMG" -readonly -nobrowse -mountpoint "$MOUNT_POINT" >/dev/null
+          trap 'hdiutil detach "$MOUNT_POINT" >/dev/null || true' EXIT
+
+          APP="$(find "$MOUNT_POINT" -maxdepth 1 -name '*.app' -print -quit)"
+          test -n "$APP"
+          node apps/desktop/scripts/rauchprobe.mjs "$APP" --data-dir "$DATA_DIR"
+          node apps/desktop/scripts/rauchprobe.mjs "$APP" --data-dir "$DATA_DIR" --reopen
+
+      - name: NSIS installieren, Anwendung zweimal starten und deinstallieren
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installers = @(Get-ChildItem 'apps/desktop/release/AgenturTool-*-x64.exe')
+          if ($installers.Count -ne 1) { throw "Erwartete genau einen Installer, fand $($installers.Count)." }
+
+          $installDir = Join-Path $env:RUNNER_TEMP 'AgenturTool-Installation'
+          $dataDir = Join-Path $env:RUNNER_TEMP 'AgenturTool-Smoke'
+          New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
+
+          $install = Start-Process -FilePath $installers[0].FullName -ArgumentList '/S', "/D=$installDir" -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "Installer endete mit Code $($install.ExitCode)." }
+
+          $app = Join-Path $installDir 'AgenturTool.exe'
+          if (-not (Test-Path $app)) { throw "Installierte Anwendung fehlt: $app" }
+          node apps/desktop/scripts/rauchprobe.mjs $app --data-dir $dataDir
+          if ($LASTEXITCODE -ne 0) { throw 'Erste Rauchprobe fehlgeschlagen.' }
+          node apps/desktop/scripts/rauchprobe.mjs $app --data-dir $dataDir --reopen
+          if ($LASTEXITCODE -ne 0) { throw 'Rauchprobe nach Neustart fehlgeschlagen.' }
+
+          $uninstaller = Join-Path $installDir 'Uninstall AgenturTool.exe'
+          if (-not (Test-Path $uninstaller)) { throw "Deinstallationsprogramm fehlt: $uninstaller" }
+          $uninstall = Start-Process -FilePath $uninstaller -ArgumentList '/S' -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw "Deinstallation endete mit Code $($uninstall.ExitCode)." }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.package }}
+          if-no-files-found: error
+          retention-days: 7

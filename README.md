@@ -3,7 +3,7 @@
 Eigene Rechnungssoftware — selbst gehostet, unabhängig von externen
 Rechnungsdiensten. Rechnungen erstellen, verwalten und als PDF exportieren.
 
-**Status:** V1 — alle 15 Schritte der Roadmap sind umgesetzt. Rechnungen lassen sich erfassen und ausstellen (Nummer, eingefrorene Stammdaten, abgelegtes PDF), als versendet und bezahlt vermerken, stornieren und duplizieren; die Übersicht filtert, sortiert und blättert, das Dashboard zeigt Entwürfe, offene und überfällige Rechnungen. Eine Zeiterfassung hält gearbeitete Zeit je Kunde in Viertelstunden fest und druckt daraus einen Zeitnachweis für einen frei wählbaren Zeitraum. Ein Backup umfasst Datenbank, Logos und alle PDFs in einer ZIP-Datei; der Weg zurück ist einmal wirklich getestet. Anmeldung (argon2id, serverseitige Sitzungen) lässt sich per `AUTH_ENABLED` zuschalten, und ein Docker-Image bringt API, Frontend und Chromium zusammen. Die Oberfläche sagt, wenn etwas schiefgeht, lässt sich mit der Tastatur bedienen und läuft vom Telefon bis zum breiten Bildschirm.
+**Status:** V1 — alle 15 Schritte der Roadmap sind umgesetzt. Rechnungen lassen sich erfassen und ausstellen (Nummer, eingefrorene Stammdaten, abgelegtes PDF), als versendet und bezahlt vermerken, stornieren und duplizieren; die Übersicht filtert, sortiert und blättert, das Dashboard zeigt Entwürfe, offene und überfällige Rechnungen. Eine Zeiterfassung hält gearbeitete Zeit je Kunde in Viertelstunden fest und druckt daraus einen Zeitnachweis für einen frei wählbaren Zeitraum. Ein Backup umfasst Datenbank, Logos und alle PDFs in einer ZIP-Datei; der Weg zurück ist einmal wirklich getestet. Ausgeliefert wird sie als Desktop-Anwendung für macOS und Windows: Doppelklick, eigenes Fenster, kein installierter Browser nötig — die PDFs entstehen über Electrons eigenes Chromium. Die Oberfläche sagt, wenn etwas schiefgeht, lässt sich mit der Tastatur bedienen und läuft vom Telefon bis zum breiten Bildschirm.
 
 ## Architektur
 
@@ -18,8 +18,8 @@ Kurzfassung des geplanten Stacks:
 | Frontend  | React + TypeScript + Vite + Tailwind                                                     |
 | Backend   | NestJS                                                                                   |
 | Datenbank | SQLite via Prisma                                                                        |
-| PDF       | HTML/CSS-Template + Puppeteer                                                            |
-| Betrieb   | lokal, deploy-fähig als Docker-Image                                                     |
+| PDF       | HTML/CSS-Template + Electron (`printToPDF`)                                              |
+| Betrieb   | Desktop-Anwendung (Electron), macOS und Windows                                          |
 
 Die zwei prägenden Architekturprinzipien:
 
@@ -34,24 +34,32 @@ Die zwei prägenden Architekturprinzipien:
 
 ## Entwicklung
 
-Voraussetzungen: Node 22+, pnpm 10+ und ein Chromium für die PDF-Erzeugung.
-Ein bereits installierter Browser wird an den üblichen Orten gefunden —
-Chromium, Google Chrome und, als Rückfall, Microsoft Edge. Ist keiner da,
-lädt `pnpm chromium:install` eines nach `~/.cache/puppeteer`, wo die
-Anwendung ebenfalls nachsieht. Für jeden anderen Chromium-Abkömmling (Brave,
-Vivaldi, Opera) oder einen Browser an einem ungewöhnlichen Ort zeigt
-`PUPPETEER_EXECUTABLE_PATH` in der `.env` darauf; Firefox und Safari gehen
-nicht, das PDF entsteht über Chromiums Druckweg. Ohne Chromium läuft alles
-außer dem PDF; die Rendertests überspringen sich.
+Voraussetzungen: Node 22+ und pnpm 10+. Einen Browser braucht es nicht —
+Electron bringt seinen mit.
 
 ```bash
 pnpm install
 cp .env.example .env
-pnpm chromium:install # nur nötig, wenn kein Chromium installiert ist
 pnpm db:migrate      # Schema anlegen
 pnpm db:seed         # Steuerprofile und Grundeinstellungen
 pnpm dev             # API auf :3000, Web auf :5173
 ```
+
+Zwei Entwicklungswege, weil sie verschiedene Dinge gut können:
+
+| Befehl             | Fenster           | PDFs |
+| ------------------ | ----------------- | ---- |
+| `pnpm dev`         | Browser auf :5173 | nein |
+| `pnpm dev:desktop` | Electron          | ja   |
+
+`pnpm dev` ist der schnellere Weg für Oberfläche und Backend: Beides lädt
+bei jeder Änderung nach. PDFs entstehen dort nicht — sie brauchen Electron,
+und die PDF-Routen sagen das auch, statt einen Fehler zu werfen, den
+niemand deuten kann.
+
+`pnpm dev:desktop` startet Vite und Electron zusammen; das Fenster zeigt
+auf den Dev-Server, die Oberfläche lädt also weiterhin nach. Nur
+Änderungen am Backend brauchen dort einen Neustart.
 
 Weitere Befehle:
 
@@ -61,13 +69,15 @@ Weitere Befehle:
 | `pnpm lint` / `pnpm typecheck`  | Statische Prüfungen                                           |
 | `pnpm verify`                   | Alle Prüfungen und den Produktions-Build ausführen            |
 | `pnpm build`                    | Alle Pakete und Apps bauen                                    |
-| `pnpm chromium:install`         | Chromium für die PDF-Erzeugung laden, falls keines da ist     |
+| `pnpm dev:desktop`              | Vite und Electron zusammen starten                            |
 | `pnpm db:studio`                | Daten im Browser ansehen                                      |
 | `pnpm db:verify`                | Prüft, dass alle CHECK-Constraints und Trigger vorhanden sind |
 | `pnpm db:reset`                 | Datenbank verwerfen und neu aufbauen                          |
 | `pnpm backup`                   | Archiv unter `data/backups/` erzeugen                         |
 | `pnpm restore <archiv> --force` | Datenbank und `data/` aus einem Archiv wiederherstellen       |
 | `pnpm user:set <e-mail>`        | Benutzer anlegen oder sein Passwort ändern                    |
+| `pnpm paket`                    | Die Anwendung für dieses System packen                        |
+| `pnpm rauchprobe`               | Die gepackte Anwendung starten und einmal durcharbeiten       |
 
 ### Warum es `db:verify` gibt
 
@@ -81,79 +91,129 @@ der betroffenen Tabellen anfasst, muss die Regeln dort erneut anlegen.
 
 ## Betrieb
 
-### Lokal
+### Als Anwendung
+
+Die fertige Anwendung installiert sich wie jede andere: DMG öffnen, in den
+Programme-Ordner ziehen, starten. Sie bringt alles mit — Server, Frontend
+und den Browser für die PDF-Erzeugung.
+
+| System        | Paket                      | Unterstützt                     |
+| ------------- | -------------------------- | ------------------------------- |
+| macOS ARM64   | eigenes Apple-Silicon-DMG  | macOS 13 oder neuer             |
+| macOS x64     | eigenes Intel-DMG          | macOS 13 oder neuer             |
+| Windows x64   | NSIS-Installer             | Windows 10 und 11               |
+| Windows ARM64 | Windows-x64-Paket emuliert | nicht eigenständig zertifiziert |
+
+Linux-Pakete dienen nur der Rauchprobe in CI und werden nicht veröffentlicht.
+
+Beim ersten Start legt sie Datenbank und Grundeinstellungen selbst an. Bei
+jedem weiteren Start entsteht vor den Migrationen automatisch ein Backup.
+
+Die Daten liegen außerhalb der Anwendung und überleben jedes Update:
+
+| System  | Ort                                               |
+| ------- | ------------------------------------------------- |
+| macOS   | `~/Library/Application Support/AgenturTool/Daten` |
+| Windows | `%APPDATA%\AgenturTool\Daten`                     |
+
+Darin: `db.sqlite`, `assets/` (Logos), `invoices/<Jahr>/` (die ausgestellten
+PDFs) und `backups/`. Das Menü führt unter „Ablage" direkt dorthin und legt
+auf Wunsch ein Archiv an.
+
+Fenstergröße und -position bleiben über Sitzungen hinweg erhalten. Liegt
+das gespeicherte Rechteck auf keinem angeschlossenen Bildschirm mehr — der
+zweite Monitor ist nicht da —, öffnet die Anwendung wieder mittig, statt
+außerhalb des Sichtbaren zu erscheinen.
+
+Nach außen spricht sie nicht. Über die beiden Chromium-Schalter hinaus
+weist ein Filter jede Anfrage ab, die nicht an die eigene Rückschleife
+geht; abgewiesene Versuche stehen im Protokoll.
+
+Der Server hört auf `127.0.0.1` und auf einem Port, den das Betriebssystem
+bei jedem Start neu vergibt. Es gibt keinen festen Port, um den sich eine
+zweite Instanz streiten könnte — und ein zweiter Start holt ohnehin das
+bestehende Fenster nach vorn, statt eine zweite Anwendung auf dieselbe
+Datenbank zu setzen.
+
+### Selbst bauen
 
 ```bash
+pnpm install
 pnpm build
-pnpm --filter @agentur-tool/api start   # alles unter http://127.0.0.1:3000
+pnpm --filter @agentur-tool/desktop paket
 ```
 
-Die API liefert das gebaute Frontend gleich mit; ein zweiter Webserver ist
-nicht nötig. Gebunden wird an `127.0.0.1` — lokal soll die Anwendung nicht im
-Netzwerk hängen.
+Das Ergebnis liegt unter `apps/desktop/release/`. Gepackt wird nicht das
+Projektverzeichnis, sondern ein Abzug unter `apps/desktop/paket/` — warum,
+steht in `scripts/paket.mjs` und in Abschnitt 16a der Architektur.
 
-### Im Container
+Ein Paket entsteht immer nativ für System und Architektur des Baurechners.
+Ein Intel-Mac baut also ausschließlich das Intel-DMG, ein Apple-Silicon-Mac
+das ARM64-DMG und ein Windows-x64-Rechner den x64-Installer. Ein Cross-Build
+wird abgewiesen, weil Prisma und argon2 native Binärdateien enthalten.
+
+Das Programmsymbol entsteht aus demselben Zeichen wie das Favicon:
 
 ```bash
-cp .env.example .env      # AUTH_ENABLED=true setzen
-docker compose up -d --build
-docker compose exec app pnpm user:set chef@example.de
+node apps/desktop/scripts/icon.mjs      # schreibt build/icon.png
 ```
 
-Das Image enthält API, gebautes Frontend und Chromium. Der gesamte Zustand —
-Datenbank, Logos, PDFs, Sicherungen — liegt im Volume unter `/data` und
-überlebt jedes `docker compose up --build`. Der Port ist an `127.0.0.1` des
-Hosts gebunden: Erreichbar wird die Anwendung erst durch Tailscale.
+### Prüfen, ob das Paket auch läuft
 
-Beim ersten Start legt der Container die Datenbank und die benötigten
-Grundeinstellungen selbst an. Bei späteren Starts entsteht vor den Migrationen
-automatisch ein Backup im Volume. Solange noch kein Benutzer existiert, zeigt
-die Anmeldeseite den dafür nötigen Kommandozeilenbefehl statt eines rätselhaften
-Login-Fehlers.
-
-Aktualisieren:
+Dass ein Paket entsteht, heißt nicht, dass es startet: Der gepackte Baum
+löst Module anders auf als das Repository, und Prisma sucht seine Engines
+neben sich. Dafür gibt es die Rauchprobe. Sie startet die Anwendung mit
+leerem Datenverzeichnis und arbeitet einmal durch — Migrationen,
+Grunddaten, Kunde, Rechnung, Ausstellung, PDF, Backup — und verlangt
+zuletzt, dass keine einzige Anfrage nach außen gehen wollte.
 
 ```bash
-git pull
-docker compose up -d --build
-docker compose ps             # Status muss „healthy" sein
+pnpm --filter @agentur-tool/desktop paket --nur-baum   # ohne zu packen
+node apps/desktop/scripts/rauchprobe.mjs               # gegen den Baum
+
+node apps/desktop/scripts/rauchprobe.mjs \
+  apps/desktop/release/mac-arm64/AgenturTool.app
 ```
 
-Migrationen und die idempotenten Grunddaten laufen beim Start des Containers.
-Vor einem größeren Update empfiehlt sich zusätzlich ein extern gespeichertes
-Archiv: `docker compose exec app pnpm backup`, anschließend im Browser unter
-„Einstellungen → Backup“ herunterladen.
-
-Die CI-Konfiguration unter `.github/workflows/ci.yml` prüft bei jedem Push und
-Pull Request Linting, Typen, Tests, Formatierung, Produktions-Build und den
-Docker-Build. Damit fällt ein nicht mehr deploybares Image vor dem Update auf.
-
-### Tailscale
-
-Die Anwendung gehört nicht ins offene Internet. Tailscale nimmt ihr die
-Erreichbarkeit von außen ab und bringt HTTPS gleich mit:
+Mit einem festen Datenverzeichnis prüft ein zweiter Lauf zusätzlich, dass
+Rechnung, PDF und Start-Backup ein Update beziehungsweise einen Neustart
+überleben:
 
 ```bash
-tailscale up
-tailscale serve --bg 3000      # https://<maschine>.<tailnet>.ts.net
+node apps/desktop/scripts/rauchprobe.mjs <anwendung> --data-dir /tmp/agentur-tool-test
+node apps/desktop/scripts/rauchprobe.mjs <anwendung> --data-dir /tmp/agentur-tool-test --reopen
 ```
 
-Damit ist die Anwendung von jedem Gerät im eigenen Tailnet erreichbar —
-iPhone, Mac, Windows —, und von sonst niemandem. Kein offener Port, kein
-öffentlich erreichbares Anmeldeformular, keine Bot-Scans. Das Zertifikat
-kommt von Tailscale, Let's Encrypt und ein Reverse Proxy entfallen.
+Auf einem Rechner ohne Bildschirm — einem Bauserver — gehört `xvfb-run -a`
+davor. Die CI läuft beide Stufen bei jedem Push.
 
-Terminiert Tailscale das HTTPS (wie oben), bleibt `COOKIE_SECURE=true`.
-Wer die Anwendung ohne HTTPS direkt über die Tailscale-Adresse aufruft, muss
-`COOKIE_SECURE=false` setzen — sonst schickt der Browser das Sitzungs-Cookie
-nicht mit.
+Die CI baut deshalb auf drei nativen Runnern und prüft nicht nur den
+Paketbaum: Sie hängt die DMGs ein beziehungsweise installiert das NSIS-Paket
+still und startet genau die darin enthaltene Anwendung zweimal.
+
+Signierte Veröffentlichungen entstehen ausschließlich über einen passenden
+`vMAJOR.MINOR.PATCH`-Tag. Einrichtung, Geheimnisse und Ablauf stehen im
+[`Release-Handbuch`](docs/RELEASE.md).
+
+### Aktualisieren
+
+AgenturTool sucht nicht im Netz nach Updates. Vor einem Update empfiehlt sich
+ein Backup über die Anwendung; danach wird das neue signierte Paket über die
+bestehende Installation installiert. Die Daten liegen außerhalb der
+Anwendung und bleiben dabei erhalten. Beim ersten Start der neuen Version
+entsteht vor möglichen Datenbankmigrationen automatisch ein weiteres Backup.
 
 ### Anmeldung
 
-`AUTH_ENABLED=false` (Voreinstellung) ist der lokale Betrieb: kein
-Anmeldeformular, der Server hört ohnehin nur auf `127.0.0.1`. Sobald die
-Anwendung über das Netz erreichbar ist, gehört der Schalter auf `true` und ein
-Benutzer angelegt:
+Im Desktop-Betrieb gibt es keine: Der Server hört nur auf die Rückschleife
+des eigenen Rechners, und wer davorsitzt, ist angemeldet. `AUTH_ENABLED`
+steht deshalb auf `false`, und die Oberfläche zeigt gar kein
+Anmeldeformular.
+
+Das Modul dahinter bleibt trotzdem im Code — argon2id, serverseitige
+Sitzungen, Sperre nach zu vielen Fehlversuchen. Wer die Anwendung eines
+Tages doch über ein Netz erreichbar macht, setzt den Schalter auf `true`
+und legt einen Benutzer an:
 
 ```bash
 pnpm user:set chef@example.de     # Passwort wird verdeckt abgefragt

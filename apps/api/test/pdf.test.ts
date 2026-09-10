@@ -14,18 +14,17 @@ import { CompanyService } from '../src/company/company.service';
 import { FilesService } from '../src/files/files.service';
 import { TaxProfilesService } from '../src/tax-profiles/tax-profiles.service';
 import { TemplateSettingsService } from '../src/template-settings/template-settings.service';
-import { ChromiumConfig, findChromiumExecutable } from '../src/pdf/chromium';
 import { InvoiceDocumentsService } from '../src/pdf/invoice-documents.service';
 import { InvoicePdfService } from '../src/pdf/invoice-pdf.service';
-import { PdfService } from '../src/pdf/pdf.service';
 import {
   createTestDatabase,
   markIssued,
   resetInvoices,
   type TestDatabase,
 } from './database.helper';
+import { StubPdfRenderer } from './stub-renderer';
 import { PNG_1PX } from './fixtures/images';
-import { MM, embedsFont, isPdf, pdfContentAreas, pdfPageCount, pdfPageSizes } from './pdf.helper';
+import { isPdf } from './pdf.helper';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -33,19 +32,9 @@ import path from 'node:path';
 let db: TestDatabase;
 let prisma: PrismaClient;
 let files: FilesService;
-let pdfService: PdfService;
+let pdfService: StubPdfRenderer;
 let documents: InvoicePdfService;
 let dataDir: string;
-
-/**
- * Ohne Chromium laufen die Rendertests nicht — der Rest schon.
- *
- * Übersprungen statt rot: Der Browser ist eine Voraussetzung der Umgebung,
- * keine Aussage über den Code. Wer sie prüfen will, setzt
- * PUPPETEER_EXECUTABLE_PATH oder installiert Chromium an einem der üblichen
- * Orte.
- */
-const chromium = findChromiumExecutable(process.env.PUPPETEER_EXECUTABLE_PATH);
 
 beforeAll(async () => {
   db = await createTestDatabase();
@@ -55,11 +44,7 @@ beforeAll(async () => {
   const storage = new StorageConfig({ get: () => dataDir } as never);
   files = new FilesService(prisma, storage);
 
-  // Die Konfiguration kommt aus der Umgebung, damit derselbe Test im
-  // Container mit --no-sandbox und lokal mit Sandbox läuft.
-  pdfService = new PdfService(
-    new ChromiumConfig({ get: (key: string) => process.env[key] } as never),
-  );
+  pdfService = new StubPdfRenderer();
 
   documents = new InvoicePdfService(
     prisma,
@@ -73,7 +58,6 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pdfService.onModuleDestroy();
   await db.cleanup();
   fs.rmSync(dataDir, { recursive: true, force: true });
 });
@@ -267,46 +251,18 @@ describe('Dokumentaufbau', () => {
   });
 });
 
-describe.skipIf(chromium === null)('PDF-Erzeugung', () => {
-  it('liefert ein einseitiges A4-Dokument', async () => {
+describe('PDF-Erzeugung', () => {
+  // Wie das Dokument gesetzt ist — Seitenmaß, Ränder auf jeder Seite,
+  // eingebettete Schrift — steht in `pdf-electron.test.ts` und geht dort
+  // durch das echte Chromium. Hier geht es um den Weg dorthin: dass aus
+  // einer Rechnung ein Dokument mit dem richtigen Namen wird.
+  it('erzeugt ein Dokument mit dem Namen des Entwurfs', async () => {
     const invoice = await createInvoice(3);
     const { bytes, filename } = await documents.renderInvoice(invoice.id);
 
     expect(isPdf(bytes)).toBe(true);
     expect(filename).toBe(`Rechnung-Entwurf-${invoice.id}.pdf`);
-    expect(pdfPageCount(bytes)).toBe(1);
-
-    const [size] = pdfPageSizes(bytes);
-    expect(size?.widthPt).toBeCloseTo(210 * MM, 0);
-    expect(size?.heightPt).toBeCloseTo(297 * MM, 0);
-  }, 60_000);
-
-  it('bricht eine lange Rechnung mit gleichen Rändern um', async () => {
-    // Der Beleg für D31: Die Ränder kommen aus @page und gelten deshalb auf
-    // jeder Seite. Mit Padding auf der Seite stimmte nur die erste.
-    const invoice = await createInvoice(34);
-    const { bytes } = await documents.renderInvoice(invoice.id);
-
-    expect(pdfPageCount(bytes)).toBe(2);
-
-    const areas = pdfContentAreas(bytes);
-    expect(areas).toHaveLength(2);
-    for (const area of areas) {
-      expect(area.leftPt).toBeCloseTo(12 * MM, 0);
-      expect(area.widthPt).toBeCloseTo((210 - 2 * 12) * MM, 0);
-      // Oben 12 mm, unten 16 mm für die Fußzeile mit der Seitenzahl.
-      expect(area.heightPt).toBeCloseTo((297 - 12 - 16) * MM, 0);
-    }
-  }, 60_000);
-
-  it('bettet die mitgelieferte Schrift ein', async () => {
-    // D29: Ohne eingebettete Schrift bräche der Satz auf einer Maschine
-    // ohne Open Sans anders um als in der Vorschau.
-    const invoice = await createInvoice(2);
-    const { bytes } = await documents.renderInvoice(invoice.id);
-
-    expect(embedsFont(bytes, 'OpenSans')).toBe(true);
-  }, 60_000);
+  });
 
   it('erzeugt ein PDF aus ungespeicherten Formulardaten', async () => {
     const { bytes, filename } = await documents.renderPreview({
@@ -344,10 +300,11 @@ describe.skipIf(chromium === null)('PDF-Erzeugung', () => {
 
     expect(isPdf(bytes)).toBe(true);
     expect(filename).toBe('Rechnungsentwurf.pdf');
-  }, 60_000);
+  });
 
-  it('erzeugt mehrere gleichzeitig angeforderte PDFs nacheinander', async () => {
+  it('beantwortet mehrere gleichzeitige Anfragen', async () => {
     const invoice = await createInvoice(2);
+    const before = pdfService.calls;
 
     const results = await Promise.all([
       documents.renderInvoice(invoice.id),
@@ -358,5 +315,8 @@ describe.skipIf(chromium === null)('PDF-Erzeugung', () => {
     for (const result of results) {
       expect(isPdf(result.bytes)).toBe(true);
     }
-  }, 60_000);
+    // Drei Anfragen, drei Renderläufe — keine wird verschluckt oder
+    // stillschweigend zusammengefasst.
+    expect(pdfService.calls - before).toBe(3);
+  });
 });

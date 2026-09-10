@@ -13,15 +13,11 @@ import { ApiError } from '../src/common/api-error';
 import { StorageConfig } from '../src/common/config.service';
 import { FilesService } from '../src/files/files.service';
 import { CompanyService } from '../src/company/company.service';
-import { ChromiumConfig, findChromiumExecutable } from '../src/pdf/chromium';
-import { PdfService } from '../src/pdf/pdf.service';
 import { TimeReportService } from '../src/pdf/time-report.service';
 import { TimeEntriesService } from '../src/time-entries/time-entries.service';
 import { createTestDatabase, type TestDatabase } from './database.helper';
-import { MM, isPdf, pdfPageSizes } from './pdf.helper';
-
-/** Ohne Chromium läuft der Rendertest nicht — der Rest schon. */
-const chromium = findChromiumExecutable(process.env.PUPPETEER_EXECUTABLE_PATH);
+import { StubPdfRenderer } from './stub-renderer';
+import { isPdf } from './pdf.helper';
 
 let db: TestDatabase;
 let prisma: PrismaClient;
@@ -39,9 +35,10 @@ beforeAll(async () => {
   const storage = new StorageConfig({ get: () => dataDir } as never);
   report = new TimeReportService(
     new CompanyService(prisma, new FilesService(prisma, storage)),
-    // Der PDF-Dienst wird in diesen Tests nur gehalten, nicht benutzt:
-    // Geprüft wird das Dokument, nicht der Druck (siehe pdf.test.ts).
-    new PdfService(new ChromiumConfig({ get: (key: string) => process.env[key] } as never)),
+    // Geprüft wird das Dokument, nicht der Druck: Wie der Zeitnachweis
+    // gesetzt ist — eigene Ränder, eigene Fußzeile —, misst
+    // `pdf-electron.test.ts` am echten Chromium.
+    new StubPdfRenderer(),
   );
 });
 
@@ -259,28 +256,22 @@ describe('Zeitnachweis', () => {
   });
 
   /**
-   * Der Druck selbst — nur, wenn ein Chromium vorhanden ist.
+   * Der Druck selbst.
    *
-   * Übersprungen statt rot, wie in pdf.test.ts: Der Browser ist eine
-   * Voraussetzung der Umgebung und keine Aussage über den Code.
+   * Geprüft wird der Weg — dass aus Einträgen ein Dokument mit dem
+   * richtigen Namen wird. Wie es gesetzt ist, misst `pdf-electron.test.ts`
+   * am echten Chromium: Der Zeitnachweis steht dort als eigenes
+   * Referenzdokument, weil er mit 14 mm eigene Ränder mitbringt.
    */
-  it.skipIf(chromium === null)(
-    'druckt ein A4-Dokument mit dem Dateinamen',
-    async () => {
-      await timeEntries.create(input({ description: 'Konzept' }));
+  it('druckt ein Dokument mit dem Dateinamen des Zeitraums', async () => {
+    await timeEntries.create(input({ description: 'Konzept' }));
 
-      const query = range();
-      const document = await report.render(query, await timeEntries.list(query));
+    const query = range();
+    const document = await report.render(query, await timeEntries.list(query));
 
-      expect(isPdf(document.bytes)).toBe(true);
-      expect(document.filename).toBe('Zeitnachweis-Alpha-AG-2026-09-01-bis-2026-09-30.pdf');
-
-      const [size] = pdfPageSizes(document.bytes);
-      expect(size?.widthPt).toBeCloseTo(210 * MM, 0);
-      expect(size?.heightPt).toBeCloseTo(297 * MM, 0);
-    },
-    30_000,
-  );
+    expect(isPdf(document.bytes)).toBe(true);
+    expect(document.filename).toBe('Zeitnachweis-Alpha-AG-2026-09-01-bis-2026-09-30.pdf');
+  });
 });
 
 /**

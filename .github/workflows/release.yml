@@ -1,0 +1,193 @@
+name: Desktop-Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Tag und Hauptzweig prüfen
+        run: |
+          node apps/desktop/scripts/release-preflight.mjs
+          git fetch origin main:refs/remotes/origin/main --no-tags
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || {
+            echo "Der Release-Commit gehört nicht zu origin/main." >&2
+            exit 1
+          }
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: xvfb-run -a pnpm verify
+        env:
+          ELECTRON_NO_SANDBOX: 'true'
+
+  macos:
+    needs: verify
+    environment: release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            arch: arm64
+          - os: macos-15-intel
+            arch: x64
+    name: Signieren (macOS ${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Signieren, notarisieren und DMG bauen
+        run: pnpm --filter @agentur-tool/desktop paket --release
+        env:
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Signatur, Notarisierung und Laufzeit prüfen
+        shell: bash
+        run: |
+          set -euo pipefail
+          DMG_COUNT="$(find apps/desktop/release -maxdepth 1 -name 'AgenturTool-*-${{ matrix.arch }}.dmg' | wc -l | tr -d ' ')"
+          test "$DMG_COUNT" = 1
+          DMG="$(find apps/desktop/release -maxdepth 1 -name 'AgenturTool-*-${{ matrix.arch }}.dmg' -print -quit)"
+          hdiutil verify "$DMG"
+
+          MOUNT_POINT="$RUNNER_TEMP/agentur-tool-release-dmg"
+          DATA_DIR="$RUNNER_TEMP/agentur-tool-release-smoke"
+          mkdir -p "$MOUNT_POINT" "$DATA_DIR"
+          hdiutil attach "$DMG" -readonly -nobrowse -mountpoint "$MOUNT_POINT" >/dev/null
+          trap 'hdiutil detach "$MOUNT_POINT" >/dev/null || true' EXIT
+
+          APP="$(find "$MOUNT_POINT" -maxdepth 1 -name '*.app' -print -quit)"
+          test -n "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          spctl --assess --type execute --verbose=2 "$APP"
+          xcrun stapler validate "$APP"
+          node apps/desktop/scripts/rauchprobe.mjs "$APP" --data-dir "$DATA_DIR"
+          node apps/desktop/scripts/rauchprobe.mjs "$APP" --data-dir "$DATA_DIR" --reopen
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signed-macos-${{ matrix.arch }}
+          path: apps/desktop/release/AgenturTool-*-${{ matrix.arch }}.dmg
+          if-no-files-found: error
+
+  windows:
+    needs: verify
+    environment: release
+    name: Signieren (Windows x64)
+    runs-on: windows-2025
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Signieren und NSIS-Installer bauen
+        run: pnpm --filter @agentur-tool/desktop paket --release
+        env:
+          CSC_LINK: ${{ secrets.WINDOWS_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CSC_KEY_PASSWORD }}
+
+      - name: Signaturen, Installation und Laufzeit prüfen
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installers = @(Get-ChildItem 'apps/desktop/release/AgenturTool-*-x64.exe')
+          if ($installers.Count -ne 1) { throw "Erwartete genau einen Installer, fand $($installers.Count)." }
+
+          $unpacked = 'apps/desktop/release/win-unpacked/AgenturTool.exe'
+          foreach ($file in @($installers[0].FullName, $unpacked)) {
+            $signature = Get-AuthenticodeSignature $file
+            if ($signature.Status -ne 'Valid') {
+              throw "Ungültige Authenticode-Signatur für $file: $($signature.Status)"
+            }
+          }
+
+          $installDir = Join-Path $env:RUNNER_TEMP 'AgenturTool-Installation'
+          $dataDir = Join-Path $env:RUNNER_TEMP 'AgenturTool-Smoke'
+          New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
+          $install = Start-Process -FilePath $installers[0].FullName -ArgumentList '/S', "/D=$installDir" -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "Installer endete mit Code $($install.ExitCode)." }
+
+          $app = Join-Path $installDir 'AgenturTool.exe'
+          $installedSignature = Get-AuthenticodeSignature $app
+          if ($installedSignature.Status -ne 'Valid') {
+            throw "Installierte Anwendung ist nicht gültig signiert: $($installedSignature.Status)"
+          }
+          node apps/desktop/scripts/rauchprobe.mjs $app --data-dir $dataDir
+          if ($LASTEXITCODE -ne 0) { throw 'Erste Rauchprobe fehlgeschlagen.' }
+          node apps/desktop/scripts/rauchprobe.mjs $app --data-dir $dataDir --reopen
+          if ($LASTEXITCODE -ne 0) { throw 'Rauchprobe nach Neustart fehlgeschlagen.' }
+
+          $uninstaller = Join-Path $installDir 'Uninstall AgenturTool.exe'
+          $uninstall = Start-Process -FilePath $uninstaller -ArgumentList '/S' -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw "Deinstallation endete mit Code $($uninstall.ExitCode)." }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signed-windows-x64
+          path: apps/desktop/release/AgenturTool-*-x64.exe
+          if-no-files-found: error
+
+  draft:
+    needs: [macos, windows]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: signed-*
+          path: dist
+          merge-multiple: true
+      - name: Prüfsummen erzeugen
+        run: |
+          cd dist
+          sha256sum AgenturTool-*.dmg AgenturTool-*.exe > SHA256SUMS
+      - name: Entwurfs-Release anlegen oder aktualisieren
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if IS_DRAFT="$(gh release view "$TAG" --json isDraft --jq .isDraft 2>/dev/null)"; then
+            if [ "$IS_DRAFT" != true ]; then
+              echo "Release $TAG ist bereits veröffentlicht und wird nicht überschrieben." >&2
+              exit 1
+            fi
+          else
+            gh release create "$TAG" --draft --generate-notes --title "AgenturTool $TAG" --verify-tag
+          fi
+          gh release upload "$TAG" dist/* --clobber

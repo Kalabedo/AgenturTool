@@ -215,7 +215,7 @@ describe('Classic-Template', () => {
 
 describe('renderInvoiceDocument', () => {
   /**
-   * Die Grundlage für Schritt 8: Puppeteer rendert in einem Container ohne
+   * Die Grundlage für Schritt 8: Gerendert wird in einer Umgebung ohne
    * Netzwerkzugriff. Bliebe hier eine externe Adresse stehen, fehlte im PDF
    * still die Schrift oder das Logo — und das Dokument wäre trotzdem
    * scheinbar in Ordnung.

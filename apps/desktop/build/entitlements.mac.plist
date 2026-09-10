@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Berechtigungen für die signierte Anwendung.
+
+  Der Hardened Runtime ist Pflicht für die Notarisierung. Chromium benötigt
+  die JIT-Berechtigung; Prisma und argon2 werden als Bestandteil der App mit
+  derselben Developer-ID signiert und brauchen keine Ausnahme von der
+  Bibliotheksprüfung.
+-->
+<plist version="1.0">
+  <dict>
+    <!-- Chromiums JIT-Übersetzer. -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+  </dict>
+</plist>

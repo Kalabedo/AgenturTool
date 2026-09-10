@@ -28,10 +28,10 @@ function escapeHtml(value: string): string {
 }
 
 /**
- * Rendert das Modell zu einem vollständigen HTML-Dokument für Puppeteer.
+ * Rendert das Modell zu einem vollständigen HTML-Dokument für den Druck.
  *
  * Das Ergebnis ist absichtlich autark: Schrift als Data-URI, CSS inline,
- * Logo als Data-URI im Modell. Puppeteer bekommt es über `setContent` und
+ * Logo als Data-URI im Modell. Der Renderer bekommt es als Ganzes und
  * braucht danach keinen einzigen Netzwerkzugriff — sonst hinge das PDF an
  * der Erreichbarkeit der eigenen API, und ein Timeout erzeugte lautlos ein
  * Dokument ohne Logo.
@@ -60,7 +60,7 @@ export function renderInvoiceDocument(
 }
 
 /**
- * Die Fußzeile, die Puppeteer auf jede Seite setzt.
+ * Die Fußzeile, die Chromium auf jede Seite setzt.
  *
  * Sie entsteht hier und nicht im Backend, weil sie zwei Dinge aus dem
  * Template kennen muss: den Seitenrand (`PAGE.marginMm`, rechts zuzüglich

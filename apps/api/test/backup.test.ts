@@ -143,6 +143,19 @@ describe('Backup erstellen', () => {
     expect(fs.readdirSync(path.join(dataDir, 'tmp'))).toEqual([]);
   });
 
+  it('überschreibt keine zweite Sicherung aus derselben Sekunde', async () => {
+    await seedData();
+    const now = new Date('2026-03-02T09:15:00Z');
+
+    const first = await backup.createBackup(now);
+    const second = await backup.createBackup(now);
+
+    expect(first.filename).toBe('agentur-tool-backup-20260302-091500.zip');
+    expect(second.filename).toBe('agentur-tool-backup-20260302-091500-1.zip');
+    expect(fs.existsSync(path.join(backup.directory, first.filename))).toBe(true);
+    expect(fs.existsSync(path.join(backup.directory, second.filename))).toBe(true);
+  });
+
   it('listet die vorhandenen Archive, neueste zuerst', async () => {
     await seedData();
     await backup.createBackup(new Date('2026-03-01T08:00:00Z'));

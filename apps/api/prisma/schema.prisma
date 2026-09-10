@@ -14,6 +14,11 @@
 
 generator client {
   provider = "prisma-client-js"
+
+  // Jedes Installationspaket entsteht auf einem Rechner mit demselben
+  // System und derselben Architektur. So passen Prisma und weitere native
+  // Abhängigkeiten garantiert zum ausgelieferten Electron-Prozess.
+  binaryTargets = ["native"]
 }
 
 datasource db {

@@ -1,0 +1,122 @@
+{
+  "zeitnachweis": {
+    "pages": 1,
+    "sizesPt": [
+      {
+        "widthPt": 595,
+        "heightPt": 841.9
+      }
+    ],
+    "contentAreasPt": [
+      {
+        "leftPt": 39.8,
+        "topPt": 39.8,
+        "widthPt": 515.9,
+        "heightPt": 756.9
+      }
+    ],
+    "embedsOpenSans": true
+  },
+  "einseitig": {
+    "pages": 1,
+    "sizesPt": [
+      {
+        "widthPt": 595,
+        "heightPt": 841.9
+      }
+    ],
+    "contentAreasPt": [
+      {
+        "leftPt": 33.8,
+        "topPt": 33.8,
+        "widthPt": 527.3,
+        "heightPt": 762.5
+      }
+    ],
+    "embedsOpenSans": true
+  },
+  "mehrseitig": {
+    "pages": 3,
+    "sizesPt": [
+      {
+        "widthPt": 595,
+        "heightPt": 841.9
+      },
+      {
+        "widthPt": 595,
+        "heightPt": 841.9
+      },
+      {
+        "widthPt": 595,
+        "heightPt": 841.9
+      }
+    ],
+    "contentAreasPt": [
+      {
+        "leftPt": 33.8,
+        "topPt": 33.8,
+        "widthPt": 527.3,
+        "heightPt": 762.5
+      },
+      {
+        "leftPt": 33.8,
+        "topPt": 33.8,
+        "widthPt": 527.3,
+        "heightPt": 762.5
+      },
+      {
+        "leftPt": 33.8,
+        "topPt": 33.8,
+        "widthPt": 527.3,
+        "heightPt": 762.5
+      }
+    ],
+    "embedsOpenSans": true
+  },
+  "mit-logo": {
+    "pages": 1,
+    "sizesPt": [
+      {
+        "widthPt": 595,
+        "heightPt": 841.9
+      }
+    ],
+    "contentAreasPt": [
+      {
+        "leftPt": 33.8,
+        "topPt": 33.8,
+        "widthPt": 527.3,
+        "heightPt": 762.5
+      }
+    ],
+    "embedsOpenSans": true
+  },
+  "voll": {
+    "pages": 2,
+    "sizesPt": [
+      {
+        "widthPt": 595,
+        "heightPt": 841.9
+      },
+      {
+        "widthPt": 595,
+        "heightPt": 841.9
+      }
+    ],
+    "contentAreasPt": [
+      {
+        "leftPt": 33.8,
+        "topPt": 33.8,
+        "widthPt": 527.3,
+        "heightPt": 762.5
+      },
+      {
+        "leftPt": 33.8,
+        "topPt": 33.8,
+        "widthPt": 527.3,
+        "heightPt": 762.5
+      }
+    ],
+    "embedsOpenSans": true
+  }
+}

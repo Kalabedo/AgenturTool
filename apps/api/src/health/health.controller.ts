@@ -19,7 +19,7 @@ export class HealthController {
     try {
       await this.prisma.$queryRaw`SELECT 1`;
     } catch {
-      // Ein 200er wäre für Docker und Reverse Proxys weiterhin „gesund".
+      // Ein 200er wäre für einen Aufrufer von außen weiterhin „gesund".
       // 503 sorgt dafür, dass kein Verkehr an einen Prozess mit unerreichbarer
       // Datenbank geschickt wird.
       throw new ServiceUnavailableException('Die Datenbank ist nicht erreichbar.');
