@@ -1397,21 +1397,18 @@ dafür die Plattformkennung jedes Engine-Dateinamens im Hauptprozess
 nachzubauen. Ohne Archiv stimmt jeder Pfad von selbst. Ein Schutz war das
 Archiv ohnehin nicht; es lässt sich mit einem Befehl öffnen.
 
-Gebaut wird je Plattform auf ihrer eigenen. Die Prisma-Engines ließen sich
-über Kreuz laden (`binaryTargets` im Schema nennt alle drei), die nativen
-Binärdateien von `@node-rs/argon2` kommen dagegen über
-plattformspezifische Optional-Dependencies, und pnpm installiert nur die
-des Wirtssystems. Weil ohnehin je Plattform gebaut wird, räumt `paket.mjs`
-die Engines der übrigen Systeme wieder weg — zusammen mit den Kopien
-neben der Prisma-CLI, die im Betrieb nur `migrate deploy` ausführt und
-dafür die Schema-Engine benutzt. Das Verzeichnis der Anwendung sinkt damit
-von 408 auf 235 MB.
+Gebaut wird je System und Architektur auf einem passenden nativen Runner.
+Prisma erzeugt nur `binaryTargets = ["native"]`, und ein Hook weist jeden
+Cross-Build ab: Neben Prisma bringt auch `@node-rs/argon2`
+plattformspezifische Binärdateien mit. Ein einziger Mac-Paketbaum darf deshalb
+niemals sowohl das ARM64- als auch das x64-DMG speisen.
 
-Für macOS signiert und notarisiert. Der Hardened Runtime ist dafür Pflicht
-und verbietet standardmäßig genau das, was Chromium braucht — ohne
-`com.apple.security.cs.allow-jit` startet die JavaScript-Engine in der
-signierten Anwendung nicht, und das fällt erst beim ersten Start auf, nicht
-beim Bauen.
+Öffentliche macOS-Pakete werden mit derselben Developer-ID vollständig
+signiert und danach notarisiert. Der Hardened Runtime ist Pflicht; als einzige
+Ausnahme bleibt `com.apple.security.cs.allow-jit` für Chromiums
+JavaScript-Engine. Die Bibliotheksprüfung bleibt aktiv und erfasst damit auch
+Prisma und argon2. Windows-Releases verlangen entsprechend eine gültige
+Authenticode-Signatur.
 
 ### Die Rauchprobe
 
@@ -1423,8 +1420,10 @@ sie, dass keine einzige Anfrage nach außen gehen wollte.
 Sie prüft nicht Logik, sondern Form — jede der oben beschriebenen
 Eigenheiten ist in der Entwicklung beantwortet und im Paket neu zu stellen.
 Sie läuft gegen den Paketbaum (`--nur-baum`) wie gegen das fertig gepackte
-Programm; unter Linux gegen beides, auf den drei Plattform-Runnern gegen
-den Baum.
+Programm. Unter macOS wird dafür das DMG geprüft und eingehängt, unter Windows
+der NSIS-Installer still installiert. Ein zweiter Start mit demselben
+Datenverzeichnis prüft zusätzlich Rechnung, PDF und das automatische
+Migrations-Backup.
 
 ---
 

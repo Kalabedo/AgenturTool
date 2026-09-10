@@ -25,6 +25,10 @@ directories:
   output: release
   buildResources: build
 
+# Verhindert auch dann ein Cross-Build, wenn electron-builder außerhalb von
+# `pnpm paket` direkt mit einem Architektur-Schalter aufgerufen wird.
+beforePack: scripts/before-pack.mjs
+
 # Was ins Paket kommt — außerhalb von `node_modules`.
 #
 # `node_modules` steht hier bewusst nicht: electron-builder stellt dessen
@@ -62,33 +66,25 @@ asar: false
 
 mac:
   category: public.app-category.business
-  target:
-    - target: dmg
-      arch:
-        - arm64
-        - x64
+  target: dmg
+  minimumSystemVersion: '13.0'
   # Pflicht für die Notarisierung.
   hardenedRuntime: true
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
+  notarize: true
   # Die Anwendung liest und schreibt nur in ihrem eigenen Datenordner.
   extendInfo:
     NSHumanReadableCopyright: © Tom Wenczel
 
-# Notarisierung über die Zugangsdaten aus der Umgebung: APPLE_ID,
-# APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID. Fehlen sie, überspringt
-# electron-builder den Schritt — das ist der Fall in CI, wo nur geprüft
-# wird, ob das Paket überhaupt entsteht.
-afterSign: scripts/notarize.mjs
-
 win:
+  executableName: AgenturTool
   target:
     - target: nsis
       arch:
         - x64
-  # Noch nicht signiert: Ohne Zertifikat zeigt Windows beim ersten Start
-  # einen SmartScreen-Hinweis. Das blockiert nichts und lässt sich später
-  # nachrüsten.
+  # Pull-Request-Pakete bleiben bewusst unsigniert. `paket --release`
+  # erzwingt dagegen eine gültige Signatur.
 
 linux:
   # Der Dateiname des Programms. Ohne ihn leitet electron-builder ihn aus

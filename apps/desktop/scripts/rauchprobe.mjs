@@ -13,6 +13,7 @@
  *
  *   node scripts/rauchprobe.mjs                 # gegen paket/dist/main.js
  *   node scripts/rauchprobe.mjs <ziel>          # gegen ein gebautes Paket
+ *   node scripts/rauchprobe.mjs <ziel> --data-dir <pfad> --reopen
  *
  * Das Ziel ist eine `.js`-Datei (dann startet Electron sie), ein
  * macOS-Bundle (`release/mac-arm64/AgenturTool.app`) oder ein fertiges
@@ -21,16 +22,57 @@
  * Auf einem Rechner ohne Bildschirm über `xvfb-run -a` aufrufen.
  */
 import { spawn } from 'node:child_process';
+import { EventEmitter } from 'node:events';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createLineCollector, stopChild, waitForStartup } from './rauchprobe-prozess.mjs';
 
 const desktopDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const target = resolveTarget(
-  path.resolve(process.argv[2] ?? path.join(desktopDir, 'paket/dist/main.js')),
-);
+const options = parseArguments(process.argv.slice(2));
+const target = resolveTarget(path.resolve(options.target));
+
+function parseArguments(args) {
+  let targetArgument = null;
+  let dataDir = null;
+  let reopen = false;
+  let keepData = false;
+
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index];
+    if (argument === '--data-dir') {
+      const value = args[index + 1];
+      if (value === undefined || value.startsWith('--')) {
+        throw new Error('--data-dir erwartet einen Pfad.');
+      }
+      dataDir = path.resolve(value);
+      index += 1;
+    } else if (argument === '--reopen') {
+      reopen = true;
+    } else if (argument === '--keep-data') {
+      keepData = true;
+    } else if (argument.startsWith('--')) {
+      throw new Error(`Unbekannte Rauchprobenoption: ${argument}`);
+    } else if (targetArgument === null) {
+      targetArgument = argument;
+    } else {
+      throw new Error(`Mehr als ein Ziel angegeben: ${targetArgument}, ${argument}`);
+    }
+  }
+
+  if (reopen && dataDir === null) {
+    throw new Error('--reopen verlangt ein dauerhaftes --data-dir.');
+  }
+
+  return {
+    target: targetArgument ?? path.join(desktopDir, 'paket/dist/main.js'),
+    dataDir,
+    reopen,
+    keepData,
+  };
+}
 
 /**
  * Das Ziel auf etwas Startbares zurückführen.
@@ -62,52 +104,65 @@ function resolveTarget(given) {
 const blocked = [];
 let apiUrl = null;
 let output = '';
+const startupEvents = new EventEmitter();
 
-const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentur-tool-rauchprobe-'));
+const temporaryDataDir = options.dataDir === null;
+const dataDir =
+  options.dataDir ?? fs.mkdtempSync(path.join(os.tmpdir(), 'agentur-tool-rauchprobe-'));
+fs.mkdirSync(dataDir, { recursive: true });
 console.log(`▸ Ziel:            ${target}`);
 console.log(`▸ Datenverzeichnis: ${dataDir}`);
+console.log(`▸ Lauf:            ${options.reopen ? 'Wiederaufnahme' : 'Neuinstallation'}`);
 
 // Nicht `node_modules/.bin/electron`: Das ist unter Windows eine
 // `.cmd`-Datei, die sich ohne Shell nicht starten lässt. Das Paket selbst
 // nennt den Pfad zum Programm.
 const require = createRequire(path.join(desktopDir, 'package.json'));
 const [command, args] = target.endsWith('.js')
-  ? [require('electron'), ['--no-sandbox', target]]
-  : [target, ['--no-sandbox']];
+  ? [require('electron'), ['--no-sandbox', '--disable-error-dialogs', target]]
+  : [target, ['--no-sandbox', '--disable-error-dialogs']];
+
+const childEnvironment = { ...process.env };
+delete childEnvironment.AGENTUR_TOOL_DEV_URL;
 
 const app = spawn(command, [...args, `--user-data-dir=${dataDir}`], {
   cwd: desktopDir,
-  env: { ...process.env, AGENTUR_TOOL_DEV_URL: undefined },
+  env: childEnvironment,
 });
 
 app.stdout.setEncoding('utf8');
 app.stderr.setEncoding('utf8');
-app.stdout.on('data', absorb);
-app.stderr.on('data', absorb);
+const stdoutLines = createLineCollector(absorbLine);
+const stderrLines = createLineCollector(absorbLine);
+app.stdout.on('data', (chunk) => absorb(chunk, stdoutLines));
+app.stderr.on('data', (chunk) => absorb(chunk, stderrLines));
+app.once('close', () => {
+  stdoutLines.flush();
+  stderrLines.flush();
+});
 
-function absorb(chunk) {
+function absorb(chunk, collector) {
   output += chunk;
-  for (const line of chunk.split('\n')) {
-    if (line.startsWith('AGENTUR_TOOL_URL ')) {
-      apiUrl = line.slice('AGENTUR_TOOL_URL '.length).trim();
-    }
-    if (line.includes('abgewiesen:')) {
-      blocked.push(line.trim());
-    }
+  try {
+    collector.write(chunk);
+  } catch (error) {
+    startupEvents.emit('failure', error);
   }
 }
 
-/** Wartet auf die Zeile mit der Adresse — oder darauf, dass es sie nie gibt. */
-async function waitForUrl(timeoutMs = 120_000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (apiUrl !== null) return apiUrl;
-    if (app.exitCode !== null) {
-      throw new Error(`Die Anwendung endete mit Code ${String(app.exitCode)}.\n\n${output}`);
+function absorbLine(line) {
+  if (line.startsWith('AGENTUR_TOOL_URL ')) {
+    const candidate = line.slice('AGENTUR_TOOL_URL '.length).trim();
+    const parsed = new URL(candidate);
+    if (!['127.0.0.1', 'localhost', '[::1]'].includes(parsed.hostname)) {
+      throw new Error(`Die Anwendung meldete keine Rückschleifen-Adresse: ${candidate}`);
     }
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    apiUrl = candidate;
+    startupEvents.emit('ready', candidate);
   }
-  throw new Error(`Keine Adresse nach ${String(timeoutMs)} ms.\n\n${output}`);
+  if (line.includes('abgewiesen:')) {
+    blocked.push(line.trim());
+  }
 }
 
 async function call(method, route, body) {
@@ -137,12 +192,7 @@ function isoDate(offsetDays = 0) {
   return date.toISOString().slice(0, 10);
 }
 
-async function probe() {
-  await waitForUrl();
-  console.log(`▸ Server:          ${apiUrl}\n`);
-
-  check((await call('GET', '/api/health')).status === 'ok', 'Der Server antwortet.');
-
+async function probeFreshInstall() {
   const profiles = await call('GET', '/api/tax-profiles');
   check(profiles.length > 0, `Grunddaten stehen (${String(profiles.length)} Steuerprofile).`);
 
@@ -240,6 +290,36 @@ async function probe() {
   check(blocked.length === 0, 'Keine Anfrage hat den Rechner verlassen wollen.');
 }
 
+async function probeReopen() {
+  const invoices = await call('GET', '/api/invoices');
+  check(invoices.total === 1, 'Die vorhandene Rechnung ist nach dem Neustart noch da.');
+
+  const invoice = invoices.items[0];
+  check(
+    typeof invoice.number === 'string' && invoice.number.length > 0,
+    `Die ausgestellte Rechnung behält ihre Nummer (${invoice.number}).`,
+  );
+
+  const pdf = await call('GET', `/api/invoices/${String(invoice.id)}/pdf`);
+  check(pdf.subarray(0, 5).toString('latin1') === '%PDF-', 'Das gespeicherte PDF ist lesbar.');
+
+  const backup = await call('GET', '/api/backup/status');
+  check(backup.backups.length >= 2, 'Beim zweiten Start ist ein Migrations-Backup entstanden.');
+  check(blocked.length === 0, 'Keine Anfrage hat den Rechner verlassen wollen.');
+}
+
+async function probe() {
+  apiUrl = await waitForStartup(app, startupEvents, () => output);
+  console.log(`▸ Server:          ${apiUrl}\n`);
+  check((await call('GET', '/api/health')).status === 'ok', 'Der Server antwortet.');
+
+  if (options.reopen) {
+    await probeReopen();
+  } else {
+    await probeFreshInstall();
+  }
+}
+
 let failure = null;
 try {
   await probe();
@@ -247,28 +327,23 @@ try {
   failure = error;
 }
 
-app.kill('SIGTERM');
-await new Promise((resolve) => {
-  app.once('exit', resolve);
-  setTimeout(() => {
-    app.kill('SIGKILL');
-    resolve();
-  }, 10_000);
-});
+await stopChild(app);
 
 if (failure !== null) {
   console.error(`\n✗ ${failure.message}`);
   for (const line of blocked) console.error(`  ${line}`);
-  process.exit(1);
+  process.exitCode = 1;
+} else {
+  console.log(`\n✓ Rauchprobe bestanden.`);
 }
 
-console.log(`\n✓ Rauchprobe bestanden.`);
-
-try {
-  // Chromium räumt seine eigenen Dateien noch auf, während wir schon
-  // löschen. Ein liegen gebliebenes Verzeichnis unter /tmp ist kein Grund,
-  // einen bestandenen Lauf als gescheitert zu melden.
-  fs.rmSync(dataDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 });
-} catch {
-  console.log(`  (${dataDir} blieb liegen.)`);
+if (temporaryDataDir && !options.keepData) {
+  try {
+    // Chromium räumt seine eigenen Dateien noch auf, während wir schon
+    // löschen. Ein liegen gebliebenes Verzeichnis unter /tmp ist kein Grund,
+    // einen bestandenen Lauf als gescheitert zu melden.
+    fs.rmSync(dataDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 });
+  } catch {
+    console.log(`  (${dataDir} blieb liegen.)`);
+  }
 }

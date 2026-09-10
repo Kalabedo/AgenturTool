@@ -19,7 +19,7 @@
     "@prisma/client": "^6.2.0"
   },
   "devDependencies": {
-    "@electron/notarize": "^2.5.0",
+    "cross-spawn": "7.0.6",
     "electron": "^44.3.0",
     "electron-builder": "^25.1.8"
   },

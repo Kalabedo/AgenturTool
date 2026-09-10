@@ -97,6 +97,15 @@ Die fertige Anwendung installiert sich wie jede andere: DMG öffnen, in den
 Programme-Ordner ziehen, starten. Sie bringt alles mit — Server, Frontend
 und den Browser für die PDF-Erzeugung.
 
+| System        | Paket                      | Unterstützt                     |
+| ------------- | -------------------------- | ------------------------------- |
+| macOS ARM64   | eigenes Apple-Silicon-DMG  | macOS 13 oder neuer             |
+| macOS x64     | eigenes Intel-DMG          | macOS 13 oder neuer             |
+| Windows x64   | NSIS-Installer             | Windows 10 und 11               |
+| Windows ARM64 | Windows-x64-Paket emuliert | nicht eigenständig zertifiziert |
+
+Linux-Pakete dienen nur der Rauchprobe in CI und werden nicht veröffentlicht.
+
 Beim ersten Start legt sie Datenbank und Grundeinstellungen selbst an. Bei
 jedem weiteren Start entsteht vor den Migrationen automatisch ein Backup.
 
@@ -138,6 +147,11 @@ Das Ergebnis liegt unter `apps/desktop/release/`. Gepackt wird nicht das
 Projektverzeichnis, sondern ein Abzug unter `apps/desktop/paket/` — warum,
 steht in `scripts/paket.mjs` und in Abschnitt 16a der Architektur.
 
+Ein Paket entsteht immer nativ für System und Architektur des Baurechners.
+Ein Intel-Mac baut also ausschließlich das Intel-DMG, ein Apple-Silicon-Mac
+das ARM64-DMG und ein Windows-x64-Rechner den x64-Installer. Ein Cross-Build
+wird abgewiesen, weil Prisma und argon2 native Binärdateien enthalten.
+
 Das Programmsymbol entsteht aus demselben Zeichen wie das Favicon:
 
 ```bash
@@ -161,19 +175,33 @@ node apps/desktop/scripts/rauchprobe.mjs \
   apps/desktop/release/mac-arm64/AgenturTool.app
 ```
 
+Mit einem festen Datenverzeichnis prüft ein zweiter Lauf zusätzlich, dass
+Rechnung, PDF und Start-Backup ein Update beziehungsweise einen Neustart
+überleben:
+
+```bash
+node apps/desktop/scripts/rauchprobe.mjs <anwendung> --data-dir /tmp/agentur-tool-test
+node apps/desktop/scripts/rauchprobe.mjs <anwendung> --data-dir /tmp/agentur-tool-test --reopen
+```
+
 Auf einem Rechner ohne Bildschirm — einem Bauserver — gehört `xvfb-run -a`
 davor. Die CI läuft beide Stufen bei jedem Push.
 
-Gebaut wird je Plattform auf ihrer eigenen: Die Prisma-Engines ließen sich
-über Kreuz laden, die nativen Binärdateien von `@node-rs/argon2` kommen
-dagegen über plattformspezifische Optional-Dependencies, und pnpm
-installiert nur die des Wirtssystems. Die CI baut deshalb auf drei Runnern
-(macOS arm64, macOS x64, Windows).
+Die CI baut deshalb auf drei nativen Runnern und prüft nicht nur den
+Paketbaum: Sie hängt die DMGs ein beziehungsweise installiert das NSIS-Paket
+still und startet genau die darin enthaltene Anwendung zweimal.
 
-Für eine signierte und notarisierte macOS-Anwendung zusätzlich
-`APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` und `APPLE_TEAM_ID` setzen.
-Fehlen sie, entsteht ein unsigniertes Paket — das startet auf dem eigenen
-Rechner, auf einem fremden erst nach „Rechtsklick → Öffnen".
+Signierte Veröffentlichungen entstehen ausschließlich über einen passenden
+`vMAJOR.MINOR.PATCH`-Tag. Einrichtung, Geheimnisse und Ablauf stehen im
+[`Release-Handbuch`](docs/RELEASE.md).
+
+### Aktualisieren
+
+AgenturTool sucht nicht im Netz nach Updates. Vor einem Update empfiehlt sich
+ein Backup über die Anwendung; danach wird das neue signierte Paket über die
+bestehende Installation installiert. Die Daten liegen außerhalb der
+Anwendung und bleiben dabei erhalten. Beim ersten Start der neuen Version
+entsteht vor möglichen Datenbankmigrationen automatisch ein weiteres Backup.
 
 ### Anmeldung
 

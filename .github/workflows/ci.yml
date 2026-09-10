@@ -8,10 +8,13 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: qualitaet-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify:
     runs-on: ubuntu-latest
-    # Großzügig: Die Rauchproben packen die Anwendung zweimal.
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -21,58 +24,44 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Electron braucht unter Linux einen X-Server, auch für das
-      # versteckte Fenster, mit dem die PDFs entstehen. Ohne xvfb würden die
-      # Rendertests stillschweigend übersprungen — genau die, die prüfen,
-      # dass das Dokument noch aussieht wie festgehalten.
       - run: xvfb-run -a pnpm verify
         env:
-          # Electrons eigene Sandbox braucht unprivilegierte
-          # User-Namespaces, die auf den Runnern nicht überall offen sind.
-          # Ohne diesen Schalter hinge es vom Abbild ab, ob die Rendertests
-          # laufen — und das ist genau die Unschärfe, die sie beseitigen
-          # sollen.
           ELECTRON_NO_SANDBOX: 'true'
 
-      # Und einmal die Anwendung selbst, in der Form, in der sie
-      # ausgeliefert wird.
-      #
-      # Das ist der Teil, den kein Unit-Test erreicht: ob der Paketbaum die
-      # API und den Prisma-Client findet, ob die Migrationen über Electrons
-      # eigenes Node laufen, ob ein PDF entsteht. Zuerst gegen den Baum,
-      # dann gegen das fertig gepackte Programm — der zweite Lauf prüft,
-      # was das Packen selbst noch verändert.
       - name: Rauchprobe (Paketbaum)
         run: |
           pnpm --filter @agentur-tool/desktop paket --nur-baum
           xvfb-run -a node apps/desktop/scripts/rauchprobe.mjs
 
-      - name: Rauchprobe (gepackt)
+      - name: Rauchprobe (Linux-Paket)
         run: |
-          pnpm --filter @agentur-tool/desktop exec electron-builder --linux dir
+          pnpm --filter @agentur-tool/desktop exec electron-builder --config electron-builder.yml --linux dir
           xvfb-run -a node apps/desktop/scripts/rauchprobe.mjs \
             apps/desktop/release/linux-unpacked/agentur-tool
 
-  # Ein Paket, das sich nicht mehr bauen lässt, soll vor dem Ausliefern
-  # auffallen und nicht erst beim Ausliefern. Jede Plattform baut auf ihrer
-  # eigenen: Die Prisma-Engines ließen sich über Kreuz laden, die nativen
-  # Binärdateien von @node-rs/argon2 kommen dagegen über
-  # plattformspezifische Optional-Dependencies, und pnpm installiert nur
-  # die des Wirtssystems.
   paket:
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: macos-14
+          - os: macos-15
             ziel: macOS arm64
-          - os: macos-13
+            arch: arm64
+            artifact: unsigned-ci-macos-arm64
+            package: apps/desktop/release/AgenturTool-*-arm64.dmg
+          - os: macos-15-intel
             ziel: macOS x64
-          - os: windows-latest
-            ziel: Windows
+            arch: x64
+            artifact: unsigned-ci-macos-x64
+            package: apps/desktop/release/AgenturTool-*-x64.dmg
+          - os: windows-2025
+            ziel: Windows x64
+            arch: x64
+            artifact: unsigned-ci-windows-x64
+            package: apps/desktop/release/AgenturTool-*-x64.exe
     name: Paket (${{ matrix.ziel }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -82,16 +71,67 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      # Ohne Signierung: Die Zertifikate liegen nicht in jedem Lauf vor, und
-      # geprüft werden soll hier, ob das Paket entsteht.
-      - run: pnpm --filter @agentur-tool/desktop paket
+
+      # Zweimal aus demselben Checkout: Ein abgebrochener Lauf darf keine
+      # Ausgabe hinterlassen, an der der nächste scheitert.
+      - name: Unsigiertes Paket zweimal bauen
+        run: |
+          pnpm --filter @agentur-tool/desktop paket
+          pnpm --filter @agentur-tool/desktop paket
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
-      # Dass das Paket entsteht, heißt noch nicht, dass es läuft — und die
-      # Frage stellt sich je Plattform neu: Prisma lädt seine Engine für
-      # macOS anders als für Windows. Geprüft wird der Baum, nicht das
-      # fertige Programm: Dessen Pfad heißt auf jedem System anders, und
-      # der Unterschied zwischen beiden ist unter Linux bereits geprüft.
-      - name: Rauchprobe
-        run: node apps/desktop/scripts/rauchprobe.mjs
+      - name: DMG prüfen, einhängen und Anwendung zweimal starten
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          DMG_COUNT="$(find apps/desktop/release -maxdepth 1 -name 'AgenturTool-*-${{ matrix.arch }}.dmg' | wc -l | tr -d ' ')"
+          test "$DMG_COUNT" = 1
+          DMG="$(find apps/desktop/release -maxdepth 1 -name 'AgenturTool-*-${{ matrix.arch }}.dmg' -print -quit)"
+          hdiutil verify "$DMG"
+
+          MOUNT_POINT="$RUNNER_TEMP/agentur-tool-dmg"
+          DATA_DIR="$RUNNER_TEMP/agentur-tool-smoke"
+          mkdir -p "$MOUNT_POINT" "$DATA_DIR"
+          hdiutil attach "$DMG" -readonly -nobrowse -mountpoint "$MOUNT_POINT" >/dev/null
+          trap 'hdiutil detach "$MOUNT_POINT" >/dev/null || true' EXIT
+
+          APP="$(find "$MOUNT_POINT" -maxdepth 1 -name '*.app' -print -quit)"
+          test -n "$APP"
+          node apps/desktop/scripts/rauchprobe.mjs "$APP" --data-dir "$DATA_DIR"
+          node apps/desktop/scripts/rauchprobe.mjs "$APP" --data-dir "$DATA_DIR" --reopen
+
+      - name: NSIS installieren, Anwendung zweimal starten und deinstallieren
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installers = @(Get-ChildItem 'apps/desktop/release/AgenturTool-*-x64.exe')
+          if ($installers.Count -ne 1) { throw "Erwartete genau einen Installer, fand $($installers.Count)." }
+
+          $installDir = Join-Path $env:RUNNER_TEMP 'AgenturTool-Installation'
+          $dataDir = Join-Path $env:RUNNER_TEMP 'AgenturTool-Smoke'
+          New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
+
+          $install = Start-Process -FilePath $installers[0].FullName -ArgumentList '/S', "/D=$installDir" -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "Installer endete mit Code $($install.ExitCode)." }
+
+          $app = Join-Path $installDir 'AgenturTool.exe'
+          if (-not (Test-Path $app)) { throw "Installierte Anwendung fehlt: $app" }
+          node apps/desktop/scripts/rauchprobe.mjs $app --data-dir $dataDir
+          if ($LASTEXITCODE -ne 0) { throw 'Erste Rauchprobe fehlgeschlagen.' }
+          node apps/desktop/scripts/rauchprobe.mjs $app --data-dir $dataDir --reopen
+          if ($LASTEXITCODE -ne 0) { throw 'Rauchprobe nach Neustart fehlgeschlagen.' }
+
+          $uninstaller = Join-Path $installDir 'Uninstall AgenturTool.exe'
+          if (-not (Test-Path $uninstaller)) { throw "Deinstallationsprogramm fehlt: $uninstaller" }
+          $uninstall = Start-Process -FilePath $uninstaller -ArgumentList '/S' -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw "Deinstallation endete mit Code $($uninstall.ExitCode)." }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.package }}
+          if-no-files-found: error
+          retention-days: 7

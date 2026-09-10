@@ -21,26 +21,56 @@
  * nicht gebaut.
  *
  * Mit `--nur-baum` endet der Lauf nach dem Aufbau von `paket/`, ohne
- * electron-builder zu rufen. Das ist der Teil, der auf jedem System gleich
- * abläuft — und damit der, den `rauchprobe.mjs` überall prüfen kann.
+ * electron-builder zu rufen. `--release` verlangt dagegen die
+ * Signatur-Zugangsdaten und erzwingt ein signiertes Paket.
  */
-import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import crossSpawn from 'cross-spawn';
+import { missingReleaseEnvironment, parsePackageArguments } from './paket-konfiguration.mjs';
 
 const desktopDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = path.resolve(desktopDir, '../..');
 const paketDir = path.join(desktopDir, 'paket');
+const releaseDir = path.join(desktopDir, 'release');
+const options = parsePackageArguments(process.argv.slice(2));
+
+if (options.release) {
+  const missing = missingReleaseEnvironment(process.platform);
+  if (missing.length > 0) {
+    throw new Error(`Release-Zugangsdaten fehlen: ${missing.join(', ')}`);
+  }
+}
 
 function run(command, args, cwd, env = {}) {
   process.stdout.write(`▸ ${command} ${args.join(' ')}\n`);
-  execFileSync(command, args, { cwd, stdio: 'inherit', env: { ...process.env, ...env } });
+  const result = crossSpawn.sync(command, args, {
+    cwd,
+    stdio: 'inherit',
+    env: { ...process.env, ...env },
+  });
+
+  if (result.error) throw result.error;
+  if (result.signal) {
+    throw new Error(`${command} wurde durch ${result.signal} beendet.`);
+  }
+  if (result.status !== 0) {
+    throw new Error(`${command} endete mit Code ${String(result.status)}.`);
+  }
 }
 
 // Ein alter Abzug wäre schlimmer als keiner: Er brächte die Dateien des
 // vorigen Laufs mit ins Paket.
 fs.rmSync(paketDir, { recursive: true, force: true });
+
+// Auch electron-builder hinterlässt Zwischenverzeichnisse. Nach einem
+// abgebrochenen DMG-Lauf können sie den nächsten Lauf beim Umbenennen oder
+// Einhängen blockieren. Ein vollständiger Paketlauf beginnt deshalb leer;
+// `--nur-baum` fasst vorhandene Installationspakete dagegen nicht an.
+if (!options.onlyTree) {
+  fs.rmSync(releaseDir, { recursive: true, force: true });
+}
 
 // Der Abzug dieses Pakets samt allem, was der Hauptprozess zur Laufzeit
 // lädt — die API als Arbeitsbereichspaket eingeschlossen, weil `.npmrc`
@@ -112,24 +142,6 @@ for (const entry of fs.readdirSync(cliDir)) {
   }
 }
 
-// Und die Query-Engines der fremden Betriebssysteme.
-//
-// `binaryTargets` im Schema listet alle drei Ziele, damit `generate` auch
-// auf einem Rechner durchläuft, der für ein anderes packt. Gepackt wird
-// aber immer für das System, auf dem gerade gebaut wird — die übrigen
-// Engines wären totes Gewicht von rund 25 MB je Stück. Auf einem Mac
-// bleiben beide Architekturen liegen: Von dort entstehen arm64 und x64
-// aus demselben Baum.
-const engineKeep = { darwin: /darwin/, win32: /windows/, linux: /(debian|linux|rhel|musl)/ }[
-  process.platform
-];
-const clientDir = path.join(paketDir, 'node_modules/@prisma/client');
-for (const entry of fs.readdirSync(clientDir)) {
-  if (/query_engine.*\.node$/.test(entry) && engineKeep !== undefined && !engineKeep.test(entry)) {
-    fs.rmSync(path.join(clientDir, entry));
-  }
-}
-
 // Das Frontend, bewusst neben und nicht in `node_modules`: electron-builder
 // stellt den Inhalt von `node_modules` allein aus den `dependencies`
 // zusammen und ignoriert dort jedes `files`-Muster. Alles andere im
@@ -139,8 +151,13 @@ fs.cpSync(path.join(repoRoot, 'apps/web/dist'), path.join(paketDir, 'web'), { re
 // Die Sperrdatei des Abzugs gehört nicht ins Paket.
 fs.rmSync(path.join(paketDir, 'pnpm-lock.yaml'), { force: true });
 
-if (process.argv.includes('--nur-baum')) {
+if (options.onlyTree) {
   process.stdout.write(`▸ Baum steht unter ${paketDir} — electron-builder übersprungen.\n`);
 } else {
-  run('pnpm', ['exec', 'electron-builder', '--config', 'electron-builder.yml'], desktopDir);
+  const builderArguments = ['exec', 'electron-builder', '--config', 'electron-builder.yml'];
+  if (options.release) builderArguments.push('--config.forceCodeSigning=true');
+
+  run('pnpm', builderArguments, desktopDir, {
+    AGENTUR_TOOL_RELEASE: options.release ? '1' : '0',
+  });
 }

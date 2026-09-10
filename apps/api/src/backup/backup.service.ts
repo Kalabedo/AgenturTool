@@ -60,8 +60,6 @@ export class BackupService {
     await fsp.mkdir(this.storage.tmpDir, { recursive: true });
 
     const databaseCopy = path.join(this.storage.tmpDir, `backup-${crypto.randomUUID()}.sqlite`);
-    const filename = backupFilename(now);
-    const archivePath = path.join(this.directory, filename);
 
     try {
       await this.copyDatabase(databaseCopy);
@@ -81,6 +79,7 @@ export class BackupService {
         files,
       };
 
+      const { filename, archivePath } = this.availableArchive(backupFilename(now));
       await this.writeArchive(archivePath, databaseCopy, manifest);
 
       const summary: BackupSummary = {
@@ -99,6 +98,21 @@ export class BackupService {
       // Die Kopie der Datenbank ist im Archiv; als lose Datei wäre sie nur
       // eine zweite, veraltende Wahrheit unter data/tmp.
       await fsp.rm(databaseCopy, { force: true });
+    }
+  }
+
+  /** Verhindert, dass zwei Sicherungen derselben Sekunde einander ersetzen. */
+  private availableArchive(preferredFilename: string): {
+    filename: string;
+    archivePath: string;
+  } {
+    const extension = path.extname(preferredFilename);
+    const stem = preferredFilename.slice(0, -extension.length);
+
+    for (let suffix = 0; ; suffix += 1) {
+      const filename = suffix === 0 ? preferredFilename : `${stem}-${String(suffix)}${extension}`;
+      const archivePath = path.join(this.directory, filename);
+      if (!fs.existsSync(archivePath)) return { filename, archivePath };
     }
   }
 
