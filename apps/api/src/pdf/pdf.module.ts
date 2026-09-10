@@ -6,7 +6,7 @@ import { TemplateSettingsModule } from '../template-settings/template-settings.m
 import { ChromiumConfig } from './chromium';
 import { InvoiceDocumentsService } from './invoice-documents.service';
 import { InvoicePdfService } from './invoice-pdf.service';
-import { PDF_RENDERER } from './pdf-renderer';
+import { PDF_RENDERER, PDF_RENDERER_HOST, type PdfRenderer } from './pdf-renderer';
 import { PdfService } from './pdf.service';
 import { TimeReportService } from './time-report.service';
 
@@ -23,11 +23,16 @@ import { TimeReportService } from './time-report.service';
   providers: [
     ChromiumConfig,
     PdfService,
-    // Wer PDFs erzeugt, fragt nach dem Token, nicht nach der Klasse. Im
-    // Kommandozeilenbetrieb steckt der Puppeteer-Renderer dahinter; die
-    // Desktop-Anwendung reicht beim Start ihren eigenen herein, der
-    // Electrons Chromium benutzt statt eines installierten Browsers.
-    { provide: PDF_RENDERER, useExisting: PdfService },
+    {
+      // Wer PDFs erzeugt, fragt nach dem Token, nicht nach der Klasse.
+      // Bringt der Gastgeber einen Renderer mit — die Desktop-Anwendung
+      // ihren über Electrons Chromium —, gilt der; sonst steuert Puppeteer
+      // einen installierten Browser fern.
+      provide: PDF_RENDERER,
+      useFactory: (host: PdfRenderer | null, puppeteer: PdfService): PdfRenderer =>
+        host ?? puppeteer,
+      inject: [{ token: PDF_RENDERER_HOST, optional: true }, PdfService],
+    },
     InvoicePdfService,
     InvoiceDocumentsService,
     TimeReportService,

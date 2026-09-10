@@ -5,6 +5,7 @@ import { NestFactory } from '@nestjs/core';
 import type { NextFunction, Request, Response } from 'express';
 import { AppModule } from './app.module';
 import { ApiExceptionFilter } from './common/api-exception.filter';
+import type { HostOptions } from './common/host.module';
 
 /**
  * Die laufende Anwendung samt der Adresse, unter der sie tatsächlich hört.
@@ -26,8 +27,8 @@ export interface RunningApi {
  * Anwendung in seinem eigenen Prozess hochzieht und die Fenster-URL aus dem
  * Rückgabewert nimmt.
  */
-export async function bootstrap(): Promise<RunningApi> {
-  const app = await NestFactory.create(AppModule);
+export async function bootstrap(options: HostOptions = {}): Promise<RunningApi> {
+  const app = await NestFactory.create(AppModule.forRoot(options));
   app.getHttpAdapter().getInstance().disable('x-powered-by');
   app.use((_request: Request, response: Response, next: NextFunction) => {
     response.setHeader('X-Content-Type-Options', 'nosniff');

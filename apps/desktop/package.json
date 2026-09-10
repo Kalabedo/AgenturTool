@@ -5,12 +5,16 @@
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "start": "electron dist/main.js"
   },
   "dependencies": {
-    "@agentur-tool/api": "workspace:*"
+    "@agentur-tool/api": "workspace:*",
+    "@nestjs/common": "^11.2.3",
+    "@prisma/client": "^6.2.0"
   },
   "devDependencies": {
     "electron": "^44.3.0"
-  }
+  },
+  "productName": "AgenturTool"
 }

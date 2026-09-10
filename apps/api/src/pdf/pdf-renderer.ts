@@ -47,3 +47,13 @@ export interface PdfRenderer {
  * gebaut werden müssen.
  */
 export const PDF_RENDERER = Symbol('PDF_RENDERER');
+
+/**
+ * Der Renderer, den der Gastgeber der Anwendung mitbringt — oder `null`.
+ *
+ * Getrennt von `PDF_RENDERER`, weil es zwei verschiedene Fragen sind: Was
+ * benutzt wird (`PDF_RENDERER`) und was von außen angeboten wurde. Die
+ * Desktop-Anwendung reicht hier ihren Electron-Renderer herein; auf der
+ * Kommandozeile bleibt es `null`, und der Puppeteer-Weg übernimmt.
+ */
+export const PDF_RENDERER_HOST = Symbol('PDF_RENDERER_HOST');
