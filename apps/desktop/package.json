@@ -7,7 +7,8 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "start": "electron dist/main.js",
-    "dev:window": "node scripts/dev.mjs"
+    "dev:window": "node scripts/dev.mjs",
+    "paket": "node scripts/paket.mjs"
   },
   "dependencies": {
     "@agentur-tool/api": "workspace:*",
@@ -15,7 +16,9 @@
     "@prisma/client": "^6.2.0"
   },
   "devDependencies": {
-    "electron": "^44.3.0"
+    "@electron/notarize": "^2.5.0",
+    "electron": "^44.3.0",
+    "electron-builder": "^25.1.8"
   },
   "productName": "AgenturTool"
 }

@@ -52,9 +52,9 @@ export function LoginPage({ hasUser }: { hasUser: boolean }): JSX.Element {
           <div role="status" className="rounded-md border border-amber-200 bg-amber-50 p-4">
             <p className="text-sm font-medium text-amber-900">Noch kein Benutzer angelegt</p>
             <p className="mt-1 text-sm text-amber-800">
-              Führe auf dem Server{' '}
+              Führe im Projektverzeichnis{' '}
               <code className="break-all font-mono text-xs">
-                docker compose exec app pnpm user:set deine@email.de
+                pnpm user:set deine@email.de
               </code>{' '}
               aus und lade diese Seite danach neu.
             </p>

@@ -1,6 +1,7 @@
 # Projektplan: Eigene Rechnungssoftware ("AgenturTool")
 
-**Status:** v1.12 — Schritte 0 bis 12 umgesetzt; die Daten sind gesichert und
+**Status:** v2.0 — V1 steht, und die Anwendung wird als Desktop-Anwendung
+für macOS und Windows ausgeliefert (D1, D34). Die Daten sind gesichert und
 der Weg zurück ist einmal wirklich gegangen worden (Abschnitt 17).
 **Repository:** `Kalabedo/AgenturTool`
 
@@ -10,37 +11,38 @@ sie hier korrigiert und nicht nur im Code.
 
 ### Getroffene Entscheidungen
 
-| ID  | Thema                | Gewählt                                                                                                               |
-| --- | -------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| D1  | Betriebsmodell       | **Lokal, aber deploy-fähig gebaut** (Docker-Image, `/data`-Volume, Env-Config, Auth-Modul vorhanden aber deaktiviert) |
-| D2  | Datenbank            | **SQLite** (portabel gehalten für späteren Postgres-Wechsel)                                                          |
-| D3  | DB-Zugriff           | **Prisma**                                                                                                            |
-| D4  | Backend              | **NestJS**                                                                                                            |
-| D5  | Rechnungsnummer      | **Erst beim Finalisieren** vergeben                                                                                   |
-| D6  | Nach Finalisierung   | **Gesperrt + Storno**, plus eng begrenztes „Finalisierung zurücknehmen"                                               |
-| D7  | Zahlungen            | **Nur `paidAt`** (Teilzahlungen später)                                                                               |
-| D8  | Historische Daten    | **JSON-Snapshots auf der Rechnung**                                                                                   |
-| D9  | Entwurfsdaten        | **Kunde kopiert** (editierbar + Refresh), **eigene Firmendaten live** bis zum Finalisieren                            |
-| D10 | Storno-Nummern       | **Dieselbe Sequenz** wie Rechnungen                                                                                   |
-| D11 | Rabatt               | **Je Position**, umschaltbar Prozent ⇄ Betrag; kein Gesamtrabatt                                                      |
-| D12 | Rundung              | **Steuer je Steuersatzgruppe** auf Summenebene                                                                        |
-| D13 | PDF-Ablage           | **Dateisystem** + Metadaten/Hash in der DB                                                                            |
-| D14 | Vorschau             | **React-Template im iframe** (eine Implementierung, zwei Konsumenten)                                                 |
-| D15 | Template-Optionen V1 | **Mittel**: Logo/-größe, Akzentfarbe, Schrift (2–3), Fußzeile, Standardtexte                                          |
-| D16 | Preiseingabe         | **Nur netto**                                                                                                         |
-| D17 | Auth in V1           | **Vorhanden, per `AUTH_ENABLED` deaktiviert** (folgt aus D1)                                                          |
-| D18 | Späterer Zugriff     | **Tailscale + aktiver Login**                                                                                         |
-| D19 | Backup               | Button in der App **und** Skript für Cron; Offsite optional                                                           |
-| D20 | Tooling              | pnpm, kein Turborepo, Vitest, ESLint + Prettier                                                                       |
-| D21 | Kalenderdaten        | **ISO-String `"YYYY-MM-DD"`**; echte Zeitstempel bleiben `DateTime`                                                   |
-| D22 | Kundennummer         | **Freies Feld, optional, eindeutig wenn gesetzt**                                                                     |
-| D23 | Primärschlüssel      | `Int @id @default(autoincrement())`                                                                                   |
-| D24 | Build der Pakete     | `tsup` → ESM + CJS + `.d.ts` (NestJS läuft CJS, Vite ESM)                                                             |
-| D29 | Schrift im Dokument  | **Open Sans, als Base64 im Paket eingebettet** — kein Netzwerkzugriff beim PDF-Rendern                                |
-| D30 | Vorschau-Einbindung  | **iframe + React-Portal** (nicht `srcdoc`): dieselbe Komponente wie im PDF, inkrementell aktualisiert                 |
-| D31 | Seitenränder         | **`@page`-Ränder im Druck**, Padding nur am Bildschirm — Padding wirkt sonst nur auf der ersten Seite                 |
-| D32 | Puppeteer-Paket      | **`puppeteer-core` mit gefundenem Chromium** statt `puppeteer` mit eigenem Download (Abschnitt 13a)                   |
-| D33 | Backup-Format        | **ZIP** statt tar.gz — mit Bordmitteln auf Windows, macOS und iOS zu öffnen (Abschnitt 17)                            |
+| ID  | Thema                | Gewählt                                                                                                                                                                       |
+| --- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Betriebsmodell       | **Desktop-Anwendung** (Electron; Server im Hauptprozess, Daten in `userData`, Auth-Modul vorhanden aber deaktiviert) — ersetzt das ursprüngliche Docker-Image (Abschnitt 16a) |
+| D2  | Datenbank            | **SQLite** (portabel gehalten für späteren Postgres-Wechsel)                                                                                                                  |
+| D3  | DB-Zugriff           | **Prisma**                                                                                                                                                                    |
+| D4  | Backend              | **NestJS**                                                                                                                                                                    |
+| D5  | Rechnungsnummer      | **Erst beim Finalisieren** vergeben                                                                                                                                           |
+| D6  | Nach Finalisierung   | **Gesperrt + Storno**, plus eng begrenztes „Finalisierung zurücknehmen"                                                                                                       |
+| D7  | Zahlungen            | **Nur `paidAt`** (Teilzahlungen später)                                                                                                                                       |
+| D8  | Historische Daten    | **JSON-Snapshots auf der Rechnung**                                                                                                                                           |
+| D9  | Entwurfsdaten        | **Kunde kopiert** (editierbar + Refresh), **eigene Firmendaten live** bis zum Finalisieren                                                                                    |
+| D10 | Storno-Nummern       | **Dieselbe Sequenz** wie Rechnungen                                                                                                                                           |
+| D11 | Rabatt               | **Je Position**, umschaltbar Prozent ⇄ Betrag; kein Gesamtrabatt                                                                                                              |
+| D12 | Rundung              | **Steuer je Steuersatzgruppe** auf Summenebene                                                                                                                                |
+| D13 | PDF-Ablage           | **Dateisystem** + Metadaten/Hash in der DB                                                                                                                                    |
+| D14 | Vorschau             | **React-Template im iframe** (eine Implementierung, zwei Konsumenten)                                                                                                         |
+| D15 | Template-Optionen V1 | **Mittel**: Logo/-größe, Akzentfarbe, Schrift (2–3), Fußzeile, Standardtexte                                                                                                  |
+| D16 | Preiseingabe         | **Nur netto**                                                                                                                                                                 |
+| D17 | Auth in V1           | **Vorhanden, per `AUTH_ENABLED` deaktiviert** (folgt aus D1)                                                                                                                  |
+| D18 | ~~Späterer Zugriff~~ | ~~Tailscale + aktiver Login~~ — gegenstandslos mit D1 (Abschnitt 16)                                                                                                          |
+| D19 | Backup               | Button in der App **und** Skript für Cron; Offsite optional                                                                                                                   |
+| D20 | Tooling              | pnpm, kein Turborepo, Vitest, ESLint + Prettier                                                                                                                               |
+| D21 | Kalenderdaten        | **ISO-String `"YYYY-MM-DD"`**; echte Zeitstempel bleiben `DateTime`                                                                                                           |
+| D22 | Kundennummer         | **Freies Feld, optional, eindeutig wenn gesetzt**                                                                                                                             |
+| D23 | Primärschlüssel      | `Int @id @default(autoincrement())`                                                                                                                                           |
+| D24 | Build der Pakete     | `tsup` → ESM + CJS + `.d.ts` (NestJS läuft CJS, Vite ESM)                                                                                                                     |
+| D29 | Schrift im Dokument  | **Open Sans, als Base64 im Paket eingebettet** — kein Netzwerkzugriff beim PDF-Rendern                                                                                        |
+| D30 | Vorschau-Einbindung  | **iframe + React-Portal** (nicht `srcdoc`): dieselbe Komponente wie im PDF, inkrementell aktualisiert                                                                         |
+| D31 | Seitenränder         | **`@page`-Ränder im Druck**, Padding nur am Bildschirm — Padding wirkt sonst nur auf der ersten Seite                                                                         |
+| D32 | ~~Puppeteer-Paket~~  | ~~`puppeteer-core` mit gefundenem Chromium~~ — überholt durch D34                                                                                                             |
+| D33 | Backup-Format        | **ZIP** statt tar.gz — mit Bordmitteln auf Windows, macOS und iOS zu öffnen (Abschnitt 17)                                                                                    |
+| D34 | PDF-Renderer         | **Electrons `printToPDF`** statt eines ferngesteuerten Browsers — die Anwendung bringt ihr Chromium mit (Abschnitt 13a)                                                       |
 
 Zu D21: Rechnungs-, Leistungs- und Fälligkeitsdatum sind Kalendertage, keine
 Zeitpunkte. Als `DateTime` müsste an jeder Grenze zwischen Browser, API und
@@ -127,10 +129,10 @@ mehrere Mandanten, mehrere Benutzer, ZUGFeRD/XRechnung.
 │  API (Node.js)                          │  │
 │   ├─ Domain-Module                      │  │
 │   ├─ ORM  ──► SQLite-Datei              │  │
-│   └─ PDF-Service (Puppeteer)  ──────────┼──┘
+│   └─ PDF-Renderer (Electron)  ──────────┼──┘
 └────────────────┬────────────────────────┘
                  │
-        /data/  db.sqlite  ·  assets/  ·  invoices/*.pdf
+   userData/Daten/  db.sqlite · assets/ · invoices/*.pdf · backups/
 ```
 
 **Der zentrale Architekturhebel:** Rechnungs-Template und Berechnungslogik
@@ -151,13 +153,13 @@ pnpm Workspaces, kein Turborepo im MVP (bei 4 Paketen unnötig; nachrüstbar).
 agentur-tool/
 ├── apps/
 │   ├── web/          React SPA
-│   └── api/          Node-Backend
+│   ├── api/          Node-Backend
+│   └── desktop/      Electron-Hülle: Hauptprozess, PDF-Renderer, Verpackung
 ├── packages/
 │   ├── shared/       Zod-Schemas, Typen, Enums, Berechnungen, Formatierung
 │   └── invoice-template/  A4-Template (Komponente + CSS + Beispieldaten)
-├── docker/           Dockerfile, compose, Caddyfile
-├── scripts/          backup.ts, restore.ts, seed.ts
-├── data/             (gitignored) db.sqlite, assets/, invoices/
+├── data/             (gitignored) db.sqlite, assets/, invoices/ — nur im
+│                     Entwicklungsbetrieb; die Anwendung nutzt userData/
 ├── package.json
 ├── pnpm-workspace.yaml
 └── README.md
@@ -287,7 +289,7 @@ apps/api/src/
 ├── invoices/       Kern: Draft-CRUD, Finalize, Cancel, Duplicate, Payment
 │   ├── numbering/  NumberSequence, transaktionale Vergabe
 │   └── snapshot/   Snapshot-Bau + Validierung
-├── pdf/            Puppeteer-Browser-Pool, Render-Service
+├── pdf/            Render-Schnittstelle, Dokumentaufbau, Ablage
 ├── files/          Asset-/PDF-Ablage, Streaming, Hashing
 ├── backup/         Export/Restore
 ├── auth/           (schaltbar, siehe Abschnitt 16)
@@ -308,8 +310,8 @@ Nest-spezifisch:
 - `PrismaService` als injizierbarer Singleton mit `onModuleInit`/`enableShutdownHooks`.
 - Globaler `ExceptionFilter`, der Domänenfehler auf das einheitliche
   Fehlerformat aus Abschnitt 14 abbildet.
-- `PdfService` kapselt den Puppeteer-Browser als Provider mit
-  `OnModuleDestroy` — sonst bleiben Chromium-Prozesse zurück.
+- Der PDF-Renderer kommt als Token `PDF_RENDERER` von außen; wer die
+  Anwendung hostet, bietet ihn über `HostModule` an (Abschnitt 13a).
 - `ServeStaticModule` liefert im Produktivbetrieb das gebaute Frontend aus.
 
 ---
@@ -717,14 +719,14 @@ Formulardaten ──► shared/calculateInvoice() ──► InvoiceRenderModel
               ┌────────────────────────────────────┴─────────────┐
               ▼                                                  ▼
   Frontend: <InvoiceDocument/> im iframe              Backend: renderToStaticMarkup
-  (sofortige Live-Vorschau)                           + CSS ──► Puppeteer
-                                                        page.setContent() ──► A4-PDF
+  (sofortige Live-Vorschau)                           + CSS ──► PdfRenderer
+                                                        printToPDF() ──► A4-PDF
 ```
 
 **Ein Template, zwei Konsumenten.** `packages/invoice-template` exportiert
 eine React-Komponente plus ihr CSS als String. Das Frontend rendert sie
 direkt; das Backend rendert dieselbe Komponente mit
-`react-dom/server` zu HTML und gibt es Puppeteer. Es gibt keine zweite
+`react-dom/server` zu HTML und gibt es dem Renderer. Es gibt keine zweite
 Template-Implementierung, die auseinanderlaufen könnte.
 
 Regeln für Deckungsgleichheit Vorschau ↔ PDF:
@@ -733,24 +735,26 @@ Regeln für Deckungsgleichheit Vorschau ↔ PDF:
   (Tailwind ist rem-/viewport-basiert und für Druck ungeeignet).
 - `@page { size: A4; margin: 0 }`, Seitenränder als Padding im Dokument.
 - Schriften **selbst gehostet** und als `@font-face` mit Base64-Data-URI
-  eingebettet — sonst rendert Puppeteer ohne Netzwerk andere Fallbacks.
-- Puppeteer mit `printBackground: true`, `preferCSSPageSize: true`.
+  eingebettet — sonst rendert Chromium ohne Netzwerk andere Fallbacks.
+- Gedruckt wird mit `printBackground: true`, `preferCSSPageSize: true`.
 - Seitenumbruch über `break-inside: avoid` an Positionszeilen und
   Summenblock; wiederholter Tabellenkopf über `<thead>`.
-- Ein Snapshot-Test rendert das Template mit Beispieldaten zu PDF und
-  vergleicht (Pixel-Diff), damit Layout-Regressionen auffallen.
+- Fünf Referenzdokumente werden bei jedem Testlauf durch ein echtes
+  Chromium gedruckt und vermessen — Seitenzahl, Seitenmaß, Inhaltsflächen,
+  eingebettete Schrift (Abschnitt 13a). Kein Pixel-Diff: Gemessen wird die
+  Geometrie, weil sie es ist, die dem Empfänger der Rechnung auffiele.
 
-Puppeteer-Betrieb: ein **persistenter Browser** (Singleton mit Lazy-Start und
-Idle-Shutdown), pro Render nur eine neue Page. Kaltstart kostet sonst
-~1–2 s pro PDF. Im Docker-Image Chromium aus dem Paketmanager statt
-Puppeteer-Download.
+Betrieb: ein verstecktes Fenster je Renderlauf, Läufe nacheinander. Ein
+Kaltstart fällt nicht an — Chromium läuft schon, es zeichnet ja auch das
+Anwendungsfenster (Abschnitt 13a).
 
-Bewertung der vorgeschlagenen Architektur: **sie ist für diesen Fall die
-richtige.** Alternativen wären deklarative PDF-Bibliotheken
-(`@react-pdf/renderer`, `pdfmake`) — die sind leichter und ohne Chromium,
-aber man verliert echtes CSS-Layout, die Browser-Vorschau ist dann nicht mehr
-identisch, und komplexere Layouts werden mühsam. Bei bereits vorhandener
-Puppeteer-Erfahrung überwiegt der HTML/CSS-Weg klar.
+Bewertung der Architektur: **sie ist für diesen Fall die richtige.**
+Alternativen wären deklarative PDF-Bibliotheken (`@react-pdf/renderer`,
+`pdfmake`) — die sind leichter und ohne Chromium, aber man verliert echtes
+CSS-Layout, die Browser-Vorschau ist dann nicht mehr identisch, und
+komplexere Layouts werden mühsam. Seit die Anwendung Chromium ohnehin
+mitbringt, entfällt auch das letzte Argument dagegen: Es kostet nichts
+mehr, was nicht schon da wäre.
 
 ---
 
@@ -781,10 +785,10 @@ Tree Shaking das schon richtet — ein Test im Build prüft, dass
 
 **Das CSS ist ein String, keine `.css`-Datei.** Es muss an zwei Orte, die
 kein Bundler bedient: in ein `<style>` im Vorschau-iframe und in das
-HTML-Dokument, das Puppeteer bekommt.
+HTML-Dokument, das der Renderer bekommt.
 
 **Die Schrift ist eingebettet (D29).** Open Sans in Regular und Bold, als
-Data-URI im CSS, rund 49 kB. Puppeteer rendert in einem Container, der weder
+Data-URI im CSS, rund 49 kB. Gerendert wird in einem Container, der weder
 Netzwerk noch eine verlässliche Schriftauswahl hat; eine per URL eingebundene
 Schrift fiele dort still auf einen Ersatz zurück, und ein Ersatz bricht
 Zeilen anders um. Die Vorschau zeigte dann etwas anderes als das PDF —
@@ -795,7 +799,7 @@ eingecheckt, damit der Build nicht an der Erreichbarkeit von npm hängt.
 **Seitenränder kommen im Druck aus `@page` (D31).** Ein Padding auf der
 Seite wirkt nur auf der ersten Druckseite — auf Folgeseiten klebte die
 Tabelle sonst am oberen Blattrand. Am Bildschirm bleibt das Padding, weil es
-dort das sichtbare Blatt erzeugt. Puppeteer muss dafür mit
+dort das sichtbare Blatt erzeugt. Der Renderer muss dafür mit
 `preferCSSPageSize: true` und ohne eigene `margin`-Angabe aufgerufen werden
 (umgesetzt in Schritt 8). Belegt durch `apps/api/test/pdf.test.ts`: Eine
 34-Positionen-Rechnung ergibt zwei Seiten, und der bedruckbare Kasten ist auf
@@ -945,12 +949,13 @@ Weitere Regeln:
 
 ---
 
-## 13a. Der PDF-Dienst (Schritt 8)
+## 13a. Der PDF-Dienst (Schritt 8, überarbeitet mit D34)
 
-Zwei Klassen, weil sie zwei verschiedene Dinge wissen müssen:
+Zwei Ebenen, weil sie zwei verschiedene Dinge wissen müssen:
 
-- **`PdfService`** kennt nur Chromium: einen Browser starten, HTML drucken.
-  Er weiß nichts über Rechnungen.
+- **Ein `PdfRenderer`** kennt nur den Druck: HTML rein, PDF raus. Er weiß
+  nichts über Rechnungen. Die Schnittstelle steht in
+  `apps/api/src/pdf/pdf-renderer.ts` und hat genau eine Methode.
 - **`InvoicePdfService`** baut das Dokument: Render-Modell aus Rechnung und
   Stammdaten oder Snapshots, HTML über `renderInvoiceDocument`, Dateiname.
 
@@ -958,46 +963,55 @@ Der Schnitt ist nicht kosmetisch: `buildHtml()` lässt sich ohne Browser
 prüfen, und genau dort sitzen die Fehler, die teuer wären — falscher
 Snapshot, fehlendes Logo, neu gerechnete statt eingefrorener Summen.
 
-**Ein Browser für die Laufzeit, gestartet beim ersten PDF.** Ein Kaltstart
-kostet je nach Maschine 200 bis 600 ms; wer an einer Rechnung schreibt,
-sieht sich den Umbruch mehrfach an. Wer nur Stammdaten pflegt, soll dafür
-kein Chromium im Speicher haben. Renderläufe laufen nacheinander — bei einem
-Einzelplatzwerkzeug bringt Parallelität nichts und kostet Speicher.
+**Electrons `printToPDF` statt eines ferngesteuerten Browsers (D34).**
+Ursprünglich steuerte `puppeteer-core` ein auf dem Rechner gefundenes
+Chromium fern (D32) — mit einer dreistufigen Suche, einem
+Installationsskript für den Fall, dass keines da war, und der Aussicht, dass
+das PDF auf einem fremden Rechner schlicht nicht entsteht. Mit dem Umstieg
+auf die Desktop-Anwendung fällt das weg: Electron bringt dasselbe Chromium
+mit, das ohnehin das Fenster zeichnet. `webContents.printToPDF` bedient
+dieselbe Schnittstelle des DevTools-Protokolls wie `page.pdf`, weshalb
+`preferCSSPageSize`, `printBackground` und die Fußzeilenvorlage unverändert
+übernommen werden konnten.
 
-**`puppeteer-core` statt `puppeteer` (D32).** Das große Paket lädt bei jeder
-Installation ein eigenes Chromium (~150 MB) und legte im Image ein zweites
-neben das des Paketmanagers. Der Preis dafür ist `apps/api/src/pdf/chromium.ts`:
-`PUPPETEER_EXECUTABLE_PATH`, sonst die üblichen Orte der Paketverwaltung
-(Chromium und Chrome, danach Edge als Rückfall — derselbe Motor, aber der
-Browser, der ohnehin da ist, soll kein absichtlich installiertes Chromium
-verdecken), sonst der Zwischenspeicher unter `~/.cache/puppeteer` (bzw.
-`PUPPETEER_CACHE_DIR`), sonst eine Meldung, die sagt, was zu tun ist. Fehlt
-Chromium, ist das ein Konfigurationsfehler beim Aufsetzen und kein Ausfall im
-Betrieb — die Anwendung startet trotzdem, nur das PDF entsteht nicht.
+Belegt ist die Gleichheit, nicht behauptet:
+`apps/api/test/reference-documents.ts` beschreibt fünf Dokumente — ein-,
+mehrseitig, mit eingebettetem Logo, mit vollem Satz aus Steuer und Rabatten
+und dazu den Zeitnachweis mit seinen eigenen Rändern —, und
+`pdf-electron.test.ts` misst an jedem Seitenzahl, Seitenmaß, Inhaltsflächen
+und eingebettete Schrift gegen `fixtures/pdf-reference.json`. Diese Referenz
+wurde mit dem Puppeteer-Weg aufgenommen, bevor er entfernt wurde. Sie ist
+damit der eingefrorene Vertrag über das, was einmal gedruckt wurde.
 
-Die dritte Stufe gibt es, weil die zweite auf einem Entwicklungsrechner
-regelmäßig ins Leere lief: Wer kein Chromium installiert hat, bekam beim
-ersten PDF eine Fehlermeldung und musste selbst herausfinden, welches Paket
-gemeint ist. `pnpm chromium:install` (`apps/api/scripts/chromium.ts`) lädt
-über `@puppeteer/browsers` ein Chrome for Testing genau dorthin, wo die Suche
-ohnehin nachsieht — es bleibt nichts in der `.env` einzutragen. Das Skript
-benutzt für seine Vorprüfung dieselbe `findChromiumExecutable`, damit es
-nichts lädt, was schon da ist, und nie einen anderen Ort für richtig hält als
-der Server. Am Docker-Image ändert das nichts: Dort kommt Chromium weiterhin
-aus Debian, und `PUPPETEER_EXECUTABLE_PATH` zeigt darauf.
+**Der Renderer wird hereingereicht, nicht gebaut.** `PdfModule` fragt nach
+dem Token `PDF_RENDERER`; wer die Anwendung hostet, bietet über
+`HostModule` einen an. Die Desktop-Anwendung reicht ihren
+`ElectronPdfRenderer` durch, weil dessen Umsetzung ein `BrowserWindow`
+braucht und damit zu `apps/desktop` gehört — `apps/api` soll dafür nicht
+gegen Electron gebaut werden müssen. Läuft der Server ohne Gastgeber (auf
+der Kommandozeile, in `pnpm dev`, in den Tests), antwortet ein
+`UnavailablePdfRenderer` mit einem Satz, der sagt, woran es liegt. Alles
+außer dem Druck funktioniert dort weiter.
 
-**Sandbox bleibt an.** `--no-sandbox` nur, wenn `PUPPETEER_NO_SANDBOX=true`
-ausdrücklich gesetzt ist — vorgesehen für den Container, in dem der Prozess
-ohnehin isoliert und unprivilegiert läuft (Abschnitt 16).
+**Ein Fenster je Lauf, ein Lauf nach dem anderen.** Der Kaltstart eines
+Browsers entfällt — Chromium läuft schon. Das versteckte Fenster entsteht
+je Dokument und wird danach zerstört; Renderläufe laufen nacheinander, weil
+Parallelität bei einem Einzelplatzwerkzeug nichts bringt und Speicher
+kostet. Ein `offscreen`-Fenster wäre naheliegend, kommt aber mit eigener
+Rasterung und damit womöglich anderen Maßen — ein verstecktes, gewöhnliches
+Fenster rastert wie ein sichtbares.
 
-**Chromium bekommt kein Netz.** Neben den Flags gegen Hintergrundverbindungen
-(`--disable-background-networking` und Verwandte) läuft der Browser mit
-`--host-resolver-rules=MAP * ~NOTFOUND`: Namensauflösung schlägt darin
-grundsätzlich fehl. Der Anlass war eine Messung — trotz der Flags ging beim
-Rendern eine Anfrage nach draußen. Das Dokument braucht kein Netz, es trägt
-Schrift und Logo als Data-URI in sich; also soll es auch keines bekommen
-können. Nebeneffekt: Baut ein Template je eine externe Adresse ein, fällt das
-sofort auf, statt still ein Bild im PDF fehlen zu lassen.
+**Chromium bekommt kein Netz.** Puppeteer bekam dafür
+`--host-resolver-rules=MAP * ~NOTFOUND` auf die Kommandozeile; der Anlass
+war eine Messung, bei der trotz aller Flags gegen Hintergrundverbindungen
+eine Anfrage nach draußen ging. Unter Electron leistet das eine eigene
+Session, die jede Anfrage außer `file:` und `data:` abweist. Das Dokument
+braucht kein Netz — es trägt Schrift und Logo als Data-URI in sich (D29) —,
+also soll es auch keines bekommen können. Ohne diese Sperre wäre ein
+manipuliertes Logo oder Template ein Weg, Rechnungsdaten abfließen zu
+lassen. `pdf-electron.test.ts` prüft beide Richtungen: Der Griff nach einer
+externen Adresse wird abgewiesen und ergibt trotzdem ein Dokument, die
+eingebetteten Data-URIs kommen weiter durch.
 
 **Die Fußzeile mit der Seitenzahl** kommt aus `renderInvoiceFooterTemplate()`
 im Template-Paket, nicht aus dem Backend: Sie muss den Seitenrand kennen und
@@ -1168,42 +1182,53 @@ Grundsätze unabhängig vom Betriebsmodell:
 - Ausgabe: PDFs und Assets nur über die API, nie statisch.
 - Eingaben serverseitig mit Zod validiert, ORM-parametrisierte Queries.
 - Rechnungs-Template rendert nur Text (React escapt), kein `dangerouslySetInnerHTML`.
-- Puppeteer sandboxed, kein `--no-sandbox` außerhalb von Docker mit eigenem User.
+- Der PDF-Renderer bekommt kein Netz: eigene Session, die alles außer
+  `file:` und `data:` abweist (Abschnitt 13a).
 
-### Zugriffsmodell: Tailscale + Login (D18)
+### Zugriffsmodell: der eigene Rechner (D18, überarbeitet)
 
-Zwei Schichten, die unabhängig voneinander tragen:
+Ursprünglich war ein Zugriff über **Tailscale** vorgesehen: Der Dienst
+hätte auf einem Server gelegen, ausschließlich an die Tailscale-Adresse
+gebunden, mit aktivem Login als zweiter Schicht. Mit der Desktop-Anwendung
+ist das gegenstandslos — die Anwendung läuft dort, wo der Benutzer sitzt.
 
-1. **Netzwerkebene — Tailscale.** Der Dienst wird ausschließlich an die
-   Tailscale-Adresse gebunden, nicht an `0.0.0.0`. Kein offener Port, kein
-   öffentlich erreichbarer Login-Endpunkt, keine Bot-Scans, keine
-   Brute-Force-Versuche aus dem Internet. HTTPS-Zertifikate kommen über
-   `tailscale cert` / Tailscale Serve — kein Let's Encrypt und kein Caddy
-   nötig. Funktioniert auf Windows, macOS und iOS.
-2. **Anwendungsebene — Login.** Trotzdem aktiv, für den Fall, dass ein Gerät
-   verloren geht oder entwendet wird: Passwort mit **argon2id**,
-   serverseitige **Session-Cookies** (httpOnly, Secure, SameSite=Lax) in der
-   Datenbank — kein JWT, weil Widerruf mit Sessions trivial ist und mit JWT
-   nicht. Rate-Limiting auf dem Login, generische Fehlermeldungen,
-   konstante Antwortzeit.
+Was stattdessen trägt:
 
-Ein Benutzer genügt in V1; das Schema bekommt trotzdem eine `User`-Tabelle
-statt eines Passwort-Hashes in den Einstellungen, weil das später mehrere
-Benutzer ohne Migration erlaubt. TOTP als zweiter Faktor ist nachrüstbar,
-aber hinter Tailscale kein vordringlicher Bedarf.
+1. **Der Server hört nur auf die Rückschleife**, auf einem Port, den das
+   Betriebssystem bei jedem Start neu vergibt. Von außen ist nichts
+   erreichbar, weil nichts nach außen gebunden ist.
+2. **Das Betriebssystem schützt die Daten.** Sie liegen im Benutzerordner
+   und unterliegen dessen Rechten und dessen Festplattenverschlüsselung.
 
-Falls du später doch öffentliche Erreichbarkeit willst (z. B. Zugriff von
-einem fremden Rechner ohne Tailscale-Client), ist der Weg vorbereitet: Caddy
-als Reverse Proxy mit automatischem Let's Encrypt davorschalten, HSTS und
-Security-Header setzen, CORS restriktiv halten. Die Anwendung selbst ändert
-sich dafür nicht — der Login ist ja bereits aktiv.
+Die verbleibende Lücke ist ehrlich zu benennen: Ein anderer Prozess
+desselben Benutzers könnte die API ansprechen. Wer das schließen will,
+bräuchte ein Merkmal je Start, das nur das Fenster kennt — ein Aufwand, der
+sich gegen einen Angreifer, der ohnehin schon als dieser Benutzer Code
+ausführt, kaum lohnt: Er käme genauso an die SQLite-Datei.
+
+**Das Auth-Modul bleibt trotzdem.** Passwort mit **argon2id**,
+serverseitige **Session-Cookies** (httpOnly, Secure, SameSite=Lax) in der
+Datenbank — kein JWT, weil Widerruf mit Sessions trivial ist und mit JWT
+nicht; dazu Rate-Limiting auf dem Login, generische Fehlermeldungen,
+konstante Antwortzeit. Im Desktop-Betrieb ist es über `AUTH_ENABLED=false`
+abgeschaltet und die Oberfläche zeigt kein Anmeldeformular. Es zu entfernen
+wäre eine eigene Entscheidung; solange es getestet ist und nicht stört,
+hält es den Weg zu einem Netzbetrieb offen.
+
+Ein Benutzer genügt; das Schema hat trotzdem eine `User`-Tabelle statt
+eines Passwort-Hashes in den Einstellungen, weil das später mehrere
+Benutzer ohne Migration erlaubt.
 
 ---
 
-## 16a. Anmeldung und Betrieb im Container (Schritt 13)
+## 16a. Anmeldung und Betrieb als Anwendung (Schritt 13, überarbeitet mit D1)
 
-Umgesetzt ist beides zusammen, weil es zusammengehört: Das Image macht die
-Anwendung erreichbar, die Anmeldung entscheidet, wer hineinkommt.
+Ursprünglich stand hier ein Docker-Image: Es machte die Anwendung
+erreichbar, die Anmeldung entschied, wer hineinkommt. Beides ist mit der
+Desktop-Form hinfällig geworden — erreichbar ist sie dort, wo sie läuft,
+und wer am Rechner sitzt, ist angemeldet. Der Abschnitt beschreibt jetzt
+den Start der Anwendung; die Anmeldung bleibt dokumentiert, weil das Modul
+weiterhin im Code steht (Abschnitt 16).
 
 ### Der Schalter
 
@@ -1250,8 +1275,8 @@ Antwortzeit ablesen, welche Adresse existiert. Ein Test hält beides fest.
 Dazu eine Sperre nach `LOGIN_MAX_ATTEMPTS` Fehlversuchen je Absender innerhalb
 von `LOGIN_WINDOW_MINUTES`. Sie liegt im Arbeitsspeicher, nicht in der
 Datenbank: Es gibt einen Prozess und einen Benutzer. Nach einem Neustart ist
-die Zählung weg — das ist die Schwäche, und hinter Tailscale ist sie
-hinnehmbar.
+die Zählung weg — das ist die Schwäche, und bei einem Server, der nur auf
+die Rückschleife hört, ist sie hinnehmbar.
 
 ### Kein Registrierungsweg
 
@@ -1277,31 +1302,67 @@ einen Moment, in dem die Anwendung schon steht und ihre Daten nicht. Läuft die
 Sitzung während der Arbeit ab, meldet der HTTP-Client das über ein
 Fensterereignis, und der Gate fragt nach.
 
-### Das Image
+### Der Start der Anwendung
 
-Ein Dockerfile in zwei Stufen, ein Compose-Dienst, ein Volume.
+Der Electron-Hauptprozess (`apps/desktop/src/main.ts`) macht in dieser
+Reihenfolge:
 
-- Basis **Debian slim**, nicht Alpine: Prisma und `@node-rs/argon2` liefern
-  ihre Binärdateien gegen glibc aus; auf musl müsste beides aus den Quellen
-  gebaut werden.
-- **Chromium aus dem Paketmanager**, nicht aus Puppeteers Download (D32). So
-  kommen die Sicherheitsaktualisierungen der Distribution mit, und das Image
-  bleibt kleiner. `PUPPETEER_EXECUTABLE_PATH` zeigt darauf.
-- Der Prozess läuft als **`node`**, unprivilegiert. Chromiums eigene Sandbox
-  ist damit abgeschaltet (`PUPPETEER_NO_SANDBOX=true`) — vertretbar genau
-  hier, wo der Container die Isolation übernimmt und der Benutzer keine Rechte
-  hat, die zu missbrauchen sich lohnte.
-- **tini als PID 1**: Chromium hinterlässt Kindprozesse, und ohne einen
-  init-Prozess sammeln sich Zombies an.
-- Migrationen laufen im Entrypoint, nicht beim Bauen: Erst zur Laufzeit ist die
-  Datenbank aus dem Volume überhaupt da. `prisma migrate deploy` wendet nur an,
-  was fehlt, und ist bei jedem Neustart unbedenklich.
-- Der Port wird an `127.0.0.1` des Hosts gebunden, nicht an alle Adressen.
-  Erreichbar wird die Anwendung durch `tailscale serve`, nicht dadurch, dass
-  ein Port im Internet steht.
-- Der gesamte Zustand — Datenbank, Assets, PDFs, Sicherungen — liegt im Volume
-  unter `/data`, ausdrücklich außerhalb des Images: Sonst wäre er beim nächsten
-  Neubau weg.
+1. **Eine Instanz sicherstellen.** `requestSingleInstanceLock()`; ein
+   zweiter Start holt das bestehende Fenster nach vorn, statt eine zweite
+   Anwendung auf dieselbe SQLite-Datei zu setzen.
+2. **Pfade festlegen.** `DATA_DIR` ist `userData/Daten`, nicht `userData`
+   selbst: Dort legt Chromium seine Caches, Cookies und eigenen Datenbanken
+   ab, und „Datenordner zeigen" soll Rechnungen zeigen.
+3. **Die Datenbank vorbereiten** (`database.ts`): Backup, solange schon
+   eine da ist, sonst eine leere Datei — Prisma 6 legt sie bei
+   `migrate deploy` nicht zuverlässig selbst an. Dann die Migrationen, dann
+   die idempotenten Grunddaten. Genau der Ablauf, der vorher im
+   Docker-Entrypoint stand.
+4. **Den Server hochziehen.** `bootstrap()` aus `apps/api` läuft im
+   Hauptprozess, nicht in einem eigenen Prozess: So kann der PDF-Renderer
+   direkt ein `BrowserWindow` benutzen, ohne dass eine IPC-Schicht dazwischen
+   gebaut und abgesichert werden müsste. Gebunden wird an `127.0.0.1` und
+   Port 0 — das Betriebssystem sucht einen freien, und es gibt keinen
+   festen, um den sich etwas streiten könnte.
+5. **Das Fenster öffnen** auf der Adresse, die der Server danach meldet.
+
+Die Migrationen laufen über `prisma migrate deploy` als Kindprozess, den
+`process.execPath` mit `ELECTRON_RUN_AS_NODE=1` startet: Electrons eigenes
+Node führt die CLI aus, sodass die gepackte Anwendung kein zweites
+mitschleppen muss. Aus demselben Grund steht der Seed als Funktion in
+`apps/api/src/common/seed.ts` und nicht mehr nur als `tsx`-Skript — in
+einer gepackten Anwendung gibt es kein `tsx`.
+
+**Warum HTTP und nicht `file://`.** Das Frontend spricht ausschließlich
+relative Pfade (`fetch('/api' + …)`), das Vite-Build erzeugt absolute
+`/assets/…`-Pfade, und der Router ist ein `createBrowserRouter` mit
+nachgeladenen Bündeln. Über HTTP funktioniert all das unverändert; über
+`file://` bräuchte jedes der drei eine Sonderbehandlung.
+
+### Die Verpackung
+
+`electron-builder`, gespeist aus einem eigens gebauten Verzeichnis
+(`apps/desktop/scripts/paket.mjs`). Der Umweg ist nötig, weil
+electron-builder dem virtuellen Store von pnpm nicht folgt: `pnpm deploy`
+löst die Symlinks in echte Verzeichnisse auf, und der Baum wird so
+angeordnet, dass Node `@agentur-tool/api` dort findet, wo es sie erwartet.
+
+Was nicht ins asar-Archiv darf, weil es zur Laufzeit als Datei geöffnet
+oder als Prozess gestartet wird: die nativen Bibliotheken (`*.node` —
+Prisma Query Engine und `@node-rs/argon2`), die Prisma-Schema-Engine und
+die Prisma-CLI.
+
+Gebaut wird je Plattform auf ihrer eigenen. Die Prisma-Engines ließen sich
+über Kreuz laden (`binaryTargets` im Schema nennt alle drei), die nativen
+Binärdateien von `@node-rs/argon2` kommen dagegen über
+plattformspezifische Optional-Dependencies, und pnpm installiert nur die
+des Wirtssystems.
+
+Für macOS signiert und notarisiert. Der Hardened Runtime ist dafür Pflicht
+und verbietet standardmäßig genau das, was Chromium braucht — ohne
+`com.apple.security.cs.allow-jit` startet die JavaScript-Engine in der
+signierten Anwendung nicht, und das fällt erst beim ersten Start auf, nicht
+beim Bauen.
 
 ---
 
@@ -1362,40 +1423,45 @@ heruntergeladenen Dokuments.
 
 ---
 
-## 18. Lokale Nutzung
+## 18. Nutzung
 
-Entwicklung: `pnpm dev` startet Vite (Port 5173) und API (Port 3000) parallel,
-Vite-Proxy für `/api`. SQLite unter `./data/`.
+**Entwicklung, zwei Wege.** `pnpm dev` startet Vite (Port 5173) und API
+(Port 3000) parallel, Vite-Proxy für `/api`, SQLite unter `./data/`. Beides
+lädt bei jeder Änderung nach — der schnellere Weg für Oberfläche und
+Backend. PDFs entstehen dort nicht; die Routen sagen das auch, statt einen
+Fehler zu werfen, den niemand deuten kann.
 
-Lokaler „Produktivbetrieb": ein Befehl (`pnpm start` oder
-`docker compose up -d`), API liefert das gebaute Frontend statisch mit, alles
-unter `http://127.0.0.1:3000`. Bindung explizit an `127.0.0.1`, nicht `0.0.0.0`.
+`pnpm dev:desktop` startet Vite und Electron zusammen. Das Fenster zeigt
+auf den Dev-Server, die Oberfläche lädt also weiterhin nach; nur Änderungen
+am Backend brauchen dort einen Neustart. Dafür gibt es PDFs.
+
+**Betrieb.** Die installierte Anwendung: Doppelklick, eigenes Fenster.
+Server und Frontend stecken darin, der Browser für die PDF-Erzeugung
+ebenfalls. Die Daten liegen außerhalb, unter
+`~/Library/Application Support/AgenturTool/Daten` beziehungsweise
+`%APPDATA%\AgenturTool\Daten`, und überleben jedes Update (Abschnitt 16a).
 
 ---
 
-## 19. Mögliche spätere Online-Bereitstellung
+## 19. Was aus der Online-Bereitstellung wurde
 
-Vorbereitung, die **jetzt** fast nichts kostet und später viel spart:
+Ursprünglich war ein späterer Serverbetrieb vorgesehen — Docker-Image,
+Volume, VPS mit Tailscale — und die Architektur war darauf vorbereitet:
+Konfiguration ausschließlich über Umgebungsvariablen, Auth-Modul von Anfang
+an vorhanden, keine Annahme „läuft auf localhost" im Code.
 
-- Ein Docker-Image (Node + Chromium), das API und gebautes Frontend enthält.
-- Ein Volume `/data` für Datenbank, Assets und PDFs.
-- Konfiguration ausschließlich über Environment-Variablen, inkl.
-  `AUTH_ENABLED`, `PUBLIC_URL`, `DATA_DIR`.
-- Auth-Modul von Anfang an vorhanden, lokal per Flag deaktiviert.
-- Keine Annahme „läuft auf localhost" im Code (absolute URLs aus Config).
+Gebaut wurde stattdessen die Desktop-Anwendung (D1). Der Anlass war
+nüchtern: Für eine Person an einem Rechner löst ein Server ein Problem, das
+es nicht gibt, und kostet dafür Miete, Wartung und eine
+Auftragsverarbeitung.
 
-Deployment später: VPS mit Tailscale im Tailnet, `docker compose up -d`,
-Bindung an die Tailscale-Adresse, Zertifikat über Tailscale. Update per
-`git pull && docker compose up -d --build`, nächtliches Backup per Cron.
-Zugriff von iPhone/Mac/Windows über den Browser; die SPA wird responsiv genug
-gebaut, dass Ansehen, Suche und Statusänderungen mobil funktionieren
-(Rechnungserstellung bleibt eine Desktop-Aufgabe).
-
-Ein Detail für den VPS: Chromium für Puppeteer kommt aus dem Paketmanager des
-Images (`PUPPETEER_SKIP_DOWNLOAD`, `PUPPETEER_EXECUTABLE_PATH`), nicht aus dem
-npm-Download — sonst wird das Image unnötig groß und bei jedem Build neu
-geladen. Der Container braucht außerdem die üblichen Chromium-Bibliotheken
-und läuft als unprivilegierter Benutzer.
+Die Vorbereitung war trotzdem nicht umsonst — sie ist der Grund, warum der
+Umbau überschaubar blieb. Der Server nimmt seine Konfiguration weiterhin
+aus der Umgebung, nur setzt sie jetzt der Hauptprozess statt einer `.env`.
+Das Auth-Modul steht unverändert im Code und ist über einen Schalter
+erreichbar. Wer die Anwendung eines Tages doch auf einen Server stellen
+will, braucht dafür kein neues Fundament, sondern ein Image und einen
+PDF-Renderer, der ohne Electron auskommt.
 
 ---
 
@@ -1413,12 +1479,12 @@ Jeder Schritt endet mit etwas Lauffähigem.
 | 5 ✅  | Berechnungslogik in `shared` + Unit-Tests                                  | Kern abgesichert                |
 | 6 ✅  | Rechnungs-Entwurf: API + Editor mit dynamischen Positionen                 | Rechnungen erfassbar            |
 | 7 ✅  | `invoice-template` + Live-Vorschau im iframe                               | sichtbares Ergebnis             |
-| 8 ✅  | PDF-Service (Puppeteer) + Entwurfs-PDF                                     | PDF-Pipeline steht              |
+| 8 ✅  | PDF-Dienst + Entwurfs-PDF (später auf Electron umgestellt, D34)            | PDF-Pipeline steht              |
 | 9 ✅  | Nummernvergabe + Snapshots + Finalisieren + PDF-Ablage                     | **Kernfunktion fertig**         |
 | 10 ✅ | Status: bezahlt/versendet, Stornieren, Duplizieren                         | Lebenszyklus komplett           |
 | 11 ✅ | Rechnungsübersicht mit Filter/Sortierung + Dashboard                       | Alltagstauglich                 |
 | 12 ✅ | Backup-Export/Restore + Restore-Test                                       | Datensicherheit                 |
-| 13 ✅ | Docker-Image + Auth-Modul (per `AUTH_ENABLED`), Tailscale-Anbindung        | deploy-fähig                    |
+| 13 ✅ | Auth-Modul (per `AUTH_ENABLED`) + Verpackung als Anwendung (D1)            | ausliefer­bar                   |
 | 14 ✅ | Politur: Fehlerbehandlung, Leerzustände, Tastaturbedienung, Responsiveness | **V1**                          |
 
 Tests bewusst schmal, aber gezielt: Berechnungen und Nummernvergabe mit
@@ -1484,6 +1550,13 @@ Siehe Tabelle am Anfang des Dokuments (D9–D12, D16).
 
 Siehe Tabelle am Anfang des Dokuments (D13–D15, D17–D20).
 
+Zwei davon sind später gefallen: **D18** (Tailscale) wurde mit dem
+Umstieg auf die Desktop-Anwendung gegenstandslos, **D32** (`puppeteer-core`
+mit gefundenem Chromium) durch **D34** ersetzt, weil Electron sein Chromium
+mitbringt. Beide stehen durchgestrichen in der Tabelle, statt gelöscht zu
+sein — eine Entscheidung, die man einmal getroffen hat, verschwindet nicht
+dadurch, dass sie überholt ist.
+
 ### Offen bleibt bewusst
 
 Nichts, was den Implementierungsstart blockiert. Diese Punkte klären wir,
@@ -1547,9 +1620,12 @@ Womit wir prüfen, dass es wirklich funktioniert — nicht nur kompiliert.
 ## Stand
 
 Die Reihenfolge aus Abschnitt 20 ist abgearbeitet: Schritte 0 bis 14 sind
-umgesetzt, V1 steht. Was während der Umsetzung an Entscheidungen dazukam,
-steht in den Abschnitten mit Buchstaben-Suffix (5a, 13a, 16a) bei dem Thema,
-zu dem es gehört.
+umgesetzt, V1 steht. Danach kam die Auslieferungsform dazu: Aus dem
+geplanten Docker-Image wurde eine Desktop-Anwendung (D1), und die
+PDF-Erzeugung wanderte von einem ferngesteuerten Browser auf Electrons
+eigenes Chromium (D34). Was während der Umsetzung an Entscheidungen
+dazukam, steht in den Abschnitten mit Buchstaben-Suffix (5a, 13a, 16a) bei
+dem Thema, zu dem es gehört.
 
 Was bewusst offen bleibt, steht in Abschnitt 21 — unter anderem Mahnwesen,
 wiederkehrende Rechnungen, E-Rechnung (XRechnung/ZUGFeRD), Mehrbenutzerbetrieb

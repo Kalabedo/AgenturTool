@@ -1,9 +1,9 @@
 /**
  * Die Datenbank startklar machen.
  *
- * Derselbe Ablauf wie bisher in `docker/entrypoint.sh`, nur ohne Shell:
  * Backup vor jeder Änderung, leere Datei für eine frische Installation,
- * dann Migrationen und die idempotenten Grunddaten.
+ * dann Migrationen und die idempotenten Grunddaten. Derselbe Ablauf, den
+ * früher der Entrypoint des Docker-Images ging — nur ohne Shell.
  *
  * Die Reihenfolge ist nicht beliebig. Das Backup steht vor den
  * Migrationen, weil eine Migration das Einzige ist, was hier Daten

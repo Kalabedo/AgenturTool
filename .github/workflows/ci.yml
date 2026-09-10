@@ -20,11 +20,43 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm verify
+      # Electron braucht unter Linux einen X-Server, auch für das
+      # versteckte Fenster, mit dem die PDFs entstehen. Ohne xvfb würden die
+      # Rendertests stillschweigend übersprungen — genau die, die prüfen,
+      # dass das Dokument noch aussieht wie festgehalten.
+      - run: xvfb-run -a pnpm verify
 
-  container:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+  # Ein Paket, das sich nicht mehr bauen lässt, soll vor dem Ausliefern
+  # auffallen und nicht erst beim Ausliefern. Jede Plattform baut auf ihrer
+  # eigenen: Die Prisma-Engines ließen sich über Kreuz laden, die nativen
+  # Binärdateien von @node-rs/argon2 kommen dagegen über
+  # plattformspezifische Optional-Dependencies, und pnpm installiert nur
+  # die des Wirtssystems.
+  paket:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            ziel: macOS arm64
+          - os: macos-13
+            ziel: macOS x64
+          - os: windows-latest
+            ziel: Windows
+    name: Paket (${{ matrix.ziel }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - run: docker build --tag agentur-tool:ci .
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      # Ohne Signierung: Die Zertifikate liegen nicht in jedem Lauf vor, und
+      # geprüft werden soll hier, ob das Paket entsteht.
+      - run: pnpm --filter @agentur-tool/desktop paket
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'

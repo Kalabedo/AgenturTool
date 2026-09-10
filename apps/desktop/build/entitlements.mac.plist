@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Berechtigungen für die signierte Anwendung.
+
+  Der Hardened Runtime ist Pflicht für die Notarisierung und verbietet
+  standardmäßig genau das, was Chromium braucht. Ohne die ersten beiden
+  Einträge startet die JavaScript-Engine in der signierten Anwendung nicht —
+  und das fällt erst beim ersten Start auf, nicht beim Bauen.
+-->
+<plist version="1.0">
+  <dict>
+    <!-- Chromiums JIT-Übersetzer. -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+
+    <!-- V8 legt ausführbaren Speicher an, der nicht von einer Datei kommt. -->
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+
+    <!--
+      Die Prisma-Engines und @node-rs/argon2 sind eigenständig signierte
+      Bibliotheken, die zur Laufzeit geladen werden.
+    -->
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+  </dict>
+</plist>

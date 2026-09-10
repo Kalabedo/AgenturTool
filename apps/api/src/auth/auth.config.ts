@@ -18,8 +18,8 @@ export class AuthConfig {
   /**
    * Ob das Cookie nur über HTTPS gesendet wird.
    *
-   * Voreinstellung: an, sobald die Anmeldung an ist. Hinter Tailscale läuft
-   * HTTPS über `tailscale cert`; wer die Anwendung im Klartext betreibt,
+   * Voreinstellung: an, sobald die Anmeldung an ist. Wer die Anwendung ohne
+   * HTTPS über ein Netz betreibt,
    * muss das ausdrücklich abschalten und weiß dann, was er tut.
    */
   readonly cookieSecure: boolean;

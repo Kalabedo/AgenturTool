@@ -20,6 +20,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { app } from 'electron';
+import { pdfTimeoutMs } from './config';
 import { ElectronPdfRenderer } from './pdf-renderer';
 
 interface HarnessDocument {
@@ -55,11 +56,9 @@ async function main(): Promise<void> {
   const documents = JSON.parse(fs.readFileSync(inputFile, 'utf8')) as HarnessDocument[];
   fs.mkdirSync(outDir, { recursive: true });
 
-  const timeoutMs = Number(process.env.PDF_TIMEOUT_MS ?? 30_000);
-
   // Abgewiesene Anfragen landen als Zeile auf stdout, damit der Test die
   // Netzsperre nicht nur voraussetzen, sondern belegen kann.
-  const renderer = new ElectronPdfRenderer(timeoutMs, (url) => {
+  const renderer = new ElectronPdfRenderer(pdfTimeoutMs(), (url) => {
     process.stdout.write(`BLOCKED ${url}\n`);
   });
 

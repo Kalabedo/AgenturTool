@@ -5,7 +5,7 @@ import { EMBEDDED_FONT_CSS } from '../../fonts.generated.js';
  *
  * Bewusst ein String und keine .css-Datei: Dieses CSS muss an zwei sehr
  * verschiedenen Orten landen — in einem <style> im iframe der Live-Vorschau
- * und im HTML-Dokument, das Puppeteer rendert. Ein Bundler-Import wäre in
+ * und im HTML-Dokument, das gedruckt wird. Ein Bundler-Import wäre in
  * beiden Fällen im Weg, im Backend gäbe es ihn gar nicht.
  *
  * Maßangaben durchgehend in Millimetern und Punkten, nicht in Pixeln: Das
@@ -17,7 +17,7 @@ export const PAGE = {
   widthMm: 210,
   heightMm: 297,
   marginMm: 12,
-  /** Platz am Fuß für die Seitenzahl, die Puppeteer beisteuert. */
+  /** Platz am Fuß für die Seitenzahl, die Chromium beisteuert. */
   footerMm: 16,
   /**
    * Der Streifen am rechten Rand, den der Inhalt frei lässt.
@@ -44,7 +44,7 @@ export const CLASSIC_CSS = `${EMBEDDED_FONT_CSS}
 /*
  * Die Seitenränder kommen im Druck von @page, nicht vom Padding der Seite.
  * Ein Padding wirkt nur auf der ersten Seite — auf Folgeseiten klebte die
- * Tabelle sonst am oberen Blattrand. Puppeteer muss dafür mit
+ * Tabelle sonst am oberen Blattrand. Der Renderer muss dafür mit
  * "preferCSSPageSize: true" und ohne eigene margin-Angabe aufgerufen werden,
  * sonst überschreibt es diese Werte (Schritt 8).
  */
@@ -371,7 +371,7 @@ export const CLASSIC_CSS = `${EMBEDDED_FONT_CSS}
 
 /*
  * Der Fußtext steht einmal am Dokumentende, nicht auf jeder Seite. Die
- * Seitenzahl steuert Puppeteer über seinen footerTemplate bei (Schritt 8) —
+ * Seitenzahl steuert Chromium über die footerTemplate bei (Schritt 8) —
  * sie ist Sache des Druckrahmens, nicht des Dokuments.
  */
 .doc-footer {

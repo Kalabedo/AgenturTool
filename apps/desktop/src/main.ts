@@ -17,6 +17,7 @@ import path from 'node:path';
 import { BrowserWindow, app, dialog, shell } from 'electron';
 import type { INestApplication } from '@nestjs/common';
 import { bootstrap } from '@agentur-tool/api/dist/main';
+import { pdfTimeoutMs } from './config';
 import { prepareDatabase } from './database';
 import { buildMenu } from './menu';
 import { resolvePaths } from './paths';
@@ -123,9 +124,8 @@ async function start(): Promise<void> {
     // die Rückschleife, und wer am Rechner sitzt, ist angemeldet.
     process.env.AUTH_ENABLED ??= 'false';
 
-    const timeoutMs = Number(process.env.PDF_TIMEOUT_MS ?? 30_000);
     const running = await bootstrap({
-      pdfRenderer: new ElectronPdfRenderer(timeoutMs, (url) => {
+      pdfRenderer: new ElectronPdfRenderer(pdfTimeoutMs(), (url) => {
         log(`Anfrage aus dem Dokument abgewiesen: ${url}`);
       }),
     });

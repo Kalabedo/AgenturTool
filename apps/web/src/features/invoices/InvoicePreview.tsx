@@ -28,7 +28,7 @@ import { toCalculationItems } from './toCalculationItems.js';
 /**
  * Die Live-Vorschau des Dokuments.
  *
- * Sie rendert dieselbe Komponente, die im Backend Puppeteer für das PDF
+ * Sie rendert dieselbe Komponente, die im Backend für das PDF
  * benutzt, mit demselben Stylesheet und derselben eingebetteten Schrift.
  * Deshalb ist das hier keine Annäherung an das spätere PDF, sondern —
  * abgesehen vom Seitenumbruch, den erst der Druck kennt — dasselbe Bild.
@@ -141,7 +141,7 @@ export function InvoicePreview({
     notes: emptyToNull(values.notes),
     footerNote: emptyToNull(values.footerNote),
     // Im Browser genügt die Adresse des Assets; als Data-URI muss das Logo
-    // erst für das PDF vorliegen, weil Puppeteer die API nicht erreicht.
+    // erst für das PDF vorliegen, weil der Renderer die API nicht erreicht.
     logoSrc: company.data.logoUrl,
     items: toRenderItems(values),
   });

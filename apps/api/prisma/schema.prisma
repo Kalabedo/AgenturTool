@@ -14,6 +14,11 @@
 
 generator client {
   provider = "prisma-client-js"
+
+  // Die Desktop-Anwendung wird für drei Ziele gepackt, und Prisma lädt je
+  // Ziel eine eigene Query-Engine. "native" ist der Rechner, auf dem
+  // gerade gebaut wird — ohne den liefe die Entwicklung ins Leere.
+  binaryTargets = ["native", "darwin", "darwin-arm64", "windows"]
 }
 
 datasource db {

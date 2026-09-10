@@ -1,0 +1,66 @@
+# Verpackung der Desktop-Anwendung.
+#
+# Gepackt wird nicht dieses Verzeichnis, sondern `paket/` — ein eigens
+# gebauter Baum mit echtem node_modules statt der Symlinks des virtuellen
+# pnpm-Stores, denen electron-builder nicht folgt. Wie er entsteht, steht
+# in scripts/paket.mjs.
+
+appId: de.agenturtool.app
+productName: AgenturTool
+copyright: © Tom Wenczel
+
+directories:
+  app: paket
+  output: release
+  buildResources: build
+
+# Was nicht ins asar-Archiv darf.
+#
+# Alles, was zur Laufzeit als Datei geöffnet oder als Prozess gestartet
+# wird, statt von Node eingelesen zu werden:
+#
+#   *.node          Prisma Query Engine und @node-rs/argon2 — native
+#                   Bibliotheken, die dlopen brauchen
+#   @prisma/engines Die Schema-Engine, die `migrate deploy` startet
+#   prisma          Die CLI selbst; database.ts ruft sie als Kindprozess
+#                   über Electrons eigenes Node auf
+asarUnpack:
+  - '**/*.node'
+  - '**/node_modules/@prisma/engines/**'
+  - '**/node_modules/prisma/**'
+  - '**/node_modules/.prisma/**'
+
+mac:
+  category: public.app-category.business
+  target:
+    - target: dmg
+      arch:
+        - arm64
+        - x64
+  # Pflicht für die Notarisierung.
+  hardenedRuntime: true
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  # Die Anwendung liest und schreibt nur in ihrem eigenen Datenordner.
+  extendInfo:
+    NSHumanReadableCopyright: © Tom Wenczel
+
+# Notarisierung über die Zugangsdaten aus der Umgebung: APPLE_ID,
+# APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID. Fehlen sie, überspringt
+# electron-builder den Schritt — das ist der Fall in CI, wo nur geprüft
+# wird, ob das Paket überhaupt entsteht.
+afterSign: scripts/notarize.mjs
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  # Noch nicht signiert: Ohne Zertifikat zeigt Windows beim ersten Start
+  # einen SmartScreen-Hinweis. Das blockiert nichts und lässt sich später
+  # nachrüsten.
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: false

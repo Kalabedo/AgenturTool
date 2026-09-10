@@ -13,7 +13,7 @@ export const LOGO_MAX_BYTES = 2 * 1024 * 1024;
  *
  * SVG ist bewusst nicht dabei: Eine SVG-Datei kann Skripte und externe
  * Referenzen enthalten und wird sowohl in der Browser-Vorschau als auch von
- * Puppeteer gerendert. Sie sicher zu verarbeiten hieße, sie zu bereinigen —
+ * Chromium gerendert. Sie sicher zu verarbeiten hieße, sie zu bereinigen —
  * das ist eigener Aufwand und lohnt sich erst, wenn die Druckqualität eines
  * hochauflösenden PNG nicht ausreicht.
  */
