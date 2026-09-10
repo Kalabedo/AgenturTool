@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   formatDateDe,
   formatDecimalHours,
@@ -13,7 +13,7 @@ import {
 import { EMBEDDED_FONT_CSS } from '@agentur-tool/invoice-template';
 import { ApiError } from '../common/api-error';
 import { CompanyService } from '../company/company.service';
-import { PdfService } from './pdf.service';
+import { PDF_RENDERER, type PdfRenderer } from './pdf-renderer';
 
 /** Ein fertiger Zeitnachweis samt Dateiname für den Download. */
 export interface RenderedTimeReport {
@@ -79,7 +79,7 @@ export class TimeReportService {
 
   constructor(
     private readonly company: CompanyService,
-    private readonly pdf: PdfService,
+    @Inject(PDF_RENDERER) private readonly pdf: PdfRenderer,
   ) {}
 
   async render(

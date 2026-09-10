@@ -2,12 +2,7 @@ import { Injectable, Logger, type OnModuleDestroy } from '@nestjs/common';
 import puppeteer, { type Browser } from 'puppeteer-core';
 import { ApiError } from '../common/api-error';
 import { ChromiumConfig, findChromiumExecutable } from './chromium';
-
-/** Was ein Renderlauf über die Seite hinaus braucht. */
-export interface PdfRenderOptions {
-  /** HTML für die Fußzeile jeder Seite; kommt aus dem Template. */
-  footerTemplate: string;
-}
+import type { PdfRenderer, PdfRenderOptions } from './pdf-renderer';
 
 /**
  * Erzeugt PDFs aus fertigem HTML.
@@ -34,7 +29,7 @@ export interface PdfRenderOptions {
  *    Logo erzeugen.
  */
 @Injectable()
-export class PdfService implements OnModuleDestroy {
+export class PdfService implements PdfRenderer, OnModuleDestroy {
   private readonly logger = new Logger(PdfService.name);
   private browser: Browser | null = null;
   private launching: Promise<Browser> | null = null;
