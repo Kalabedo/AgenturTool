@@ -8,6 +8,7 @@ import {
   type CompanyResponse,
   type UpdateCompanyInput,
   type UpdateCompanyPayload,
+  centsToInput,
   ELECTRONIC_ADDRESS_SCHEME_LABELS,
   ELECTRONIC_ADDRESS_SCHEME_VALUES,
   type ElectronicAddressScheme,
@@ -54,6 +55,8 @@ function toFormValues(company: CompanyResponse): FormValues {
     electronicAddress: company.electronicAddress ?? '',
     electronicAddressScheme: company.electronicAddressScheme ?? '',
     defaultPaymentTermDays: String(company.defaultPaymentTermDays),
+    defaultHourlyRateCents:
+      company.defaultHourlyRateCents === null ? '' : centsToInput(company.defaultHourlyRateCents),
   };
 }
 
@@ -250,6 +253,29 @@ export function CompanyPage(): JSX.Element {
               id="taxNumber"
               invalid={errors.taxNumber !== undefined}
               {...form.register('taxNumber')}
+            />
+          </Field>
+        </div>
+      </Card>
+      <Card
+        title="Abrechnung"
+        description="Vorgabe für die Übernahme erfasster Zeiten; am Kunden überschreibbar."
+      >
+        <div className="grid gap-4 sm:grid-cols-6">
+          <Field
+            label="Stundensatz"
+            htmlFor="defaultHourlyRateCents"
+            error={errors.defaultHourlyRateCents?.message}
+            hint="Netto. Gilt für Kunden ohne eigenen Satz."
+            className="sm:col-span-2"
+          >
+            <Input
+              id="defaultHourlyRateCents"
+              inputMode="decimal"
+              className="text-right"
+              placeholder="90,00"
+              invalid={errors.defaultHourlyRateCents !== undefined}
+              {...form.register('defaultHourlyRateCents')}
             />
           </Field>
         </div>

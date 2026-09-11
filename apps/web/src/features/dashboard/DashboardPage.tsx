@@ -6,11 +6,13 @@ import {
   INVOICE_STATUS_LABELS,
   formatCents,
   formatDateDe,
+  formatDecimalHours,
   invoiceDisplayName,
   missingCompanyFieldsForInvoicing,
   toIsoDate,
   type CompanyResponse,
   type InvoiceListResponse,
+  type TimeEntryOpenSummary,
 } from '@agentur-tool/shared';
 import { apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
@@ -43,11 +45,14 @@ function useInvoiceQuery(params: string) {
 function StatTile({
   label,
   value,
+  hint,
   to,
   tone,
 }: {
   label: string;
-  value: number | undefined;
+  value: number | string | undefined;
+  /** Zusatz unter der Zahl, wo sie allein nichts sagt. */
+  hint?: string;
   to: string;
   tone: 'neutral' | 'warning';
 }): JSX.Element {
@@ -64,12 +69,27 @@ function StatTile({
     >
       <p className="text-sm text-slate-600">{label}</p>
       <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">{value ?? '—'}</p>
+      {hint !== undefined && <p className="mt-0.5 text-xs text-slate-500">{hint}</p>}
     </Link>
   );
 }
 
 export function DashboardPage(): JSX.Element {
   useDocumentTitle('Dashboard');
+
+  /**
+   * Nicht abgerechnete Zeiten.
+   *
+   * Das ist offenes Geld und gehört auf die Startseite: Erfasste Stunden,
+   * die noch keine Rechnung gesehen haben, fallen sonst erst auf, wenn
+   * jemand zufällig in die Zeiterfassung schaut.
+   */
+  const openTime = useQuery({
+    queryKey: queryKeys.timeEntries.openSummary,
+    queryFn: () => apiClient.get<TimeEntryOpenSummary[]>('/time-entries/open-summary'),
+  });
+
+  const openMinutes = (openTime.data ?? []).reduce((sum, entry) => sum + entry.durationMinutes, 0);
 
   const company = useQuery({
     queryKey: queryKeys.company,
@@ -149,6 +169,17 @@ export function DashboardPage(): JSX.Element {
           value={overdue.data?.total}
           to="/invoices?filter=overdue&sort=dueDate&order=asc"
           tone={(overdue.data?.total ?? 0) > 0 ? 'warning' : 'neutral'}
+        />
+        <StatTile
+          label="Nicht abgerechnet"
+          value={openTime.data === undefined ? undefined : `${formatDecimalHours(openMinutes)} Std`}
+          hint={
+            openTime.data === undefined || openTime.data.length === 0
+              ? undefined
+              : `${openTime.data.length} ${openTime.data.length === 1 ? 'Kunde' : 'Kunden'}`
+          }
+          to="/time-tracking"
+          tone={openMinutes > 0 ? 'warning' : 'neutral'}
         />
       </div>
 

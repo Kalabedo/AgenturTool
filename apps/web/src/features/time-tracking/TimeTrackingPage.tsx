@@ -27,6 +27,7 @@ import { LoadingNote } from '../../components/ui/LoadingNote.js';
 import { saveFile } from '../invoices/saveFile.js';
 import { BilledArchive } from './BilledArchive.js';
 import { CustomerTabs } from './CustomerTabs.js';
+import { InvoiceFromTimeButton } from './InvoiceFromTimeButton.js';
 import { TimeEntryTable } from './TimeEntryTable.js';
 import {
   TimeEntryForm,
@@ -495,9 +496,20 @@ function OpenTab({
           )}
         </div>
 
-        <Button disabled={isBilling || items.length === 0} onClick={onBill}>
-          {isBilling ? 'Wird abgerechnet …' : 'Abrechnen'}
-        </Button>
+        <div className="flex flex-wrap items-start gap-3">
+          {/*
+            Zwei Wege nebeneinander, und der neue drängt sich nicht vor:
+            „Abrechnen" markiert die Zeiten und erzeugt den Nachweis — wer
+            seine Rechnungen von Hand schreibt, bleibt dabei. „Rechnung
+            erstellen" nimmt die Zeiten gleich mit.
+          */}
+          {activeCustomerId !== null && (
+            <InvoiceFromTimeButton customerId={activeCustomerId} disabled={items.length === 0} />
+          )}
+          <Button disabled={isBilling || items.length === 0} onClick={onBill}>
+            {isBilling ? 'Wird abgerechnet …' : 'Abrechnen'}
+          </Button>
+        </div>
       </div>
 
       {entries.isLoading && <LoadingNote>Zeiten werden geladen …</LoadingNote>}

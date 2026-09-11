@@ -2,6 +2,11 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
 import {
+  BILLING_MODE_DESCRIPTIONS,
+  BILLING_MODE_LABELS,
+  BILLING_MODE_VALUES,
+  DEFAULT_BILLING_MODE,
+  centsToInput,
   ELECTRONIC_ADDRESS_SCHEME_LABELS,
   ELECTRONIC_ADDRESS_SCHEME_VALUES,
   TAX_PROFILE_KIND_LABELS,
@@ -11,6 +16,7 @@ import {
   type CustomerInput,
   type CustomerPayload,
   type CustomerResponse,
+  type BillingMode,
   type ElectronicAddressScheme,
   type TaxProfileResponse,
 } from '@agentur-tool/shared';
@@ -37,6 +43,8 @@ export function emptyCustomerValues(): FormValues {
     country: 'DE',
     email: '',
     vatId: '',
+    hourlyRateCents: '',
+    billingMode: DEFAULT_BILLING_MODE,
     buyerReference: '',
     electronicAddress: '',
     electronicAddressScheme: '',
@@ -58,6 +66,9 @@ export function toCustomerValues(customer: CustomerResponse): FormValues {
     country: customer.country,
     email: customer.email ?? '',
     vatId: customer.vatId ?? '',
+    hourlyRateCents:
+      customer.hourlyRateCents === null ? '' : centsToInput(customer.hourlyRateCents),
+    billingMode: customer.billingMode,
     buyerReference: customer.buyerReference ?? '',
     electronicAddress: customer.electronicAddress ?? '',
     electronicAddressScheme: customer.electronicAddressScheme ?? '',
@@ -104,6 +115,7 @@ export function CustomerForm({
   });
 
   const selectedProfileId = defaultValues.defaultTaxProfileId;
+  const billingMode = (form.watch('billingMode') ?? DEFAULT_BILLING_MODE) as BillingMode;
   const profileOptions = taxProfiles.data ?? [];
   const selectedIsMissing =
     typeof selectedProfileId === 'string' &&
@@ -294,6 +306,46 @@ export function CustomerForm({
               {ELECTRONIC_ADDRESS_SCHEME_VALUES.map((scheme) => (
                 <option key={scheme} value={scheme}>
                   {ELECTRONIC_ADDRESS_SCHEME_LABELS[scheme as ElectronicAddressScheme]}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+      </Card>
+
+      <Card title="Abrechnung" description="Für die Übernahme erfasster Zeiten in eine Rechnung.">
+        <div className="grid gap-4 sm:grid-cols-6">
+          <Field
+            label="Stundensatz"
+            htmlFor="hourlyRateCents"
+            error={errorFor('hourlyRateCents')}
+            hint="Netto. Leer heißt: die Vorgabe aus den Unternehmensdaten benutzen."
+            className="sm:col-span-2"
+          >
+            <Input
+              id="hourlyRateCents"
+              inputMode="decimal"
+              className="text-right"
+              placeholder="90,00"
+              invalid={errorFor('hourlyRateCents') !== undefined}
+              {...form.register('hourlyRateCents')}
+            />
+          </Field>
+          <Field
+            label="Aufteilung der Positionen"
+            htmlFor="billingMode"
+            error={errorFor('billingMode')}
+            hint={BILLING_MODE_DESCRIPTIONS[billingMode]}
+            className="sm:col-span-4"
+          >
+            <Select
+              id="billingMode"
+              invalid={errorFor('billingMode') !== undefined}
+              {...form.register('billingMode')}
+            >
+              {BILLING_MODE_VALUES.map((value) => (
+                <option key={value} value={value}>
+                  {BILLING_MODE_LABELS[value]}
                 </option>
               ))}
             </Select>
