@@ -47,6 +47,10 @@ const editTaxProfilePage = async () => ({
 const backupPage = async () => ({
   Component: (await import('../features/settings/backup/BackupPage')).BackupPage,
 });
+const taxAdvisorExportPage = async () => ({
+  Component: (await import('../features/settings/tax-advisor/TaxAdvisorExportPage'))
+    .TaxAdvisorExportPage,
+});
 
 export const router = createBrowserRouter([
   {
@@ -72,6 +76,7 @@ export const router = createBrowserRouter([
           { path: 'tax-profiles', lazy: taxProfileListPage },
           { path: 'tax-profiles/new', lazy: newTaxProfilePage },
           { path: 'tax-profiles/:id', lazy: editTaxProfilePage },
+          { path: 'tax-advisor', lazy: taxAdvisorExportPage },
           { path: 'backup', lazy: backupPage },
         ],
       },

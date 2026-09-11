@@ -5,7 +5,7 @@ Rechnungsdiensten. Rechnungen erstellen, verwalten und als PDF exportieren.
 
 **Status:** V1 — alle 15 Schritte der Roadmap sind umgesetzt. Rechnungen lassen sich erfassen und ausstellen (Nummer, eingefrorene Stammdaten, abgelegtes PDF), als versendet und bezahlt vermerken, stornieren und duplizieren; die Übersicht filtert, sortiert und blättert, das Dashboard zeigt Entwürfe, offene und überfällige Rechnungen. Eine Zeiterfassung hält gearbeitete Zeit je Kunde in Viertelstunden fest und druckt daraus einen Zeitnachweis für einen frei wählbaren Zeitraum. Beim Ausstellen entsteht neben dem PDF eine XRechnung nach EN 16931, geprüft
 mit dem offiziellen KoSIT-Validator. Ein Backup umfasst Datenbank, Logos und
-alle erzeugten Dateien in einer ZIP-Datei; der Weg zurück ist einmal wirklich getestet. Ausgeliefert wird sie als Desktop-Anwendung für macOS und Windows: Doppelklick, eigenes Fenster, kein installierter Browser nötig — die PDFs entstehen über Electrons eigenes Chromium. Die Oberfläche sagt, wenn etwas schiefgeht, lässt sich mit der Tastatur bedienen und läuft vom Telefon bis zum breiten Bildschirm.
+alle erzeugten Dateien in einer ZIP-Datei; der Weg zurück ist einmal wirklich getestet. Ein Steuerberater-Paket sammelt für einen Rechnungszeitraum CSV-Auswertungen, Steueraufteilung, Positionen und die unveränderten PDF-/XML-Belege. Ausgeliefert wird sie als Desktop-Anwendung für macOS und Windows: Doppelklick, eigenes Fenster, kein installierter Browser nötig — die PDFs entstehen über Electrons eigenes Chromium. Die Oberfläche sagt, wenn etwas schiefgeht, lässt sich mit der Tastatur bedienen und läuft vom Telefon bis zum breiten Bildschirm.
 
 ## Architektur
 
@@ -228,6 +228,28 @@ auf Wunsch von Hand:
 ```bash
 pnpm einrechnung:pruefen      # braucht Java, wird nie ausgeliefert
 ```
+
+### Steuerberater-Export
+
+Unter **Einstellungen → Steuerberater-Export** entsteht für einen inklusiven
+Rechnungszeitraum ein ZIP-Paket. Entwürfe bleiben draußen; Rechnungen und
+Stornos werden aus ihren unveränderlichen Snapshots gelesen. Das Paket enthält:
+
+- `rechnungen.csv` mit Netto-, Steuer- und Bruttosummen je Beleg
+- `steueraufteilung.csv` mit Bemessungsgrundlage und Steuer je Steuersatz
+- `positionen.csv` mit den einzelnen Leistungen
+- auf Wunsch die gespeicherten PDFs und vorhandenen XRechnung-XML-Dateien
+- `manifest.json` mit Zeitraum, Zählerständen und SHA-256-Prüfsummen
+
+Die CSV-Dateien sind UTF-8 mit BOM, Semikolon-getrennt und verwenden das
+deutsche Dezimalkomma. Frei eingegebene Texte werden gegen Tabellenformeln
+abgesichert.
+
+Das Paket heißt bewusst nicht DATEV-Export. Ein belastbarer
+DATEV-Buchungsstapel braucht Konten, Steuerschlüssel sowie Berater- und
+Mandantennummer; diese Zuordnung muss zuerst mit der Kanzlei festgelegt werden.
+Das jetzige Format gibt der Kanzlei alle Rechnungsdaten und Originalbelege,
+ohne Importfähigkeit vorzutäuschen.
 
 ### Aktualisieren
 

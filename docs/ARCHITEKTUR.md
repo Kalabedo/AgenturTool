@@ -45,6 +45,7 @@ sie hier korrigiert und nicht nur im Code.
 | D34 | PDF-Renderer             | **Electrons `printToPDF`** statt eines ferngesteuerten Browsers — die Anwendung bringt ihr Chromium mit (Abschnitt 13a)                                                       |
 | D35 | asar-Archiv              | **Keins.** Prisma startet und lädt seine Engines über selbst gebildete Pfade, an Electrons asar-Umleitung vorbei (Abschnitt 16a)                                              |
 | D36 | Netzverkehr des Fensters | **Alles außer der Rückschleife wird abgewiesen** — ein `webRequest`-Filter, wie ihn der PDF-Renderer schon hat (Abschnitt 16)                                                 |
+| D37 | Steuerberater-Export     | **Ehrliches Übergabe-ZIP** aus Snapshots, CSV und Originalbelegen; kein vorgeblicher DATEV-Stapel ohne Konten-/Kanzleikonfiguration (Abschnitt 26)                            |
 
 Zu D21: Rechnungs-, Leistungs- und Fälligkeitsdatum sind Kalendertage, keine
 Zeitpunkte. Als `DateTime` müsste an jeder Grenze zwischen Browser, API und
@@ -111,9 +112,10 @@ Drag-and-Drop-Designer, Multi-Tenant-SaaS.
 12. Rechnungsübersicht mit Filter + Suche
 13. Einfaches Dashboard
 14. Backup-Export / Restore
+15. Steuerberater-Paket als CSV + PDF/XML für einen Rechnungszeitraum
 
 **Raus (später):** Angebote, Mahnungen, E-Mail-Versand, wiederkehrende
-Rechnungen, Produktkatalog, CSV/DATEV-Export, Statistiken, mehrere Templates,
+Rechnungen, Produktkatalog, DATEV-Buchungsstapel, Statistiken, mehrere Templates,
 mehrere Mandanten, mehrere Benutzer, ZUGFeRD/XRechnung.
 
 ---
@@ -1085,6 +1087,9 @@ GET    /api/time-entries/report/pdf?from=&to=&customerId=   Zeitnachweis
 
 POST   /api/backup/export              GET /api/backup/status
 GET    /api/backup/:filename           Archiv herunterladen
+
+POST   /api/tax-advisor/preview        Inhalt und Belegintegrität vorab prüfen
+POST   /api/tax-advisor/export         Zeitraum → CSV + Belege als ZIP
 ```
 
 **Die Übersicht** (umgesetzt in Schritt 11) antwortet nicht mit einem nackten
@@ -1556,18 +1561,18 @@ Kein flächendeckendes UI-Testing im MVP.
 
 ## 21. Abgrenzung MVP ↔ später
 
-| Bereich          | V1                               | Später                                              |
-| ---------------- | -------------------------------- | --------------------------------------------------- |
-| Dokumenttypen    | Rechnung, Storno                 | Angebot, Auftragsbestätigung, Mahnung, Gutschrift   |
-| Templates        | 1 Template + Optionen            | mehrere Templates, mehr Optionen                    |
-| Versand          | PDF-Download                     | E-Mail-Versand, Anhänge, Versandprotokoll           |
-| Zahlungen        | bezahlt am / offen               | Teilzahlungen, Zahlungserinnerungen, Mahnstufen     |
-| Positionen       | frei erfasst                     | Produkt-/Leistungskatalog, Import aus Zeiterfassung |
-| Wiederholung     | Duplizieren                      | echte wiederkehrende Rechnungen mit Zeitplan        |
-| Export           | Backup-Archiv                    | CSV, DATEV-nah, Steuerberater-Paket                 |
-| Mandanten/Nutzer | einer                            | mehrere Unternehmen, mehrere Benutzer, Rollen       |
-| Auswertung       | Dashboard mit letzten Rechnungen | Umsatzübersichten, Statistiken, offene Posten       |
-| E-Rechnung       | nur PDF                          | ZUGFeRD / XRechnung (siehe unten)                   |
+| Bereich          | V1                                 | Später                                              |
+| ---------------- | ---------------------------------- | --------------------------------------------------- |
+| Dokumenttypen    | Rechnung, Storno                   | Angebot, Auftragsbestätigung, Mahnung, Gutschrift   |
+| Templates        | 1 Template + Optionen              | mehrere Templates, mehr Optionen                    |
+| Versand          | PDF-Download                       | E-Mail-Versand, Anhänge, Versandprotokoll           |
+| Zahlungen        | bezahlt am / offen                 | Teilzahlungen, Zahlungserinnerungen, Mahnstufen     |
+| Positionen       | frei erfasst                       | Produkt-/Leistungskatalog, Import aus Zeiterfassung |
+| Wiederholung     | Duplizieren                        | echte wiederkehrende Rechnungen mit Zeitplan        |
+| Export           | Backup-Archiv, Steuerberater-Paket | DATEV-Buchungsstapel nach Kanzleikonfiguration      |
+| Mandanten/Nutzer | einer                              | mehrere Unternehmen, mehrere Benutzer, Rollen       |
+| Auswertung       | Dashboard mit letzten Rechnungen   | Umsatzübersichten, Statistiken, offene Posten       |
+| E-Rechnung       | nur PDF                            | ZUGFeRD / XRechnung (siehe unten)                   |
 
 **Hinweis E-Rechnung (strategisch relevant):** In Deutschland läuft die
 Umstellung auf strukturierte E-Rechnungen im B2B-Bereich stufenweise; die
@@ -1801,6 +1806,48 @@ Validiert wird über Zod; die Begründung steht in der Migration
 
 ---
 
+## 26. Steuerberater-Export
+
+Der Export unter **Einstellungen → Steuerberater-Export** ist eine Übergabe
+von Ausgangsrechnungen, keine zweite Buchhaltung. Er wählt nach dem
+Rechnungsdatum in einem beidseitig eingeschlossenen Zeitraum und nimmt nur
+ausgestellte Dokumente auf. Ein Storno ist ein eigener Beleg mit eigener Nummer
+und negativen Beträgen; der Bezug zum aufgehobenen Beleg steht daneben.
+
+Das ZIP enthält drei Sichten auf dieselben eingefrorenen Daten:
+
+1. `rechnungen.csv`: eine Zeile je Beleg mit Empfänger, Status und Summen,
+2. `steueraufteilung.csv`: Bemessungsgrundlage und Steuer je Steuersatz,
+3. `positionen.csv`: die einzelnen Leistungszeilen.
+
+Dazu kommen auf Wunsch die unveränderten PDF- und vorhandenen XML-Dateien
+unter `belege/`. Vor dem Verpacken werden Größe und SHA-256 gegen den
+Dokumentdatensatz geprüft; bei einer Abweichung bricht der gesamte Export ab.
+Ein unvollständiges Paket darf nicht still wie ein vollständiges aussehen.
+`manifest.json` nennt Zeitraum und Zählerstände und trägt für jede weitere
+Datei erneut Größe und Hash.
+
+### CSV-Vertrag
+
+UTF-8 mit BOM und Semikolon sind eine pragmatische Zusage an Excel auf einem
+deutschen Windows-System; Geld steht mit Dezimalkomma und ohne
+Währungssymbol in den Zellen. Jede Zelle ist in Anführungszeichen gesetzt.
+Frei eingegebene Texte, die mit `=`, `+`, `-` oder `@` anfangen, bekommen ein
+vorangestelltes Apostroph. Nur zu quoten verhindert keine Formelauswertung und
+ein Kundenname darf beim Öffnen einer CSV niemals Programmtext werden.
+
+### Warum noch kein DATEV-Buchungsstapel
+
+Das DATEV-Format verlangt fachliche Angaben, die AgenturTool bewusst noch
+nicht besitzt: mindestens Sach-/Debitorenkonten, die Abbildung von
+Steuerkategorien auf Steuerschlüssel sowie Berater- und Mandantennummer. Diese
+Werte zu raten würde eine formal importierbare, fachlich aber falsche Datei
+erzeugen. D37 legt deshalb die Grenze fest: Jetzt ein vollständiges und
+prüfbares Kanzleipaket; DATEV erst nach einer echten, mit der Kanzlei
+abgestimmten Kontierungskonfiguration.
+
+---
+
 ## Stand
 
 Die Reihenfolge aus Abschnitt 20 ist abgearbeitet: Schritte 0 bis 14 sind
@@ -1813,11 +1860,13 @@ dem Thema, zu dem es gehört.
 
 Danach kam die E-Rechnung dazu: XRechnung als eigenständige XML-Datei,
 eingefroren wie das PDF und mit dem offiziellen KoSIT-Validator geprüft
-(Abschnitt 24).
+(Abschnitt 24). Für die Übergabe an die Kanzlei gibt es nun das geprüfte ZIP
+aus CSV, PDFs und vorhandenen XMLs (Abschnitt 26).
 
 Was bewusst offen bleibt, steht in Abschnitt 21 — unter anderem Mahnwesen,
 wiederkehrende Rechnungen, ZUGFeRD, das Lesen eingehender E-Rechnungen,
-Mehrbenutzerbetrieb und Auswertungen. Nichts davon ist verbaut: Die Snapshots tragen die Historie,
+DATEV-Buchungsstapel, Mehrbenutzerbetrieb und Auswertungen. Nichts davon ist
+verbaut: Die Snapshots tragen die Historie,
 das Auth-Modul kennt bereits eine `User`-Tabelle, und die Berechnung liegt in
 `shared` und nicht in der Oberfläche. Neue Entscheidungen von Tragweite werden
 wie bisher vorher abgestimmt.

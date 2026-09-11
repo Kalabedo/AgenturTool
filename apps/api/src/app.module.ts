@@ -14,6 +14,7 @@ import { BackupModule } from './backup/backup.module';
 import { AuthModule } from './auth/auth.module';
 import { WebModule } from './web/web.module';
 import { EinvoiceModule } from './einvoice/einvoice.module';
+import { TaxAdvisorExportModule } from './tax-advisor/tax-advisor-export.module';
 
 /**
  * Die Anwendung.
@@ -46,6 +47,7 @@ export class AppModule {
         InvoicesModule,
         TimeEntriesModule,
         BackupModule,
+        TaxAdvisorExportModule,
         // Zuletzt: Der statische Ausliefer-Zweig darf erst greifen, wenn
         // keine API-Route gepasst hat.
         WebModule.forRoot(),

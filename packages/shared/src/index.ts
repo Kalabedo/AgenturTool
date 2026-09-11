@@ -19,3 +19,4 @@ export * from './finalization.js';
 export * from './assets.js';
 export * from './backup.js';
 export * from './auth.js';
+export * from './tax-advisor-export.js';
