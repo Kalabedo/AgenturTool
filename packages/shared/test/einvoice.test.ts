@@ -21,7 +21,7 @@ const seller: SellerSnapshot = {
   address: { street: 'Musterweg 1', postalCode: '10115', city: 'Berlin', country: 'DE' },
   email: 'rechnung@example.com',
   website: null,
-  phone: null,
+  phone: '+49 7961 1234567',
   vatId: 'DE123456789',
   taxNumber: null,
   bankAccountHolder: 'Beispiel Agentur',
@@ -151,6 +151,16 @@ describe('Bereitschaft für die E-Rechnung', () => {
       },
     });
     expect(problems).toEqual([]);
+  });
+
+  it('verlangt eine Telefonnummer mit Ziffern', () => {
+    // BR-DE-6 und BR-DE-27: XRechnung verlangt beim Verkäufer eine
+    // Telefonnummer, und sie muss mindestens drei Ziffern enthalten.
+    const ohne = checkEinvoiceReady({ seller: { ...seller, phone: null }, buyer, tax });
+    expect(ohne.map((problem) => problem.field)).toContain('seller.phone');
+
+    const zuKurz = checkEinvoiceReady({ seller: { ...seller, phone: '—' }, buyer, tax });
+    expect(zuKurz.map((problem) => problem.field)).toContain('seller.phone');
   });
 
   it('verlangt eine IBAN', () => {

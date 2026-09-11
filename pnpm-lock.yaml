@@ -197,6 +197,19 @@ importers:
         specifier: ^6.0.0
         version: 6.4.3(@types/node@26.5.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.13)
 
+  packages/einvoice:
+    dependencies:
+      '@agentur-tool/invoice-template':
+        specifier: workspace:*
+        version: link:../invoice-template
+      '@agentur-tool/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      tsup:
+        specifier: ^8.3.0
+        version: 8.5.1(jiti@2.7.0)(postcss@8.5.28)(tsx@4.23.13)(typescript@5.9.3)
+
   packages/invoice-template:
     dependencies:
       '@agentur-tool/shared':

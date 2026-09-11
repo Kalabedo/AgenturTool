@@ -91,6 +91,21 @@ export function checkEinvoiceReady(input: EinvoiceReadinessInput): FinalizationP
     });
   }
 
+  // BR-DE-6: XRechnung verlangt eine Telefonnummer der Kontaktstelle des
+  // Verkäufers, und BR-DE-27 verlangt mindestens drei Ziffern darin. Das
+  // ist eine Strenge der deutschen CIUS; die EU-Norm kennt sie nicht.
+  if (isBlank(seller.phone)) {
+    problems.push({
+      field: 'seller.phone',
+      message: 'Für die E-Rechnung fehlt die eigene Telefonnummer.',
+    });
+  } else if ((seller.phone ?? '').replace(/\D/g, '').length < 3) {
+    problems.push({
+      field: 'seller.phone',
+      message: 'Die eigene Telefonnummer muss mindestens drei Ziffern enthalten.',
+    });
+  }
+
   // BG-17: Die Zahlungsart dieser Anwendung ist die Überweisung. Ohne IBAN
   // gibt es nichts, worauf der Empfänger zahlen könnte.
   if (isBlank(seller.iban)) {
