@@ -20,7 +20,8 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
-    "golden": "tsx test/write-golden.ts"
+    "golden": "tsx test/write-golden.ts",
+    "pruefen": "node scripts/validate.mjs"
   },
   "dependencies": {
     "@agentur-tool/shared": "workspace:*",
