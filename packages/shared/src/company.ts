@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { isValidBic, isValidIban, isPlausibleVatId } from './banking.js';
 import { ELECTRONIC_ADDRESS_SCHEME_VALUES } from './einvoice/codes.js';
+import { parseCents } from './money.js';
 
 /**
  * Verträge für die eigenen Unternehmensdaten.
@@ -74,6 +75,31 @@ const optionalUrl = optionalText.refine(
   { message: 'Keine gültige Web-Adresse' },
 );
 
+/**
+ * Ein Geldbetrag, der auch fehlen darf.
+ *
+ * Anders als `moneyField` bei den Rechnungspositionen wird ein leeres Feld
+ * hier zu `null` und nicht zu 0: Ein Stundensatz von 0,00 € wäre eine
+ * Aussage, ein leeres Feld ist keine.
+ */
+const optionalMoney = z
+  .union([z.string().trim(), z.number(), z.null()])
+  .optional()
+  .transform((value, ctx) => {
+    if (value === undefined || value === null || value === '') return null;
+    if (typeof value === 'number') return value;
+
+    const parsed = parseCents(value);
+    if (parsed === null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Bitte einen Betrag angeben, z. B. 90,00',
+      });
+      return z.NEVER;
+    }
+    return parsed;
+  });
+
 export const updateCompanySchema = z.object({
   companyName: z.string().trim().max(200),
   street: z.string().trim().max(200),
@@ -100,6 +126,9 @@ export const updateCompanySchema = z.object({
   bankName: optionalText,
 
   defaultPaymentTermDays: paymentTermDays,
+
+  /** Stundensatz in Cent, wenn der Kunde keinen eigenen hat. */
+  defaultHourlyRateCents: optionalMoney,
 });
 export type UpdateCompanyInput = z.input<typeof updateCompanySchema>;
 export type UpdateCompanyPayload = z.output<typeof updateCompanySchema>;

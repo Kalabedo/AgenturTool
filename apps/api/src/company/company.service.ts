@@ -97,6 +97,7 @@ export class CompanyService {
       phone: company.phone,
       vatId: company.vatId,
       taxNumber: company.taxNumber,
+      defaultHourlyRateCents: company.defaultHourlyRateCents,
       electronicAddress: company.electronicAddress,
       electronicAddressScheme: company.electronicAddressScheme,
       bankAccountHolder: company.bankAccountHolder,

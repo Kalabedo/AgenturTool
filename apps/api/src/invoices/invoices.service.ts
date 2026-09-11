@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Prisma, type Invoice, type InvoiceItem } from '@prisma/client';
 import {
   DOCUMENT_TYPE,
@@ -16,6 +16,7 @@ import {
   resolvePaymentTermDays,
   toTotalsSnapshot,
   type BuyerData,
+  type BillingMode,
   type DiscountType,
   type UnitCode,
   type DocumentType,
@@ -57,6 +58,8 @@ const WITH_ITEMS = {
 
 @Injectable()
 export class InvoicesService {
+  private readonly logger = new Logger(InvoicesService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly company: CompanyService,
@@ -163,6 +166,7 @@ export class InvoicesService {
 
       buyerData = customerToBuyerData({
         ...customer,
+        billingMode: customer.billingMode as BillingMode,
         archivedAt: customer.archivedAt?.toISOString() ?? null,
         invoiceCount: 0,
         createdAt: customer.createdAt.toISOString(),
@@ -293,6 +297,7 @@ export class InvoicesService {
 
     const buyerData = customerToBuyerData({
       ...customer,
+      billingMode: customer.billingMode as BillingMode,
       archivedAt: customer.archivedAt?.toISOString() ?? null,
       invoiceCount: 0,
       createdAt: customer.createdAt.toISOString(),
@@ -470,10 +475,36 @@ export class InvoicesService {
     return this.respond(invoice);
   }
 
+  /**
+   * Löscht einen Entwurf — und gibt die Zeiten wieder frei, die in ihm
+   * stecken.
+   *
+   * Das Freigeben ist keine Nebensache, sondern der Grund für
+   * `TimeEntry.invoiceId`: Eine abgerechnete Zeit ohne Rechnung ist
+   * verlorenes Geld, und es merkt niemand. `ON DELETE SET NULL` allein
+   * würde `invoiceId` leeren und `billedAt` stehen lassen — genau der
+   * Zustand, der nie entstehen darf. Deshalb ausdrücklich, und in derselben
+   * Transaktion wie das Löschen.
+   */
   async deleteDraft(id: number): Promise<void> {
     const existing = await this.load(id);
     this.assertEditable(existing);
-    await this.prisma.invoice.delete({ where: { id } });
+
+    await this.prisma.$transaction(async (tx) => {
+      // Zwei Zeilen und kein eigener Dienst: Das Freigeben gehört an die
+      // Stelle, die löscht. Es hier herauszuziehen hätte eine gegenseitige
+      // Abhängigkeit gekostet — für ein `updateMany`.
+      const released = await tx.timeEntry.updateMany({
+        where: { invoiceId: id },
+        data: { billedAt: null, invoiceId: null },
+      });
+
+      await tx.invoice.delete({ where: { id } });
+
+      if (released.count > 0) {
+        this.logger.log(`Entwurf ${id} gelöscht — ${released.count} Zeiten sind wieder offen.`);
+      }
+    });
   }
 
   private assertEditable(invoice: Invoice): void {

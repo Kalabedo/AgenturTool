@@ -14,6 +14,7 @@ export * from './invoice-calculation.js';
 export * from './pagination.js';
 export * from './invoice.js';
 export * from './time-entry.js';
+export * from './time-billing.js';
 export * from './invoice-number.js';
 export * from './finalization.js';
 export * from './assets.js';

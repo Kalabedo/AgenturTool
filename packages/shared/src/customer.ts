@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { isPlausibleVatId } from './banking.js';
 import { ELECTRONIC_ADDRESS_SCHEME_VALUES } from './einvoice/codes.js';
+import { parseCents } from './money.js';
+import { BILLING_MODE_VALUES, DEFAULT_BILLING_MODE, type BillingMode } from './time-billing.js';
 
 /**
  * Verträge für die Kundenverwaltung.
@@ -73,6 +75,31 @@ const optionalElectronicAddressScheme = optionalText.refine(
   { message: 'Unbekanntes Schema der elektronischen Adresse' },
 );
 
+/**
+ * Ein Geldbetrag, der auch fehlen darf.
+ *
+ * Anders als `moneyField` bei den Rechnungspositionen wird ein leeres Feld
+ * hier zu `null` und nicht zu 0: Ein Stundensatz von 0,00 € wäre eine
+ * Aussage, ein leeres Feld ist keine.
+ */
+const optionalMoney = z
+  .union([z.string().trim(), z.number(), z.null()])
+  .optional()
+  .transform((value, ctx) => {
+    if (value === undefined || value === null || value === '') return null;
+    if (typeof value === 'number') return value;
+
+    const parsed = parseCents(value);
+    if (parsed === null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Bitte einen Betrag angeben, z. B. 90,00',
+      });
+      return z.NEVER;
+    }
+    return parsed;
+  });
+
 export const customerInputSchema = z.object({
   // Frei vergeben und optional; die Eindeutigkeit erzwingt die Datenbank,
   // damit auch übernommene Nummern aus einem Vorsystem passen (D22).
@@ -104,6 +131,14 @@ export const customerInputSchema = z.object({
   notes: optionalText,
 
   defaultPaymentTermDays: optionalPaymentTermDays,
+
+  /** Stundensatz in Cent. Leer heißt: die Vorgabe der Firma benutzen. */
+  hourlyRateCents: optionalMoney,
+  /** Wie erfasste Zeiten zu Rechnungspositionen werden. */
+  billingMode: z
+    .enum(BILLING_MODE_VALUES as [BillingMode, ...BillingMode[]])
+    .optional()
+    .default(DEFAULT_BILLING_MODE),
 
   /**
    * Vorgeschlagenes Steuerprofil für Rechnungen an diesen Kunden.

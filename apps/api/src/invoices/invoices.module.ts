@@ -8,11 +8,17 @@ import { InvoicesController } from './invoices.controller';
 import { InvoicesService } from './invoices.service';
 import { InvoiceFinalizeService } from './invoice-finalize.service';
 import { InvoiceNumbersService } from './invoice-numbers.service';
+import { InvoiceFromTimeService } from './invoice-from-time.service';
 
 @Module({
   imports: [CompanyModule, EinvoiceModule, PdfModule, TaxProfilesModule, TemplateSettingsModule],
   controllers: [InvoicesController],
-  providers: [InvoicesService, InvoiceFinalizeService, InvoiceNumbersService],
-  exports: [InvoicesService, InvoiceFinalizeService, InvoiceNumbersService],
+  providers: [
+    InvoicesService,
+    InvoiceFinalizeService,
+    InvoiceNumbersService,
+    InvoiceFromTimeService,
+  ],
+  exports: [InvoicesService, InvoiceFinalizeService, InvoiceNumbersService, InvoiceFromTimeService],
 })
 export class InvoicesModule {}

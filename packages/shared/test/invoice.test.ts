@@ -231,6 +231,8 @@ describe('customerToBuyerData', () => {
     electronicAddressScheme: 'EM',
     notes: 'interne Notiz',
     defaultPaymentTermDays: 21,
+    hourlyRateCents: 9000,
+    billingMode: 'SAMMEL' as const,
     defaultTaxProfileId: 3,
     archivedAt: null,
     invoiceCount: 0,

@@ -25,11 +25,15 @@ import {
   type InvoicePaymentPayload,
   type InvoiceResponse,
   type InvoiceSentPayload,
+  BILLING_MODE_VALUES,
+  type BillingMode,
+  type TimeBillingPreview,
 } from '@agentur-tool/shared';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { InvoicePdfService, type RenderedInvoicePdf } from '../pdf/invoice-pdf.service';
 import { EinvoiceService } from '../einvoice/einvoice.service';
 import { InvoiceFinalizeService } from './invoice-finalize.service';
+import { InvoiceFromTimeService } from './invoice-from-time.service';
 import { InvoicesService } from './invoices.service';
 
 /** Beim Anlegen genügt der Kunde; alles Weitere belegt der Server vor. */
@@ -44,6 +48,23 @@ const createDraftSchema = z.object({
     }),
 });
 
+/** Die Abrechnungsart als Abfrageparameter; weggelassen heißt: die des Kunden. */
+const billingModeQuerySchema = z.object({
+  mode: z.enum(BILLING_MODE_VALUES as [BillingMode, ...BillingMode[]]).optional(),
+});
+
+const fromTimeEntriesSchema = z.object({
+  customerId: z.union([z.string().trim(), z.number()]).transform((value, ctx) => {
+    const parsed = typeof value === 'number' ? value : Number(value);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Bitte einen Kunden auswählen' });
+      return z.NEVER;
+    }
+    return parsed;
+  }),
+  mode: z.enum(BILLING_MODE_VALUES as [BillingMode, ...BillingMode[]]).optional(),
+});
+
 @Controller('invoices')
 export class InvoicesController {
   constructor(
@@ -51,6 +72,7 @@ export class InvoicesController {
     private readonly finalizer: InvoiceFinalizeService,
     private readonly pdf: InvoicePdfService,
     private readonly einvoice: EinvoiceService,
+    private readonly fromTime: InvoiceFromTimeService,
   ) {}
 
   /**
@@ -67,6 +89,38 @@ export class InvoicesController {
     @Res() response: Response,
   ): Promise<void> {
     this.sendPdf(response, await this.pdf.renderPreview(payload));
+  }
+
+  /**
+   * Was aus den offenen Zeiten eines Kunden entstehen würde.
+   *
+   * Steht vor `:id`, damit „from-time-entries" nicht als Rechnungs-id
+   * gelesen wird — dieselbe Falle wie bei „preview".
+   */
+  @Get('from-time-entries/:customerId/preview')
+  previewFromTimeEntries(
+    @Param('customerId', ParseIntPipe) customerId: number,
+    @Query(new ZodValidationPipe(billingModeQuerySchema)) query: { mode?: BillingMode },
+  ): Promise<TimeBillingPreview & { mode: BillingMode; rateCents: number }> {
+    return this.fromTime.preview(customerId, query.mode);
+  }
+
+  /**
+   * Legt aus den offenen Zeiten eines Kunden einen Entwurf an.
+   *
+   * Der Weg, der bisher von Hand ging. Die Vorgabe ist **eine Sammelzeile**;
+   * die Aufschlüsselung gehört auf den Zeitnachweis.
+   */
+  @Post('from-time-entries')
+  @HttpCode(HttpStatus.CREATED)
+  createFromTimeEntries(
+    @Body(new ZodValidationPipe(fromTimeEntriesSchema))
+    body: {
+      customerId: number;
+      mode?: BillingMode;
+    },
+  ): Promise<InvoiceResponse> {
+    return this.fromTime.create(body.customerId, body.mode);
   }
 
   @Get()

@@ -58,6 +58,9 @@ model Company {
   /// Standard-Zahlungsziel in Tagen; Vorschlag für das Fälligkeitsdatum.
   defaultPaymentTermDays Int @default(14)
 
+  /// Stundensatz in Cent, wenn der Kunde keinen eigenen hat.
+  defaultHourlyRateCents Int?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -115,6 +118,14 @@ model Customer {
 
   defaultPaymentTermDays Int?
 
+  /// Stundensatz in Cent. Leer heißt: die Vorgabe der Firma benutzen.
+  hourlyRateCents Int?
+
+  /// SAMMEL | PRO_TAG | PRO_BESCHREIBUNG — wie erfasste Zeiten zu
+  /// Rechnungspositionen werden. Die Vorgabe ist eine Sammelzeile; die
+  /// Aufschlüsselung gehört auf den Zeitnachweis.
+  billingMode String @default("SAMMEL")
+
   /// Weiches Löschen: Kunden mit Rechnungshistorie werden nie hart gelöscht.
   archivedAt DateTime?
 
@@ -162,9 +173,21 @@ model TimeEntry {
   /// und das PDF muss nirgends aufbewahrt werden.
   billedAt DateTime?
 
+  /// Die Rechnung, in der dieser Eintrag abgerechnet wurde.
+  ///
+  /// Macht `billedAt` nachvollziehbar: nicht nur *dass*, sondern *wo*. Ohne
+  /// dieses Feld wäre eine abgerechnete Zeit ohne zugehörige Rechnung nicht
+  /// erkennbar — verlorenes Geld, das niemand bemerkt.
+  ///
+  /// `SetNull` ist nur das Netz; freigegeben werden die Zeiten ausdrücklich
+  /// im Dienst, wenn ein Entwurf gelöscht wird.
+  invoiceId Int?
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([invoiceId])
   @@index([date])
   @@index([customerId, date])
   /// Die Abfrage des Normalbetriebs: offene Einträge eines Kunden, nach Tag.
@@ -305,9 +328,10 @@ model Invoice {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  items     InvoiceItem[]
-  documents InvoiceDocument[]
-  events    InvoiceEvent[]
+  items       InvoiceItem[]
+  documents   InvoiceDocument[]
+  events      InvoiceEvent[]
+  timeEntries TimeEntry[]
 
   @@index([status])
   @@index([invoiceDate])

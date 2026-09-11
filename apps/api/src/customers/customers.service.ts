@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   CUSTOMER_ARCHIVE_FILTER,
+  type BillingMode,
   type CustomerListQuery,
   type CustomerPayload,
   type CustomerResponse,
@@ -209,6 +210,8 @@ export class CustomersService {
       electronicAddressScheme: customer.electronicAddressScheme,
       notes: customer.notes,
       defaultPaymentTermDays: customer.defaultPaymentTermDays,
+      hourlyRateCents: customer.hourlyRateCents,
+      billingMode: customer.billingMode as BillingMode,
       defaultTaxProfileId: customer.defaultTaxProfileId,
       archivedAt: customer.archivedAt?.toISOString() ?? null,
       invoiceCount: customer._count.invoices,

@@ -23,8 +23,8 @@ export const EXPECTED_TRIGGERS = [
  * hinterlegten CREATE-TABLE-Text.
  *
  * Die Spalten der E-Rechnung — `TaxProfile.taxCategoryCode`,
- * `InvoiceItem.unitCode` und `InvoiceDocument.kind` — stehen hier bewusst
- * nicht. SQLite kann einer bestehenden Tabelle keinen CHECK anfügen; das
+ * `InvoiceItem.unitCode` und `InvoiceDocument.kind` — sowie
+ * `Customer.billingMode` stehen hier bewusst nicht. SQLite kann einer bestehenden Tabelle keinen CHECK anfügen; das
  * ginge nur über einen Neuaufbau, und der hätte die drei Trigger auf
  * `InvoiceItem` verworfen. Die Trigger wiegen schwerer: Sie schützen eine
  * ausgestellte Rechnung vor Veränderung. Validiert werden die neuen
