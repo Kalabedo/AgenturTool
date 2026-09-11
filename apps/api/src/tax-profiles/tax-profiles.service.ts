@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type {
+  TaxCategoryCode,
   TaxProfileKind,
   TaxProfileListQuery,
   TaxProfilePayload,
@@ -182,6 +183,9 @@ export class TaxProfilesService {
       kind: profile.kind as TaxProfileKind,
       defaultRateBasisPoints: profile.defaultRateBasisPoints,
       noteText: profile.noteText,
+      taxCategoryCode: profile.taxCategoryCode as TaxCategoryCode,
+      exemptionReasonCode: profile.exemptionReasonCode,
+      exemptionReasonText: profile.exemptionReasonText,
       showTaxColumn: profile.showTaxColumn,
       isDefault: profile.isDefault,
       sortOrder: profile.sortOrder,

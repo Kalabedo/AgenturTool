@@ -56,6 +56,8 @@ const SELLER: SellerSnapshot = {
   iban: 'DE12202208000052019114',
   bic: 'SXPYDEHHXXX',
   bankName: null,
+  electronicAddress: 'hello@xyz-agentur.de',
+  electronicAddressScheme: 'EM',
   logoAssetId: null,
 };
 
@@ -73,6 +75,9 @@ const BUYER: BuyerData = {
   email: null,
   vatId: 'CY60143029O',
   customerNumber: null,
+  buyerReference: 'BR-2026-0001',
+  electronicAddress: 'rechnung@soluxion.example',
+  electronicAddressScheme: 'EM',
 };
 
 const REVERSE_CHARGE: TaxSnapshot = {
@@ -83,6 +88,9 @@ const REVERSE_CHARGE: TaxSnapshot = {
   noteText:
     'Steuerschuldnerschaft des Leistungsempfängers. Die Umsatzsteuer schuldet der Leistungsempfänger gemäß Art. 196 MwStSystRL und §13b UStG (Reverse Charge).',
   showTaxColumn: true,
+  taxCategoryCode: 'AE',
+  exemptionReasonCode: 'VATEX-EU-AE',
+  exemptionReasonText: 'Steuerschuldnerschaft des Leistungsempfängers.',
 };
 
 const STANDARD_TAX: TaxSnapshot = {
@@ -92,6 +100,9 @@ const STANDARD_TAX: TaxSnapshot = {
   defaultRateBasisPoints: 1900,
   noteText: null,
   showTaxColumn: true,
+  taxCategoryCode: 'S',
+  exemptionReasonCode: null,
+  exemptionReasonText: null,
 };
 
 const TEMPLATE: TemplateSnapshot = {

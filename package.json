@@ -31,7 +31,8 @@
     "user:set": "pnpm --filter @agentur-tool/api user:set",
     "db:studio": "pnpm --filter @agentur-tool/api db:studio",
     "db:verify": "pnpm --filter @agentur-tool/api db:verify",
-    "db:reset": "pnpm --filter @agentur-tool/api db:reset"
+    "db:reset": "pnpm --filter @agentur-tool/api db:reset",
+    "einrechnung:pruefen": "pnpm --filter @agentur-tool/einvoice pruefen"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

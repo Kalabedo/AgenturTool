@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import {
+  DEFAULT_UNIT_CODE,
+  type UnitCode,
   CURRENT_SNAPSHOT_VERSION,
   isValidIsoDate,
   sellerSnapshotFromCompany,
@@ -69,6 +71,9 @@ function toBuyerData(values: InvoiceFormValues): BuyerData {
     email: emptyToNull(values.email),
     vatId: emptyToNull(values.vatId),
     customerNumber: emptyToNull(values.customerNumber),
+    buyerReference: emptyToNull(values.buyerReference),
+    electronicAddress: emptyToNull(values.electronicAddress),
+    electronicAddressScheme: emptyToNull(values.electronicAddressScheme),
   };
 }
 
@@ -80,6 +85,7 @@ function toRenderItems(values: InvoiceFormValues): RenderModelSourceItem[] {
       description: item.description,
       quantity: parsed?.quantity ?? 0,
       unit: emptyToNull(item.unit),
+      unitCode: (item.unitCode === '' ? DEFAULT_UNIT_CODE : item.unitCode) as UnitCode,
       unitPriceCents: parsed?.unitPriceCents ?? 0,
       discountType: item.discountType,
       discountValue: parsed?.discountValue ?? 0,

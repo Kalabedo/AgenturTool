@@ -1,4 +1,8 @@
-import { TAX_PROFILE_KIND } from '@agentur-tool/shared';
+import {
+  TAX_CATEGORY_CODE,
+  TAX_PROFILE_KIND,
+  VAT_EXEMPTION_REASON_CODE,
+} from '@agentur-tool/shared';
 import type { PrismaClient } from '@prisma/client';
 
 /** Was nach dem Seed in der Datenbank steht. */
@@ -48,6 +52,9 @@ export async function seed(prisma: PrismaClient): Promise<SeedCounts> {
       kind: TAX_PROFILE_KIND.STANDARD,
       defaultRateBasisPoints: 1900,
       noteText: null,
+      taxCategoryCode: TAX_CATEGORY_CODE.STANDARD,
+      exemptionReasonCode: null,
+      exemptionReasonText: null,
       showTaxColumn: true,
       isDefault: true,
       sortOrder: 10,
@@ -57,6 +64,9 @@ export async function seed(prisma: PrismaClient): Promise<SeedCounts> {
       kind: TAX_PROFILE_KIND.STANDARD,
       defaultRateBasisPoints: 700,
       noteText: null,
+      taxCategoryCode: TAX_CATEGORY_CODE.STANDARD,
+      exemptionReasonCode: null,
+      exemptionReasonText: null,
       showTaxColumn: true,
       isDefault: false,
       sortOrder: 20,
@@ -65,7 +75,13 @@ export async function seed(prisma: PrismaClient): Promise<SeedCounts> {
       name: 'Steuerfrei 0 %',
       kind: TAX_PROFILE_KIND.ZERO_RATED,
       defaultRateBasisPoints: 0,
-      noteText: null,
+      // Ohne Grund keine Befreiung: BR-E-10 verlangt BT-120 oder BT-121.
+      // Welcher Sachverhalt gemeint ist, weiß nur der Benutzer — hier steht
+      // deshalb der allgemeinste Satz, der sich ändern lässt.
+      noteText: 'Steuerfreie Leistung.',
+      taxCategoryCode: TAX_CATEGORY_CODE.EXEMPT,
+      exemptionReasonCode: null,
+      exemptionReasonText: 'Steuerfreie Leistung.',
       showTaxColumn: true,
       isDefault: false,
       sortOrder: 30,
@@ -77,6 +93,9 @@ export async function seed(prisma: PrismaClient): Promise<SeedCounts> {
       noteText:
         'Steuerschuldnerschaft des Leistungsempfängers (Reverse Charge). ' +
         'Die Umsatzsteuer ist vom Leistungsempfänger zu erklären und abzuführen.',
+      taxCategoryCode: TAX_CATEGORY_CODE.REVERSE_CHARGE,
+      exemptionReasonCode: VAT_EXEMPTION_REASON_CODE.REVERSE_CHARGE,
+      exemptionReasonText: 'Steuerschuldnerschaft des Leistungsempfängers.',
       showTaxColumn: false,
       isDefault: false,
       sortOrder: 40,

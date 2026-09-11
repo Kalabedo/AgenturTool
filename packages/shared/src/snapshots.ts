@@ -1,5 +1,10 @@
 import { z } from 'zod';
 import { isoDateSchema } from './date.js';
+import {
+  ELECTRONIC_ADDRESS_SCHEME_VALUES,
+  TAX_CATEGORY_CODE,
+  TAX_CATEGORY_CODE_VALUES,
+} from './einvoice/codes.js';
 import { DOCUMENT_TYPE_VALUES, TAX_PROFILE_KIND_VALUES } from './enums.js';
 
 /**
@@ -12,11 +17,50 @@ import { DOCUMENT_TYPE_VALUES, TAX_PROFILE_KIND_VALUES } from './enums.js';
  *
  * `snapshotVersion` erlaubt es, das Format später zu ändern, ohne alte
  * Rechnungen unlesbar zu machen — beim Lesen wird nach Version verzweigt.
+ *
+ * ## Version 2 (E-Rechnung)
+ *
+ * Version 2 ergänzt die Felder, die EN 16931 verlangt und die es in
+ * Version 1 nicht gab: elektronische Adressen beider Seiten, die Referenz
+ * des Käufers (Leitweg-ID) und die Steuerkategorie samt Befreiungsgrund.
+ *
+ * Die Verzweigung steckt in `upgraded()` weiter unten und passiert **beim
+ * Parsen**, nicht an den Aufrufstellen. Das ist Absicht: Es gibt drei
+ * Stellen im Backend, die Snapshots einlesen, und jede einzelne hätte die
+ * Verzweigung sonst selbst gebraucht — eine davon hätte man vergessen.
+ *
+ * Eine Version-1-Rechnung wird dabei **nicht** in der Datenbank
+ * umgeschrieben. Sie wird beim Lesen aufgefüllt und bleibt auf der Platte,
+ * wie sie ausgestellt wurde. Ein Snapshot ist ein Dokument; ein Dokument
+ * ändert man nicht nachträglich, nur weil das Programm dazugelernt hat.
  */
 
-export const CURRENT_SNAPSHOT_VERSION = 1;
+export const CURRENT_SNAPSHOT_VERSION = 2;
+
+/** Die Fassung vor der E-Rechnung. Wird gelesen, aber nicht mehr geschrieben. */
+export const LEGACY_SNAPSHOT_VERSION = 1;
 
 const versioned = { snapshotVersion: z.literal(CURRENT_SNAPSHOT_VERSION) };
+
+/**
+ * Hebt einen Version-1-Snapshot auf Version 2, bevor er validiert wird.
+ *
+ * `fill` liefert die Felder, die Version 1 nicht kannte. Alles andere
+ * bleibt unberührt — und alles, was nicht Version 1 ist, geht unverändert
+ * durch: Ein Snapshot mit einer unbekannten Version soll am Schema
+ * scheitern und nicht hier still zurechtgebogen werden.
+ */
+function upgraded<T extends z.ZodTypeAny>(
+  fill: (raw: Record<string, unknown>) => Record<string, unknown>,
+  schema: T,
+) {
+  return z.preprocess((value) => {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) return value;
+    const raw = value as Record<string, unknown>;
+    if (raw.snapshotVersion !== LEGACY_SNAPSHOT_VERSION) return value;
+    return { ...raw, ...fill(raw), snapshotVersion: CURRENT_SNAPSHOT_VERSION };
+  }, schema);
+}
 
 const addressSchema = z.object({
   street: z.string(),
@@ -25,26 +69,36 @@ const addressSchema = z.object({
   country: z.string(),
 });
 
+const electronicAddressSchemeSchema = z
+  .enum(ELECTRONIC_ADDRESS_SCHEME_VALUES as [string, ...string[]])
+  .nullable();
+
 /**
  * Eigene Firmendaten zum Ausstellungszeitpunkt, inklusive Bankverbindung.
  * Eine später geänderte IBAN darf alte Rechnungen nicht verändern.
  */
-export const sellerSnapshotSchema = z.object({
-  ...versioned,
-  companyName: z.string(),
-  address: addressSchema,
-  email: z.string().nullable(),
-  website: z.string().nullable(),
-  phone: z.string().nullable(),
-  vatId: z.string().nullable(),
-  taxNumber: z.string().nullable(),
-  bankAccountHolder: z.string().nullable(),
-  iban: z.string().nullable(),
-  bic: z.string().nullable(),
-  bankName: z.string().nullable(),
-  /** Data-URI oder Asset-Pfad des Logos zum Ausstellungszeitpunkt. */
-  logoAssetId: z.number().int().nullable(),
-});
+export const sellerSnapshotSchema = upgraded(
+  () => ({ electronicAddress: null, electronicAddressScheme: null }),
+  z.object({
+    ...versioned,
+    companyName: z.string(),
+    address: addressSchema,
+    email: z.string().nullable(),
+    website: z.string().nullable(),
+    phone: z.string().nullable(),
+    vatId: z.string().nullable(),
+    taxNumber: z.string().nullable(),
+    bankAccountHolder: z.string().nullable(),
+    iban: z.string().nullable(),
+    bic: z.string().nullable(),
+    bankName: z.string().nullable(),
+    /** BT-34: elektronische Adresse des Verkäufers. */
+    electronicAddress: z.string().nullable(),
+    electronicAddressScheme: electronicAddressSchemeSchema,
+    /** Data-URI oder Asset-Pfad des Logos zum Ausstellungszeitpunkt. */
+    logoAssetId: z.number().int().nullable(),
+  }),
+);
 export type SellerSnapshot = z.infer<typeof sellerSnapshotSchema>;
 
 /**
@@ -52,27 +106,55 @@ export type SellerSnapshot = z.infer<typeof sellerSnapshotSchema>;
  * bereits im Entwurf (D9): Beim Auswählen eines Kunden werden die Daten
  * kopiert und bleiben dort einmalig änderbar. Ab ISSUED ist es gesperrt.
  */
-export const buyerDataSchema = z.object({
-  ...versioned,
-  companyName: z.string(),
-  contactName: z.string().nullable(),
-  addressLine: z.string().nullable(),
-  address: addressSchema,
-  email: z.string().nullable(),
-  vatId: z.string().nullable(),
-  customerNumber: z.string().nullable(),
-});
+export const buyerDataSchema = upgraded(
+  () => ({ buyerReference: null, electronicAddress: null, electronicAddressScheme: null }),
+  z.object({
+    ...versioned,
+    companyName: z.string(),
+    contactName: z.string().nullable(),
+    addressLine: z.string().nullable(),
+    address: addressSchema,
+    email: z.string().nullable(),
+    vatId: z.string().nullable(),
+    customerNumber: z.string().nullable(),
+    /**
+     * BT-10: Referenz des Käufers. In XRechnung ein Pflichtfeld; bei
+     * öffentlichen Auftraggebern steht hier die Leitweg-ID.
+     */
+    buyerReference: z.string().nullable(),
+    /** BT-49: elektronische Adresse des Käufers. */
+    electronicAddress: z.string().nullable(),
+    electronicAddressScheme: electronicAddressSchemeSchema,
+  }),
+);
 export type BuyerData = z.infer<typeof buyerDataSchema>;
 
 /** Steuerprofil samt Hinweistext, wie er auf dem Dokument stand. */
-export const taxSnapshotSchema = z.object({
-  ...versioned,
-  profileName: z.string(),
-  kind: z.enum(TAX_PROFILE_KIND_VALUES as [string, ...string[]]),
-  defaultRateBasisPoints: z.number().int(),
-  noteText: z.string().nullable(),
-  showTaxColumn: z.boolean(),
-});
+export const taxSnapshotSchema = upgraded(
+  // Version 1 kannte keine Kategorie. `E` ist hier die einzig ehrliche
+  // Vorgabe: Sie behauptet keinen Steuersatz, wo keiner ausgewiesen war,
+  // und der Freitext des Profils trägt den Grund ohnehin schon.
+  (raw) => ({
+    taxCategoryCode:
+      raw.kind === 'STANDARD' ? TAX_CATEGORY_CODE.STANDARD : TAX_CATEGORY_CODE.EXEMPT,
+    exemptionReasonCode: null,
+    exemptionReasonText: typeof raw.noteText === 'string' ? raw.noteText : null,
+  }),
+  z.object({
+    ...versioned,
+    profileName: z.string(),
+    kind: z.enum(TAX_PROFILE_KIND_VALUES as [string, ...string[]]),
+    defaultRateBasisPoints: z.number().int(),
+    noteText: z.string().nullable(),
+    showTaxColumn: z.boolean(),
+    /** BT-118: Steuerkategorie nach UNTDID 5305. */
+    taxCategoryCode: z.enum(TAX_CATEGORY_CODE_VALUES as [string, ...string[]]),
+    /** BT-121: Befreiungsgrund als Code. */
+    exemptionReasonCode: z.string().nullable(),
+    /** BT-120: Befreiungsgrund im Klartext. */
+    exemptionReasonText: z.string().nullable(),
+  }),
+);
 export type TaxSnapshot = z.infer<typeof taxSnapshotSchema>;
 
 /**
@@ -80,16 +162,19 @@ export type TaxSnapshot = z.infer<typeof taxSnapshotSchema>;
  * Rechnung auch dann noch identisch gerendert werden kann, wenn längst ein
  * anderes Template die Voreinstellung ist.
  */
-export const templateSnapshotSchema = z.object({
-  ...versioned,
-  templateKey: z.string(),
-  accentColor: z.string(),
-  fontFamily: z.string(),
-  logoWidthMm: z.number(),
-  footerText: z.string().nullable(),
-  paymentNote: z.string().nullable(),
-  closingNote: z.string().nullable(),
-});
+export const templateSnapshotSchema = upgraded(
+  () => ({}),
+  z.object({
+    ...versioned,
+    templateKey: z.string(),
+    accentColor: z.string(),
+    fontFamily: z.string(),
+    logoWidthMm: z.number(),
+    footerText: z.string().nullable(),
+    paymentNote: z.string().nullable(),
+    closingNote: z.string().nullable(),
+  }),
+);
 export type TemplateSnapshot = z.infer<typeof templateSnapshotSchema>;
 
 /** Ein Steuersatz mit dem darauf entfallenden Netto- und Steuerbetrag. */
@@ -104,14 +189,17 @@ export type TaxGroup = z.infer<typeof taxGroupSchema>;
  * Eingefrorene Summen. Damit liefert eine alte Rechnung auch dann dieselben
  * Beträge, wenn sich die Berechnungsfunktion später ändern sollte.
  */
-export const totalsSnapshotSchema = z.object({
-  ...versioned,
-  netCents: z.number().int(),
-  taxCents: z.number().int(),
-  grossCents: z.number().int(),
-  totalDiscountCents: z.number().int(),
-  taxGroups: z.array(taxGroupSchema),
-});
+export const totalsSnapshotSchema = upgraded(
+  () => ({}),
+  z.object({
+    ...versioned,
+    netCents: z.number().int(),
+    taxCents: z.number().int(),
+    grossCents: z.number().int(),
+    totalDiscountCents: z.number().int(),
+    taxGroups: z.array(taxGroupSchema),
+  }),
+);
 export type TotalsSnapshot = z.infer<typeof totalsSnapshotSchema>;
 
 /** Metadaten eines Verlaufseintrags. Bewusst offen, aber typisiert eingelesen. */

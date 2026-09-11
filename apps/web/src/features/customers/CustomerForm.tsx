@@ -2,6 +2,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
 import {
+  ELECTRONIC_ADDRESS_SCHEME_LABELS,
+  ELECTRONIC_ADDRESS_SCHEME_VALUES,
   TAX_PROFILE_KIND_LABELS,
   allowsRateInput,
   customerInputSchema,
@@ -9,6 +11,7 @@ import {
   type CustomerInput,
   type CustomerPayload,
   type CustomerResponse,
+  type ElectronicAddressScheme,
   type TaxProfileResponse,
 } from '@agentur-tool/shared';
 import { apiClient } from '../../lib/apiClient.js';
@@ -34,6 +37,9 @@ export function emptyCustomerValues(): FormValues {
     country: 'DE',
     email: '',
     vatId: '',
+    buyerReference: '',
+    electronicAddress: '',
+    electronicAddressScheme: '',
     notes: '',
     defaultPaymentTermDays: '',
     defaultTaxProfileId: '',
@@ -52,6 +58,9 @@ export function toCustomerValues(customer: CustomerResponse): FormValues {
     country: customer.country,
     email: customer.email ?? '',
     vatId: customer.vatId ?? '',
+    buyerReference: customer.buyerReference ?? '',
+    electronicAddress: customer.electronicAddress ?? '',
+    electronicAddressScheme: customer.electronicAddressScheme ?? '',
     notes: customer.notes ?? '',
     defaultPaymentTermDays:
       customer.defaultPaymentTermDays === null ? '' : String(customer.defaultPaymentTermDays),
@@ -235,6 +244,59 @@ export function CustomerForm({
               invalid={errorFor('vatId') !== undefined}
               {...form.register('vatId')}
             />
+          </Field>
+        </div>
+      </Card>
+
+      <Card
+        title="E-Rechnung"
+        description="Nur für die XRechnung. Ohne diese Angaben entsteht weiterhin ein PDF."
+      >
+        <div className="grid gap-4 sm:grid-cols-6">
+          <Field
+            label="Leitweg-ID / Referenz des Käufers"
+            htmlFor="buyerReference"
+            error={errorFor('buyerReference')}
+            hint="Vergibt der Auftraggeber. Bei Behörden die Leitweg-ID, sonst die Bestell- oder Kostenstellennummer."
+            className="sm:col-span-6"
+          >
+            <Input
+              id="buyerReference"
+              invalid={errorFor('buyerReference') !== undefined}
+              {...form.register('buyerReference')}
+            />
+          </Field>
+          <Field
+            label="Elektronische Adresse"
+            htmlFor="electronicAddress"
+            error={errorFor('electronicAddress')}
+            hint="Wohin die E-Rechnung zugestellt wird. Meist die Rechnungs-E-Mail des Kunden."
+            className="sm:col-span-4"
+          >
+            <Input
+              id="electronicAddress"
+              invalid={errorFor('electronicAddress') !== undefined}
+              {...form.register('electronicAddress')}
+            />
+          </Field>
+          <Field
+            label="Art der Adresse"
+            htmlFor="electronicAddressScheme"
+            error={errorFor('electronicAddressScheme')}
+            className="sm:col-span-2"
+          >
+            <Select
+              id="electronicAddressScheme"
+              invalid={errorFor('electronicAddressScheme') !== undefined}
+              {...form.register('electronicAddressScheme')}
+            >
+              <option value="">— bitte wählen —</option>
+              {ELECTRONIC_ADDRESS_SCHEME_VALUES.map((scheme) => (
+                <option key={scheme} value={scheme}>
+                  {ELECTRONIC_ADDRESS_SCHEME_LABELS[scheme as ElectronicAddressScheme]}
+                </option>
+              ))}
+            </Select>
           </Field>
         </div>
       </Card>

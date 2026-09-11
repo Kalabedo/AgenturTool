@@ -8,6 +8,9 @@ import {
   type CompanyResponse,
   type UpdateCompanyInput,
   type UpdateCompanyPayload,
+  ELECTRONIC_ADDRESS_SCHEME_LABELS,
+  ELECTRONIC_ADDRESS_SCHEME_VALUES,
+  type ElectronicAddressScheme,
 } from '@agentur-tool/shared';
 import { ApiRequestError, apiClient } from '../../../lib/apiClient.js';
 import { queryKeys } from '../../../lib/queryKeys.js';
@@ -15,6 +18,7 @@ import { Button } from '../../../components/ui/Button.js';
 import { Card } from '../../../components/ui/Card.js';
 import { Field } from '../../../components/ui/Field.js';
 import { Input } from '../../../components/ui/Input.js';
+import { Select } from '../../../components/ui/Select.js';
 import { LogoUpload } from './LogoUpload.js';
 import { ErrorNotice } from '../../../components/ui/ErrorNotice.js';
 import { formErrorOf } from '../../../lib/errorMessage.js';
@@ -47,6 +51,8 @@ function toFormValues(company: CompanyResponse): FormValues {
     iban: company.iban ?? '',
     bic: company.bic ?? '',
     bankName: company.bankName ?? '',
+    electronicAddress: company.electronicAddress ?? '',
+    electronicAddressScheme: company.electronicAddressScheme ?? '',
     defaultPaymentTermDays: String(company.defaultPaymentTermDays),
   };
 }
@@ -245,6 +251,46 @@ export function CompanyPage(): JSX.Element {
               invalid={errors.taxNumber !== undefined}
               {...form.register('taxNumber')}
             />
+          </Field>
+        </div>
+      </Card>
+
+      <Card
+        title="E-Rechnung"
+        description="Wird nur für die XRechnung gebraucht, nicht für das PDF."
+      >
+        <div className="grid gap-4 sm:grid-cols-6">
+          <Field
+            label="Elektronische Adresse"
+            htmlFor="electronicAddress"
+            error={errors.electronicAddress?.message}
+            hint="An diese Adresse richtet der Empfänger seine Antwort. Meist die eigene Rechnungs-E-Mail."
+            className="sm:col-span-4"
+          >
+            <Input
+              id="electronicAddress"
+              invalid={errors.electronicAddress !== undefined}
+              {...form.register('electronicAddress')}
+            />
+          </Field>
+          <Field
+            label="Art der Adresse"
+            htmlFor="electronicAddressScheme"
+            error={errors.electronicAddressScheme?.message}
+            className="sm:col-span-2"
+          >
+            <Select
+              id="electronicAddressScheme"
+              invalid={errors.electronicAddressScheme !== undefined}
+              {...form.register('electronicAddressScheme')}
+            >
+              <option value="">— bitte wählen —</option>
+              {ELECTRONIC_ADDRESS_SCHEME_VALUES.map((scheme) => (
+                <option key={scheme} value={scheme}>
+                  {ELECTRONIC_ADDRESS_SCHEME_LABELS[scheme as ElectronicAddressScheme]}
+                </option>
+              ))}
+            </Select>
           </Field>
         </div>
       </Card>

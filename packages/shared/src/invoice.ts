@@ -11,6 +11,7 @@ import {
   type InvoiceStatus,
 } from './enums.js';
 import { addDays, formatDateDe, isoDateSchema, todayIso, type IsoDate } from './date.js';
+import { UNIT_CODE_VALUES, guessUnitCode, type UnitCode } from './einvoice/codes.js';
 import { parseCents, parsePercentToBasisPoints, parseQuantity } from './money.js';
 import { CURRENT_SNAPSHOT_VERSION, type BuyerData, type TotalsSnapshot } from './snapshots.js';
 import type { CustomerResponse } from './customer.js';
@@ -70,12 +71,21 @@ export const invoiceItemInputSchema = z
     description: z.string().trim().min(1, 'Bitte eine Beschreibung angeben').max(1000),
     quantity: quantityField,
     unit: optionalText,
+    /**
+     * BT-130: Mengeneinheit als Code der UN/ECE-Empfehlung 20.
+     *
+     * Steht neben `unit`, nicht an seiner Stelle (D-E3): `unit` ist das
+     * gedruckte Etikett und bleibt Freitext. Weggelassen heißt "aus dem
+     * Etikett raten" — so bleibt jede bestehende Eingabemaske gültig.
+     */
+    unitCode: z.enum(UNIT_CODE_VALUES as [UnitCode, ...UnitCode[]]).optional(),
     unitPriceCents: moneyField,
     discountType: z.enum(DISCOUNT_TYPE_VALUES as [DiscountType, ...DiscountType[]]),
     discountValue: z.union([z.string().trim(), z.number()]),
     taxRateBasisPoints: z.union([z.string().trim(), z.number()]),
   })
   .transform((item, ctx) => {
+    const unitCode = item.unitCode ?? guessUnitCode(item.unit);
     const discountValue = parseDiscount(item.discountType, item.discountValue);
     if (discountValue === null) {
       ctx.addIssue({
@@ -103,7 +113,7 @@ export const invoiceItemInputSchema = z
       return z.NEVER;
     }
 
-    return { ...item, discountValue, taxRateBasisPoints };
+    return { ...item, unitCode, discountValue, taxRateBasisPoints };
   });
 
 function parseDiscount(type: DiscountType, raw: string | number): number | null {
@@ -136,6 +146,9 @@ const buyerDataInputSchema = z
     email: optionalText,
     vatId: optionalText,
     customerNumber: optionalText,
+    buyerReference: optionalText.optional().default(null),
+    electronicAddress: optionalText.optional().default(null),
+    electronicAddressScheme: optionalText.optional().default(null),
   })
   .transform((buyer): BuyerData => ({
     snapshotVersion: CURRENT_SNAPSHOT_VERSION,
@@ -151,6 +164,9 @@ const buyerDataInputSchema = z
     email: buyer.email,
     vatId: buyer.vatId,
     customerNumber: buyer.customerNumber,
+    buyerReference: buyer.buyerReference,
+    electronicAddress: buyer.electronicAddress,
+    electronicAddressScheme: buyer.electronicAddressScheme,
   }));
 
 /** Zerlegt gespeicherte Empfängerdaten wieder in die flachen Formularfelder. */
@@ -165,6 +181,9 @@ export function buyerDataToFormFields(buyer: BuyerData): {
   email: string;
   vatId: string;
   customerNumber: string;
+  buyerReference: string;
+  electronicAddress: string;
+  electronicAddressScheme: string;
 } {
   return {
     companyName: buyer.companyName,
@@ -177,6 +196,9 @@ export function buyerDataToFormFields(buyer: BuyerData): {
     email: buyer.email ?? '',
     vatId: buyer.vatId ?? '',
     customerNumber: buyer.customerNumber ?? '',
+    buyerReference: buyer.buyerReference ?? '',
+    electronicAddress: buyer.electronicAddress ?? '',
+    electronicAddressScheme: buyer.electronicAddressScheme ?? '',
   };
 }
 
@@ -274,6 +296,7 @@ export interface InvoiceItemResponse {
   description: string;
   quantity: number;
   unit: string | null;
+  unitCode: UnitCode;
   unitPriceCents: number;
   discountType: DiscountType;
   discountValue: number;
@@ -408,6 +431,9 @@ export function customerToBuyerData(customer: CustomerResponse): BuyerData {
     email: customer.email,
     vatId: customer.vatId,
     customerNumber: customer.customerNumber,
+    buyerReference: customer.buyerReference,
+    electronicAddress: customer.electronicAddress,
+    electronicAddressScheme: customer.electronicAddressScheme,
   };
 }
 
@@ -422,6 +448,9 @@ export function emptyBuyerData(): BuyerData {
     email: null,
     vatId: null,
     customerNumber: null,
+    buyerReference: null,
+    electronicAddress: null,
+    electronicAddressScheme: null,
   };
 }
 

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isValidBic, isValidIban, isPlausibleVatId } from './banking.js';
+import { ELECTRONIC_ADDRESS_SCHEME_VALUES } from './einvoice/codes.js';
 
 /**
  * Verträge für die eigenen Unternehmensdaten.
@@ -56,6 +57,18 @@ const paymentTermDays = z.union([z.string().trim(), z.number()]).transform((valu
   return parsed;
 });
 
+/**
+ * Schema der elektronischen Adresse (BT-34-1).
+ *
+ * Wie alles andere hier optional: Erst wer eine E-Rechnung erzeugen will,
+ * braucht die Angabe, und darauf weist das Finalisieren hin.
+ */
+const optionalElectronicAddressScheme = optionalText.refine(
+  (value) =>
+    value === null || (ELECTRONIC_ADDRESS_SCHEME_VALUES as readonly string[]).includes(value),
+  { message: 'Unbekanntes Schema der elektronischen Adresse' },
+);
+
 const optionalUrl = optionalText.refine(
   (value) => value === null || /^(https?:\/\/)?[\w.-]+\.[a-z]{2,}(\/.*)?$/i.test(value),
   { message: 'Keine gültige Web-Adresse' },
@@ -76,6 +89,10 @@ export const updateCompanySchema = z.object({
 
   vatId: optionalVatId,
   taxNumber: optionalText,
+
+  /** BT-34: elektronische Adresse des Verkäufers, für die E-Rechnung. */
+  electronicAddress: optionalText.optional().default(null),
+  electronicAddressScheme: optionalElectronicAddressScheme.optional().default(null),
 
   bankAccountHolder: optionalText,
   iban: optionalIban,

@@ -28,6 +28,19 @@ jobs:
         env:
           ELECTRON_NO_SANDBOX: 'true'
 
+      # Die eigenen Tests prüfen, ob herauskommt, was gedacht war. Ob das
+      # Gedachte stimmt, sagt nur, wer die Regeln gemacht hat. Java läuft
+      # ausschließlich hier und wird nie ausgeliefert — die Verpackung
+      # (Abschnitt 16a) bleibt unberührt.
+      - name: Java für den Prüfer
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: E-Rechnung gegen den KoSIT-Validator prüfen
+        run: pnpm --filter @agentur-tool/einvoice pruefen
+
       - name: Rauchprobe (Paketbaum)
         run: |
           pnpm --filter @agentur-tool/desktop paket --nur-baum

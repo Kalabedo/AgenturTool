@@ -35,5 +35,6 @@ export const queryKeys = {
     // Zwischenspeicher.
     list: (queryString: string) => ['invoices', 'list', queryString] as const,
     byId: (id: number) => ['invoices', 'detail', id] as const,
+    einvoiceStatus: (id: number) => ['invoices', 'detail', id, 'einvoice'] as const,
   },
 };

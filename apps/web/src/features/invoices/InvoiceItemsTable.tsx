@@ -1,5 +1,13 @@
 import { type UseFieldArrayReturn, type UseFormReturn } from 'react-hook-form';
-import { DISCOUNT_TYPE, formatCents, type InvoiceCalculation } from '@agentur-tool/shared';
+import {
+  DEFAULT_UNIT_CODE,
+  UNIT_CODE_LABELS,
+  UNIT_CODE_VALUES,
+  DISCOUNT_TYPE,
+  formatCents,
+  type InvoiceCalculation,
+  type UnitCode,
+} from '@agentur-tool/shared';
 import { Button } from '../../components/ui/Button.js';
 import { Input } from '../../components/ui/Input.js';
 import { Select } from '../../components/ui/Select.js';
@@ -71,11 +79,29 @@ export function InvoiceItemsTable({
                 </td>
 
                 <td className="px-2 py-2">
+                  {/*
+                    Zwei Felder, eine Spalte: Oben steht, was gedruckt wird
+                    — Freitext, wie eh und je. Darunter der Code, den die
+                    E-Rechnung braucht und den niemand tippen will. Das
+                    Etikett zu ersetzen hätte das Aussehen bestehender
+                    Rechnungen verändert (D-E3).
+                  */}
                   <Input
                     aria-label={`Einheit Position ${index + 1}`}
                     placeholder="Std."
                     {...form.register(`items.${index}.unit`)}
                   />
+                  <Select
+                    aria-label={`Einheit für die E-Rechnung, Position ${index + 1}`}
+                    className="mt-1 text-xs"
+                    {...form.register(`items.${index}.unitCode`)}
+                  >
+                    {UNIT_CODE_VALUES.map((code) => (
+                      <option key={code} value={code}>
+                        {UNIT_CODE_LABELS[code as UnitCode]}
+                      </option>
+                    ))}
+                  </Select>
                 </td>
 
                 <td className="px-2 py-2">
@@ -188,6 +214,7 @@ export function InvoiceItemsTable({
               description: '',
               quantity: '1',
               unit: '',
+              unitCode: DEFAULT_UNIT_CODE,
               unitPriceCents: '',
               discountType: DISCOUNT_TYPE.PERCENT,
               discountValue: '',

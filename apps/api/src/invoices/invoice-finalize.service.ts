@@ -9,7 +9,9 @@ import {
   calculateInvoice,
   calculateItem,
   cancellationNote,
+  checkEinvoiceReady,
   checkFinalizable,
+  DOCUMENT_KIND,
   emptyBuyerData,
   formatInvoiceNumber,
   isCancellable,
@@ -34,8 +36,10 @@ import {
   type TaxSnapshot,
   type TemplateSnapshot,
   type TotalsSnapshot,
+  type UnitCode,
 } from '@agentur-tool/shared';
 import type { RenderModelSourceItem } from '@agentur-tool/invoice-template';
+import { buildEinvoiceModel, renderCii } from '@agentur-tool/einvoice';
 import { ApiError } from '../common/api-error';
 import { PrismaService } from '../common/prisma.service';
 import { CompanyService } from '../company/company.service';
@@ -74,11 +78,17 @@ interface IssueTarget {
 interface IssuedResult {
   number: string;
   seq: number;
-  staged: StagedDocument;
+  /**
+   * Alle Dateien dieses Vorgangs — PDF und, wenn die Rechnung dafür
+   * vollständig ist, die E-Rechnung.
+   */
+  staged: StagedDocument[];
 }
 
 interface FrozenSources {
   seller: SellerSnapshot;
+  /** BT-25: die aufgehobene Rechnung, wenn dies ein Storno ist. */
+  precedingInvoiceNumber: string | null;
   tax: TaxSnapshot;
   template: TemplateSnapshot;
   totals: TotalsSnapshot;
@@ -184,7 +194,7 @@ export class InvoiceFinalizeService {
     scope: { year: number; month: number },
     extra?: (tx: Prisma.TransactionClient, issued: IssuedResult) => Promise<void>,
   ): Promise<void> {
-    let staged: StagedDocument | null = null;
+    let staged: StagedDocument[] = [];
 
     try {
       await this.prisma.$transaction(
@@ -199,13 +209,13 @@ export class InvoiceFinalizeService {
         { timeout: 120_000, maxWait: 15_000 },
       );
     } catch (error) {
-      if (staged !== null) await this.documents.discard(staged);
+      for (const file of staged) await this.documents.discard(file);
       throw error;
     }
 
     // Erst nach dem Commit, und atomar: Ab hier gibt es die Rechnung, und
-    // die Datei liegt an genau der Stelle, die in der Datenbank steht.
-    if (staged !== null) await this.documents.commit(staged);
+    // die Dateien liegen an genau den Stellen, die in der Datenbank stehen.
+    for (const file of staged) await this.documents.commit(file);
   }
 
   /**
@@ -245,7 +255,24 @@ export class InvoiceFinalizeService {
       items: frozen.items,
     });
 
-    const staged = await this.documents.stage(document.bytes, scope.year, number);
+    const staged = [await this.documents.stage(document.bytes, scope.year, number)];
+
+    // Die E-Rechnung entsteht aus **derselben** Quelle wie das PDF und in
+    // derselben Transaktion. Das ist die Umsetzung von „eine ausgestellte
+    // Rechnung ist ein Dokument": Wären es zwei getrennte Vorgänge, gäbe
+    // es einen Moment, in dem die XML-Datei andere Beträge trüge als das
+    // Papier — oder gar nicht existierte.
+    const einvoice = this.renderEinvoice(target, frozen, number);
+    if (einvoice !== null) {
+      staged.push(
+        await this.documents.stage(
+          Buffer.from(einvoice, 'utf8'),
+          scope.year,
+          number,
+          DOCUMENT_KIND.XML,
+        ),
+      );
+    }
 
     await tx.invoice.update({
       where: { id: target.id },
@@ -263,13 +290,14 @@ export class InvoiceFinalizeService {
       },
     });
 
-    await tx.invoiceDocument.create({
-      data: {
+    await tx.invoiceDocument.createMany({
+      data: staged.map((file) => ({
         invoiceId: target.id,
-        path: staged.relativePath,
-        sha256: staged.sha256,
-        sizeBytes: staged.sizeBytes,
-      },
+        kind: file.kind,
+        path: file.relativePath,
+        sha256: file.sha256,
+        sizeBytes: file.sizeBytes,
+      })),
     });
 
     await tx.invoiceEvent.create({
@@ -281,6 +309,62 @@ export class InvoiceFinalizeService {
     });
 
     return { number, seq, staged };
+  }
+
+  /**
+   * Erzeugt die E-Rechnung — oder `null`, wenn die Rechnung dafür noch
+   * nicht vollständig ist.
+   *
+   * `null` und kein Fehler: Eine Rechnung ohne Leitweg-ID ist eine
+   * vollkommen gültige Rechnung nach § 14 UStG. Sie ließe sich nur nicht
+   * als XRechnung ausgeben, und das darf das Ausstellen nicht verhindern —
+   * sonst wäre jede Bestandsrechnung mit einem Schlag unfinalisierbar, für
+   * ein Feld, das es beim Anlegen des Kunden noch gar nicht gab.
+   *
+   * Was fehlt, sagt die Oberfläche neben dem Download-Knopf; dieselbe
+   * Prüfung liefert die Liste.
+   */
+  private renderEinvoice(
+    target: IssueTarget,
+    frozen: FrozenSources,
+    number: string,
+  ): string | null {
+    const problems = checkEinvoiceReady({
+      seller: frozen.seller,
+      buyer: frozen.buyer,
+      tax: frozen.tax,
+    });
+
+    if (problems.length > 0) {
+      this.logger.log(
+        `Zu ${number} entsteht keine E-Rechnung: ${problems.map((problem) => problem.field).join(', ')}.`,
+      );
+      return null;
+    }
+
+    const model = buildEinvoiceModel(
+      {
+        documentType: target.documentType,
+        number,
+        invoiceDate: target.invoiceDate,
+        serviceDate: target.serviceDate,
+        serviceDateTo: target.serviceDateTo,
+        dueDate: target.dueDate,
+        currency: target.currency,
+        seller: frozen.seller,
+        buyer: frozen.buyer,
+        tax: frozen.tax,
+        template: frozen.template,
+        notes: target.notes,
+        footerNote: target.footerNote,
+        logoSrc: null,
+        items: frozen.items,
+      },
+      frozen.totals,
+      { precedingInvoiceNumber: frozen.precedingInvoiceNumber },
+    );
+
+    return renderCii(model);
   }
 
   /**
@@ -414,6 +498,7 @@ export class InvoiceFinalizeService {
               position: item.position,
               description: item.description,
               unit: item.unit,
+              unitCode: item.unitCode,
               quantity: negated.quantity,
               unitPriceCents: negated.unitPriceCents,
               discountType: negated.discountType,
@@ -441,7 +526,12 @@ export class InvoiceFinalizeService {
         taxRateBasisPoints: item.taxRateBasisPoints,
       });
 
-      return { description: item.description, unit: item.unit, ...negated };
+      return {
+        description: item.description,
+        unit: item.unit,
+        unitCode: item.unitCode as UnitCode,
+        ...negated,
+      };
     });
 
     return {
@@ -451,10 +541,21 @@ export class InvoiceFinalizeService {
       totals: toTotalsSnapshot(calculateInvoice(items)),
       buyer: this.parseBuyerData(invoice),
       items,
+      // BT-25: Das Storno verweist auf die Rechnung, aus deren Snapshots
+      // es entsteht — genau die, die es aufhebt.
+      precedingInvoiceNumber: invoice.number,
     };
   }
 
-  private parseSnapshot<T>(schema: z.ZodType<T>, raw: string | null, invoiceId: number): T {
+  // `z.ZodTypeAny` statt `z.ZodType<T>`: Die Snapshot-Schemas sind seit
+  // Version 2 in ein `z.preprocess` gehüllt, das Version 1 beim Lesen
+  // auffüllt. Deren Eingabetyp ist `unknown`, weshalb `z.ZodType<T>` nicht
+  // mehr passt und T zu `unknown` zusammenfiele.
+  private parseSnapshot<S extends z.ZodTypeAny>(
+    schema: S,
+    raw: string | null,
+    invoiceId: number,
+  ): z.infer<S> {
     const result = schema.safeParse(raw === null ? null : JSON.parse(raw));
     if (!result.success) {
       throw ApiError.validation(
@@ -600,6 +701,7 @@ export class InvoiceFinalizeService {
       description: item.description,
       quantity: item.quantity,
       unit: item.unit,
+      unitCode: item.unitCode as UnitCode,
       unitPriceCents: item.unitPriceCents,
       discountType: item.discountType as DiscountType,
       discountValue: item.discountValue,
@@ -615,6 +717,8 @@ export class InvoiceFinalizeService {
       totals: toTotalsSnapshot(calculateInvoice(items)),
       buyer: this.parseBuyerData(invoice),
       items,
+      // Eine Rechnung hebt nichts auf.
+      precedingInvoiceNumber: null,
     };
   }
 
