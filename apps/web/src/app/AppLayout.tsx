@@ -39,7 +39,7 @@ export function AppLayout({ error }: { error?: ReactNode }): JSX.Element {
    */
   const mediumLayout = useMatch('/time-tracking') !== null;
 
-  const width = wideLayout ? 'max-w-[104rem]' : mediumLayout ? 'max-w-7xl' : 'max-w-5xl';
+  const contentWidth = wideLayout ? 'max-w-[104rem]' : mediumLayout ? 'max-w-7xl' : 'max-w-5xl';
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -54,9 +54,10 @@ export function AppLayout({ error }: { error?: ReactNode }): JSX.Element {
       </a>
 
       <header className="border-b border-slate-200 bg-white">
-        <div
-          className={`mx-auto flex flex-wrap items-center gap-x-8 gap-y-2 px-4 py-4 sm:px-6 ${width}`}
-        >
+        {/* Die Kopfzeile behält über alle Routen dieselbe Geometrie. Ihre
+            Breite an den jeweiligen Seiteninhalt zu koppeln ließ Logo und
+            Navigation beim Wechsel zur breiteren Zeiterfassung springen. */}
+        <div className="mx-auto flex max-w-[104rem] flex-wrap items-center gap-x-8 gap-y-2 px-4 py-4 sm:px-6">
           <Link to="/" className="text-base font-semibold tracking-tight text-slate-900">
             AgenturTool
           </Link>
@@ -89,7 +90,7 @@ export function AppLayout({ error }: { error?: ReactNode }): JSX.Element {
         </div>
       </header>
 
-      <main id="inhalt" className={`mx-auto px-4 py-8 sm:px-6 ${width}`}>
+      <main id="inhalt" className={`mx-auto px-4 py-8 sm:px-6 ${contentWidth}`}>
         {error ?? <Outlet />}
       </main>
     </div>

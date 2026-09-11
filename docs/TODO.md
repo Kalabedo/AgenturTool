@@ -9,10 +9,12 @@ Deutschland und anschließend auf einer breiteren Nutzung in der EU.
 
 - [ ] **Vertrieb, Lizenzierung und Updates**
   - Detailkonzept: [`VERTRIEB-UND-UPDATES.md`](VERTRIEB-UND-UPDATES.md).
+  - Die Produktentscheidungen dazu sind als D38 bis D44 beschlossen; offen
+    ist ihre technische und geschäftliche Umsetzung.
   - Die Anwendung zunächst über die eigene Website für macOS und Windows
     verkaufen und herunterladen lassen.
-  - Einen einfachen, fairen Lizenztyp für Solo-Agenturen festlegen; bevorzugt
-    Einmalkauf mit dauerhaft nutzbarer Version statt eines Pflicht-Abos.
+  - Einmalkauf mit dauerhaft nutzbarer Version und zwölf Monaten Updates
+    anbieten; spätere Updateverlängerung bleibt freiwillig.
   - Kauf, EU-Umsatzsteuer, Rechnungsstellung, Rückerstattungen und Lizenz-
     E-Mails über einen Merchant of Record abwickeln.
   - Eine datensparsame Offline-Lizenz beziehungsweise eine einmalige

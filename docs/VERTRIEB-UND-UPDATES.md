@@ -1,12 +1,44 @@
 # Vertrieb, Lizenzierung und Updates
 
-## Empfehlung
+## Beschlossene Leitplanken
 
-AgenturTool startet mit der **eigenen Website als primärem Verkaufskanal**.
-Die Website verkauft eine Lizenz und bietet die vorhandenen signierten
-Installer für macOS und Windows an. Die Anwendung bleibt lokal und
-eigenständig; nur Lizenzaktivierung, manuelle E-Mail-Funktionen und die
-Updateprüfung benötigen optionalen Netzwerkzugriff.
+- **Primärer Verkaufskanal:** eigene Website.
+- **Weitere Kanäle:** Microsoft Store und Mac App Store nur optional und
+  später, wenn ihr zusätzlicher Nutzen den Pflegeaufwand rechtfertigt.
+- **Lizenz:** Einmalkauf mit dauerhaftem Nutzungsrecht für die zuletzt
+  berechtigte Version.
+- **Updates:** zwölf Monate ab Kauf inklusive; danach kann der Zeitraum
+  optional kostenpflichtig verlängert werden. Ohne Verlängerung stellt die
+  Anwendung ihre Arbeit nicht ein.
+- **Offline-Versprechen:** keine dauernde Verbindung und keine wiederkehrende
+  Online-Aktivierung. Neben einer einmaligen Aktivierung muss eine signierte
+  Lizenzdatei einen vollständig offline möglichen Weg bieten.
+- **Updatearchitektur:** eigener, signierter Updatefeed auf einer festen
+  HTTPS-Domain. Die Anwendung prüft und installiert über den
+  Electron-Hauptprozess, erzeugt vorher ein Backup und startet nur mit
+  Zustimmung des Nutzers neu.
+- **Stabile App-Identität:** Produktname `AgenturTool`, App-ID
+  `de.agenturtool.app`, bestehende Datenverzeichnisse und dieselben
+  Signaturidentitäten ändern sich nach dem öffentlichen Release nicht.
+- **Datenschutzgrenze:** Updateprüfung, Lizenzaktivierung und bewusst
+  ausgelöster E-Mail-Versand sind technisch getrennte Netzwerkzwecke. Es gibt
+  keine Telemetrie; der Updatecheck überträgt keine Kunden-, Rechnungs- oder
+  Nutzungsdaten.
+- **Preisvalidierung:** Vor dem Bau des vollständigen Verkaufs- und
+  Lizenzsystems sowie weiterer großer Module werden Problem, Nutzen und
+  Zahlungsbereitschaft mit etwa fünf bis zehn Solo-Agenturen geprüft. Eine
+  einfache Landingpage darf Preisvarianten testen.
+
+Diese Entscheidungen sind als D38 bis D44 in der verbindlichen Architektur
+festgehalten.
+
+## Vertriebskonzept
+
+AgenturTool startet mit der eigenen Website als primärem Verkaufskanal. Die
+Website verkauft eine Lizenz und bietet die vorhandenen signierten Installer
+für macOS und Windows an. Die Anwendung bleibt lokal und eigenständig; nur
+Lizenzaktivierung, manuelle E-Mail-Funktionen und die Updateprüfung benötigen
+optionalen Netzwerkzugriff.
 
 Ein Store kann später als zusätzlicher Vertrauens- und Auffindbarkeitskanal
 dazukommen. Er sollte nicht die technische oder wirtschaftliche Grundlage des
@@ -31,7 +63,7 @@ Downloads und Rückerstattungen. Dafür empfiehlt sich zum Start ein
 Steuerlösung. Dieser verkauft die Software rechtlich an den Endkunden und
 übernimmt typischerweise Zahlungsabwicklung, Umsatzsteuer und Belege.
 
-## Vorgeschlagenes Preismodell
+## Preismodell und noch offene Preisfrage
 
 Für eine lokale Solo-Agentur-Anwendung passt ein Einmalkauf besser als ein
 erzwungenes monatliches Abo:
@@ -43,9 +75,10 @@ erzwungenes monatliches Abo:
 - die zuletzt berechtigte Version funktioniert auch ohne Verlängerung weiter;
 - größere spätere Versionen können als bezahltes Upgrade angeboten werden.
 
-Ein möglicher Startpunkt zur Validierung wäre **49–79 EUR inklusive
-Umsatzsteuer** mit zwölf Monaten Updates. Der endgültige Preis sollte nach
-Gesprächen mit ersten Solo-Agenturen festgelegt werden.
+Die Struktur ist entschieden, der Betrag noch nicht. Ein möglicher Startpunkt
+zur Validierung wäre **49–79 EUR inklusive Umsatzsteuer** mit zwölf Monaten
+Updates. Der endgültige Preis wird nach Gesprächen mit ersten Solo-Agenturen
+festgelegt.
 
 ## Verkauf und Download über die Website
 

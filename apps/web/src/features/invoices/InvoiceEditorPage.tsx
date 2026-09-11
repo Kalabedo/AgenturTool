@@ -61,6 +61,29 @@ export function InvoiceEditorPage(): JSX.Element {
     queryFn: () => apiClient.get<TaxProfileResponse[]>('/tax-profiles?includeArchived=false'),
   });
 
+  const editable = invoice.data !== undefined && isEditable(invoice.data.status);
+
+  /**
+   * Was der E-Rechnung noch fehlt.
+   *
+   * Der Hook muss auch während des initialen Ladens aufgerufen werden, damit
+   * React bei jedem Render dieselbe Anzahl Hooks sieht. Die Anfrage selbst
+   * startet erst für eine geladene, ausgestellte Rechnung.
+   */
+  const einvoiceStatus = useQuery({
+    queryKey: queryKeys.invoices.einvoiceStatus(invoiceId),
+    queryFn: () =>
+      apiClient.get<{ ready: boolean; problems: { field: string; message: string }[] }>(
+        `/invoices/${invoiceId}/xml/status`,
+      ),
+    enabled: invoice.data !== undefined && !editable,
+  });
+
+  const downloadEinvoice = useMutation({
+    mutationFn: () => apiClient.download(`/invoices/${invoiceId}/xml`, `Rechnung-${invoiceId}.xml`),
+    onSuccess: saveFile,
+  });
+
   /**
    * Die Formularwerte müssen eine stabile Referenz behalten.
    *
@@ -255,27 +278,6 @@ export function InvoiceEditorPage(): JSX.Element {
   }
 
   const data = invoice.data;
-  const editable = isEditable(data.status);
-
-  /**
-   * Was der E-Rechnung noch fehlt.
-   *
-   * Nur für ausgestellte Rechnungen: Bei einem Entwurf gibt es noch keine
-   * eingefrorenen Daten, gegen die sich das prüfen ließe.
-   */
-  const einvoiceStatus = useQuery({
-    queryKey: queryKeys.invoices.einvoiceStatus(invoiceId),
-    queryFn: () =>
-      apiClient.get<{ ready: boolean; problems: { field: string; message: string }[] }>(
-        `/invoices/${invoiceId}/xml/status`,
-      ),
-    enabled: !editable,
-  });
-
-  const downloadEinvoice = useMutation({
-    mutationFn: () => apiClient.download(`/invoices/${invoiceId}/xml`, `Rechnung-${invoiceId}.xml`),
-    onSuccess: saveFile,
-  });
 
   const saveError = save.error instanceof ApiRequestError ? save.error : null;
   const saveMessage = formErrorOf(save.error);

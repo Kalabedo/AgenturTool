@@ -2,6 +2,8 @@
 
 html {
   background: var(--color-slate-50);
+  /* Kurze und lange Seiten behalten dieselbe horizontale Geometrie. */
+  scrollbar-gutter: stable;
 }
 
 body {

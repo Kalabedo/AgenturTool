@@ -46,6 +46,13 @@ sie hier korrigiert und nicht nur im Code.
 | D35 | asar-Archiv              | **Keins.** Prisma startet und lädt seine Engines über selbst gebildete Pfade, an Electrons asar-Umleitung vorbei (Abschnitt 16a)                                              |
 | D36 | Netzverkehr des Fensters | **Alles außer der Rückschleife wird abgewiesen** — ein `webRequest`-Filter, wie ihn der PDF-Renderer schon hat (Abschnitt 16)                                                 |
 | D37 | Steuerberater-Export     | **Ehrliches Übergabe-ZIP** aus Snapshots, CSV und Originalbelegen; kein vorgeblicher DATEV-Stapel ohne Konten-/Kanzleikonfiguration (Abschnitt 26)                            |
+| D38 | Verkaufskanal            | **Eigene Website zuerst**; Microsoft Store und Mac App Store bleiben optionale spätere Zusatzkanäle                                                                          |
+| D39 | Lizenzmodell             | **Einmalkauf mit dauerhaftem Nutzungsrecht**; zwölf Monate Updates inklusive, danach optional bezahlbare Verlängerung des Updatezeitraums                                    |
+| D40 | Offline-Nutzung          | **Keine dauerhafte Aktivierungspflicht.** Nach einmaliger Aktivierung beziehungsweise Import einer signierten Lizenzdatei funktioniert die berechtigte Version dauerhaft offline |
+| D41 | Anwendungsupdates        | **Eigener, signierter Updatekanal** über eine fest erlaubte HTTPS-Domain; Prüfung im Electron-Hauptprozess, Installation nur nach Zustimmung und lokalem Backup               |
+| D42 | App-Identität            | **Stabil ab öffentlichem Release:** `AgenturTool`, App-ID `de.agenturtool.app`, bestehende Datenpfade und dieselben Herausgeber-/Signaturidentitäten                           |
+| D43 | Externe Verbindungen     | **Nach Zweck getrennt und minimal erlaubt:** Updates, Aktivierung und bewusst ausgelöster E-Mail-Versand; keine Telemetrie und keine Kunden- oder Rechnungsdaten beim Updatecheck |
+| D44 | Preisvalidierung         | **Vor Ausbau des Vertriebs und weiterer großer Module** mit Solo-Agenturen testen; Preis zunächst Hypothese, kein allein aus Entwicklungskosten abgeleiteter Beschluss        |
 
 Zu D21: Rechnungs-, Leistungs- und Fälligkeitsdatum sind Kalendertage, keine
 Zeitpunkte. Als `DateTime` müsste an jeder Grenze zwischen Browser, API und
