@@ -1556,18 +1556,18 @@ Kein flächendeckendes UI-Testing im MVP.
 
 ## 21. Abgrenzung MVP ↔ später
 
-| Bereich          | V1                               | Später                                              |
-| ---------------- | -------------------------------- | --------------------------------------------------- |
-| Dokumenttypen    | Rechnung, Storno                 | Angebot, Auftragsbestätigung, Mahnung, Gutschrift   |
-| Templates        | 1 Template + Optionen            | mehrere Templates, mehr Optionen                    |
-| Versand          | PDF-Download                     | E-Mail-Versand, Anhänge, Versandprotokoll           |
-| Zahlungen        | bezahlt am / offen               | Teilzahlungen, Zahlungserinnerungen, Mahnstufen     |
-| Positionen       | frei erfasst                     | Produkt-/Leistungskatalog, Import aus Zeiterfassung |
-| Wiederholung     | Duplizieren                      | echte wiederkehrende Rechnungen mit Zeitplan        |
-| Export           | Backup-Archiv                    | CSV, DATEV-nah, Steuerberater-Paket                 |
-| Mandanten/Nutzer | einer                            | mehrere Unternehmen, mehrere Benutzer, Rollen       |
-| Auswertung       | Dashboard mit letzten Rechnungen | Umsatzübersichten, Statistiken, offene Posten       |
-| E-Rechnung       | nur PDF                          | ZUGFeRD / XRechnung (siehe unten)                   |
+| Bereich          | V1                               | Später                                                                 |
+| ---------------- | -------------------------------- | ---------------------------------------------------------------------- |
+| Dokumenttypen    | Rechnung, Storno                 | Angebot, Auftragsbestätigung, Mahnung, Gutschrift                      |
+| Templates        | 1 Template + Optionen            | mehrere Templates, mehr Optionen                                       |
+| Versand          | PDF-Download                     | E-Mail-Versand, Anhänge, Versandprotokoll                              |
+| Zahlungen        | bezahlt am / offen               | Teilzahlungen, Zahlungserinnerungen, Mahnstufen                        |
+| Positionen       | frei erfasst                     | Produkt-/Leistungskatalog; ~~Import aus Zeiterfassung~~ → Abschnitt 25 |
+| Wiederholung     | Duplizieren                      | echte wiederkehrende Rechnungen mit Zeitplan                           |
+| Export           | Backup-Archiv                    | CSV, DATEV-nah, Steuerberater-Paket                                    |
+| Mandanten/Nutzer | einer                            | mehrere Unternehmen, mehrere Benutzer, Rollen                          |
+| Auswertung       | Dashboard mit letzten Rechnungen | Umsatzübersichten, Statistiken, offene Posten                          |
+| E-Rechnung       | nur PDF                          | ZUGFeRD / XRechnung (siehe unten)                                      |
 
 **Hinweis E-Rechnung (strategisch relevant):** In Deutschland läuft die
 Umstellung auf strukturierte E-Rechnungen im B2B-Bereich stufenweise; die
@@ -1801,6 +1801,88 @@ Validiert wird über Zod; die Begründung steht in der Migration
 
 ---
 
+## 25. Zeiterfassung → Rechnung
+
+Bis hierhin gab es eine Zeiterfassung und eine Rechnungsstellung, aber
+nichts dazwischen: `bill()` setzte `billedAt`, und die Rechnungszeile tippte
+man danach von Hand ab. Für eine Solo-Agentur ist das der Weg, den sie jede
+Woche geht.
+
+### Eine Sammelzeile ist der Normalfall
+
+So wird abgerechnet:
+
+> Arbeit im Zeitraum 01.02.–28.02.2026 · 40,00 Std · 50,00 € · 2.000,00 €
+
+Nicht vierzig Zeilen mit Einzelterminen. Die Aufschlüsselung gehört auf den
+**Zeitnachweis**, den es längst gibt — er ist der Beleg, den man bei
+Rückfragen mitschickt, nicht der Inhalt der Rechnung. Vierzig Termine auf
+einer Rechnung laden zur Diskussion über einzelne Stunden ein.
+
+`PRO_TAG` und `PRO_BESCHREIBUNG` gibt es, weil manche Auftraggeber es anders
+verlangen — nicht, weil sie besser wären.
+
+### Entscheidungen
+
+**D-Z1 — Der Weg ist ein Angebot, kein Trichter.** Rechnungen von Hand
+schreiben bleibt unverändert; Zeiten nur als abgerechnet zu markieren
+(`bill`, ohne Rechnung) bleibt ebenfalls. Wer die Zeiterfassung nicht
+benutzt, merkt von diesem Abschnitt nichts.
+
+**D-Z2 — Der entstandene Entwurf ist ein gewöhnlicher Entwurf.** Positionen
+lassen sich danach umschreiben, löschen, ergänzen. Die Übernahme ist ein
+Startpunkt, kein Ergebnis.
+
+**D-Z3 — `TimeEntry.invoiceId` neben `billedAt`.** Bisher sagte `billedAt`
+nur _dass_ abgerechnet wurde, nicht _wo_. Damit war eine abgerechnete Zeit
+ohne zugehörige Rechnung nicht erkennbar — verlorenes Geld, das niemand
+bemerkt.
+
+**D-Z4 — Beim Löschen eines Entwurfs fallen beide Felder zusammen.**
+`ON DELETE SET NULL` allein hätte `invoiceId` geleert und `billedAt` stehen
+lassen; der Fremdschlüssel ist nur das Netz. Freigegeben wird ausdrücklich
+in `InvoicesService.deleteDraft`, in derselben Transaktion wie das Löschen.
+
+**D-Z5 — Stornieren und Zurücknehmen öffnen die Zeiten nicht.** Beim Storno
+ist die Aufhebung buchhalterisch erfolgt; Zeiten still wieder zu öffnen
+würde zur Doppelabrechnung einladen. Beim Zurücknehmen existiert die
+Rechnung weiter, nur als Entwurf.
+
+**D-Z6 — Der Entwurf entsteht vor der Transaktion.** Prisma kann
+Transaktionen nicht verschachteln, und `createDraft` bringt seine eigene mit
+— dort stecken Empfängerdaten, Datumsvorgaben und der Rückfall auf das
+Standard-Steuerprofil. Gestempelt wird ausschließlich in der zweiten
+Transaktion: Bricht sie ab, bleibt ein leerer Entwurf (der aufgeräumt wird),
+aber **keine abgerechnete Zeit ohne Rechnung**.
+
+### Warum die Beträge exakt aufgehen
+
+Das Viertelstundenraster ist nicht Kosmetik, sondern die Grundlage der
+Abrechnung. Fünf CHECK-Constraints erzwingen es in der Datenbank, also ist
+jede Dauer ein Vielfaches von 15 Minuten — und 15 Minuten sind exakt 250
+Tausendstel Stunden. Jede Teilsumme ist damit ohne Rest darstellbar, und
+alle drei Abrechnungsarten ergeben auf den Cent dieselbe Summe. Das ist
+beweisbar, nicht erhofft, und ein Test hält es fest.
+
+Gerundet wird ausschließlich mit `roundHalfAwayFromZero`, multipliziert mit
+`multiplyQuantity` — eine zweite Rundungsregel wäre genau der Fehler, der
+erst an einer Rechnung beim Kunden auffällt.
+
+### Die Migration
+
+Prisma hatte wieder `RedefineTables` erzeugt und hätte **alle fünf**
+CHECK-Constraints auf `TimeEntry` verworfen — also genau das Raster, auf dem
+alles oben beruht. Ersetzt durch reine `ALTER TABLE ADD COLUMN`; SQLite
+erlaubt dabei sogar die REFERENCES-Klausel, solange der Vorgabewert NULL
+ist. `pnpm db:verify` ist der Beweis.
+
+`Customer.billingMode` trägt aus demselben Grund wie die Spalten der
+E-Rechnung keinen CHECK (Abschnitt 24) und wird über Zod validiert. Ein
+unbekannter Wert fällt beim Lesen auf die Vorgabe zurück, statt eine
+Rechnung zu verhindern.
+
+---
+
 ## Stand
 
 Die Reihenfolge aus Abschnitt 20 ist abgearbeitet: Schritte 0 bis 14 sind
@@ -1813,7 +1895,8 @@ dem Thema, zu dem es gehört.
 
 Danach kam die E-Rechnung dazu: XRechnung als eigenständige XML-Datei,
 eingefroren wie das PDF und mit dem offiziellen KoSIT-Validator geprüft
-(Abschnitt 24).
+(Abschnitt 24). Und die Kernschleife wurde geschlossen: Aus erfassten Zeiten
+entsteht per Knopf ein Rechnungsentwurf (Abschnitt 25).
 
 Was bewusst offen bleibt, steht in Abschnitt 21 — unter anderem Mahnwesen,
 wiederkehrende Rechnungen, ZUGFeRD, das Lesen eingehender E-Rechnungen,

@@ -3,7 +3,7 @@
 Eigene Rechnungssoftware — selbst gehostet, unabhängig von externen
 Rechnungsdiensten. Rechnungen erstellen, verwalten und als PDF exportieren.
 
-**Status:** V1 — alle 15 Schritte der Roadmap sind umgesetzt. Rechnungen lassen sich erfassen und ausstellen (Nummer, eingefrorene Stammdaten, abgelegtes PDF), als versendet und bezahlt vermerken, stornieren und duplizieren; die Übersicht filtert, sortiert und blättert, das Dashboard zeigt Entwürfe, offene und überfällige Rechnungen. Eine Zeiterfassung hält gearbeitete Zeit je Kunde in Viertelstunden fest und druckt daraus einen Zeitnachweis für einen frei wählbaren Zeitraum. Beim Ausstellen entsteht neben dem PDF eine XRechnung nach EN 16931, geprüft
+**Status:** V1 — alle 15 Schritte der Roadmap sind umgesetzt. Rechnungen lassen sich erfassen und ausstellen (Nummer, eingefrorene Stammdaten, abgelegtes PDF), als versendet und bezahlt vermerken, stornieren und duplizieren; die Übersicht filtert, sortiert und blättert, das Dashboard zeigt Entwürfe, offene und überfällige Rechnungen. Eine Zeiterfassung hält gearbeitete Zeit je Kunde in Viertelstunden fest, druckt daraus einen Zeitnachweis für einen frei wählbaren Zeitraum und macht auf Knopfdruck einen Rechnungsentwurf daraus — als Sammelzeile, nicht als Liste von Einzelterminen. Beim Ausstellen entsteht neben dem PDF eine XRechnung nach EN 16931, geprüft
 mit dem offiziellen KoSIT-Validator. Ein Backup umfasst Datenbank, Logos und
 alle erzeugten Dateien in einer ZIP-Datei; der Weg zurück ist einmal wirklich getestet. Ausgeliefert wird sie als Desktop-Anwendung für macOS und Windows: Doppelklick, eigenes Fenster, kein installierter Browser nötig — die PDFs entstehen über Electrons eigenes Chromium. Die Oberfläche sagt, wenn etwas schiefgeht, lässt sich mit der Tastatur bedienen und läuft vom Telefon bis zum breiten Bildschirm.
 
@@ -197,6 +197,31 @@ still und startet genau die darin enthaltene Anwendung zweimal.
 Signierte Veröffentlichungen entstehen ausschließlich über einen passenden
 `vMAJOR.MINOR.PATCH`-Tag. Einrichtung, Geheimnisse und Ablauf stehen im
 [`Release-Handbuch`](docs/RELEASE.md).
+
+### Zeiten abrechnen
+
+Erfasste Zeiten müssen nicht abgetippt werden. In der Zeiterfassung legt
+„Rechnung erstellen" aus den offenen Zeiten eines Kunden einen Entwurf an —
+als **eine Sammelzeile**:
+
+```
+Arbeit im Zeitraum 01.02.–28.02.2026 · 40,00 Std · 50,00 € · 2.000,00 €
+```
+
+Der Knopf zeigt vorher, was entsteht. Die Aufschlüsselung nach Tagen steht
+auf dem Zeitnachweis, nicht auf der Rechnung — wer sie doch auf der Rechnung
+braucht, stellt es unter „Anders aufteilen" oder am Kunden um.
+
+Dafür braucht es einen Stundensatz: am Kunden, oder als Vorgabe in den
+Unternehmensdaten. Der entstandene Entwurf ist ein gewöhnlicher Entwurf und
+danach frei bearbeitbar.
+
+Wer seine Rechnungen von Hand schreibt, benutzt den Knopf nicht —
+„Abrechnen" markiert die Zeiten wie bisher und erzeugt nur den Nachweis.
+
+Wird ein so entstandener Entwurf gelöscht, sind die Zeiten **wieder offen**.
+Abgerechnete Zeiten ohne Rechnung wären verlorenes Geld, und das merkt
+niemand.
 
 ### E-Rechnung
 
