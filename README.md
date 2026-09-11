@@ -3,7 +3,9 @@
 Eigene Rechnungssoftware — selbst gehostet, unabhängig von externen
 Rechnungsdiensten. Rechnungen erstellen, verwalten und als PDF exportieren.
 
-**Status:** V1 — alle 15 Schritte der Roadmap sind umgesetzt. Rechnungen lassen sich erfassen und ausstellen (Nummer, eingefrorene Stammdaten, abgelegtes PDF), als versendet und bezahlt vermerken, stornieren und duplizieren; die Übersicht filtert, sortiert und blättert, das Dashboard zeigt Entwürfe, offene und überfällige Rechnungen. Eine Zeiterfassung hält gearbeitete Zeit je Kunde in Viertelstunden fest und druckt daraus einen Zeitnachweis für einen frei wählbaren Zeitraum. Ein Backup umfasst Datenbank, Logos und alle PDFs in einer ZIP-Datei; der Weg zurück ist einmal wirklich getestet. Ausgeliefert wird sie als Desktop-Anwendung für macOS und Windows: Doppelklick, eigenes Fenster, kein installierter Browser nötig — die PDFs entstehen über Electrons eigenes Chromium. Die Oberfläche sagt, wenn etwas schiefgeht, lässt sich mit der Tastatur bedienen und läuft vom Telefon bis zum breiten Bildschirm.
+**Status:** V1 — alle 15 Schritte der Roadmap sind umgesetzt. Rechnungen lassen sich erfassen und ausstellen (Nummer, eingefrorene Stammdaten, abgelegtes PDF), als versendet und bezahlt vermerken, stornieren und duplizieren; die Übersicht filtert, sortiert und blättert, das Dashboard zeigt Entwürfe, offene und überfällige Rechnungen. Eine Zeiterfassung hält gearbeitete Zeit je Kunde in Viertelstunden fest und druckt daraus einen Zeitnachweis für einen frei wählbaren Zeitraum. Beim Ausstellen entsteht neben dem PDF eine XRechnung nach EN 16931, geprüft
+mit dem offiziellen KoSIT-Validator. Ein Backup umfasst Datenbank, Logos und
+alle erzeugten Dateien in einer ZIP-Datei; der Weg zurück ist einmal wirklich getestet. Ausgeliefert wird sie als Desktop-Anwendung für macOS und Windows: Doppelklick, eigenes Fenster, kein installierter Browser nötig — die PDFs entstehen über Electrons eigenes Chromium. Die Oberfläche sagt, wenn etwas schiefgeht, lässt sich mit der Tastatur bedienen und läuft vom Telefon bis zum breiten Bildschirm.
 
 ## Architektur
 
@@ -77,6 +79,7 @@ Weitere Befehle:
 | `pnpm restore <archiv> --force` | Datenbank und `data/` aus einem Archiv wiederherstellen       |
 | `pnpm user:set <e-mail>`        | Benutzer anlegen oder sein Passwort ändern                    |
 | `pnpm paket`                    | Die Anwendung für dieses System packen                        |
+| `pnpm einrechnung:pruefen`      | Die E-Rechnung gegen den KoSIT-Validator prüfen               |
 | `pnpm rauchprobe`               | Die gepackte Anwendung starten und einmal durcharbeiten       |
 
 ### Warum es `db:verify` gibt
@@ -194,6 +197,37 @@ still und startet genau die darin enthaltene Anwendung zweimal.
 Signierte Veröffentlichungen entstehen ausschließlich über einen passenden
 `vMAJOR.MINOR.PATCH`-Tag. Einrichtung, Geheimnisse und Ablauf stehen im
 [`Release-Handbuch`](docs/RELEASE.md).
+
+### E-Rechnung
+
+Beim Ausstellen entsteht neben dem PDF eine **XRechnung** nach EN 16931 —
+dieselbe Datei, die ab 2027 für Rechnungen an deutsche Unternehmen
+vorgeschrieben ist. Sie wird wie das PDF eingefroren und liegt neben ihm
+unter `invoices/<Jahr>/`; der Knopf „XRechnung (XML)" lädt sie herunter.
+
+Dafür braucht es drei Angaben mehr als für ein PDF:
+
+| Wo                | Was                                                                    |
+| ----------------- | ---------------------------------------------------------------------- |
+| Unternehmensdaten | eigene elektronische Adresse und Telefonnummer                         |
+| Kunde             | Leitweg-ID beziehungsweise Referenz des Käufers, elektronische Adresse |
+| Steuerprofil      | Steuerkategorie und, außer bei Regelbesteuerung, ein Befreiungsgrund   |
+
+Fehlt etwas davon, lässt sich die Rechnung trotzdem ausstellen — sie ist
+nach § 14 UStG gültig. Nur die XML-Datei entsteht dann nicht, und die
+Rechnungsmaske sagt, was fehlt.
+
+Verschickt wird die Datei per E-Mail. Einen Peppol-Zugang gibt es bewusst
+nicht: Er widerspräche der Zusicherung, dass die Anwendung nicht nach
+außen spricht.
+
+Dass die erzeugten Dateien gültig sind, prüft nicht die Anwendung selbst,
+sondern der offizielle **KoSIT-Validator** — bei jedem Push in der CI und
+auf Wunsch von Hand:
+
+```bash
+pnpm einrechnung:pruefen      # braucht Java, wird nie ausgeliefert
+```
 
 ### Aktualisieren
 

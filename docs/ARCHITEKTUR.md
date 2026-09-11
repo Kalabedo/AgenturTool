@@ -1678,6 +1678,129 @@ Womit wir prüfen, dass es wirklich funktioniert — nicht nur kompiliert.
 
 ---
 
+## 24. E-Rechnung (EN 16931)
+
+Ab dem 1. Januar 2027 müssen deutsche Unternehmen mit mehr als 800 000 €
+Umsatz strukturierte E-Rechnungen **ausstellen**, ab dem 1. Januar 2028
+alle; die Pflicht, sie zu **empfangen**, besteht seit 2025. Eine
+Rechnungssoftware ohne strukturierten Export ist damit ab 2027 unbrauchbar.
+
+### Der Standard ist europäisch, nicht deutsch
+
+EN 16931 ist eine EU-Norm. XRechnung ist lediglich die deutsche **CIUS** —
+ein Einschränkungsprofil, das Felder zur Pflicht macht, die die Norm
+freistellt. ZUGFeRD 2.3 und das französische Factur-X 1.07 sind dieselbe
+Spezifikation unter zwei Namen.
+
+Daraus folgt der Zuschnitt: Abgebildet wird auf die **Norm**, nicht auf ein
+Land. Die Syntax ist CII (UN/CEFACT Cross Industry Invoice, D16B) — dieselbe,
+die ZUGFeRD später in die PDF-Datei legt. Was ein Land zusätzlich verlangt,
+steckt im Profil.
+
+### Was gebaut ist und was nicht
+
+Gebaut: **XRechnung als eigenständige XML-Datei.** Sie entsteht beim
+Ausstellen, wird wie das PDF eingefroren und lässt sich herunterladen.
+
+Nicht gebaut, in dieser Reihenfolge sinnvoll:
+
+- **ZUGFeRD** (PDF/A-3 mit eingebettetem XML) setzt auf derselben Abbildung
+  auf. Der Aufwand liegt nicht im XML, sondern im PDF: `printToPDF` von
+  Electron erzeugt kein PDF/A-3, und die Datei müsste nachbearbeitet werden.
+- **Eingehende E-Rechnungen lesen** ist ein eigenes Feature mit eigener
+  Oberfläche.
+- **Peppol-Versand** wird **nicht** gebaut. Er bräuchte einen akkreditierten
+  Access Point und widerspräche der Zusicherung aus Abschnitt 16, dass die
+  Anwendung nicht nach außen spricht. Die Datei geht per E-Mail; das genügt.
+
+### Entscheidungen
+
+**D-E1 — Eigenes Paket `packages/einvoice`.** Nicht in `shared`, weil sonst
+jeder Consumer die XML-Erzeugung mitschleppte. Das Paket spiegelt die Rolle
+von `packages/invoice-template`: eine Sorge, klar abgegrenzt.
+
+**D-E2 — Die Steuerkategorie steht neben `kind`, nicht darin.** Abschnitt 10
+sagt: „`kind` steuert nur drei Dinge." Das soll wahr bleiben. EN 16931
+braucht aber die Kategorie nach UNTDID 5305, und ein Profil der Art
+`ZERO_RATED` kann je nach Sachverhalt `Z`, `E`, `K` oder `G` sein — das weiß
+nur der Benutzer. `TaxProfile` bekam deshalb eigene Felder mit einem aus
+`kind` abgeleiteten Vorschlag. Steuerlogik bleibt datengetrieben.
+
+**D-E3 — `unitCode` neben `unit`, nicht statt `unit`.** `unit` ist Freitext
+und wird **gedruckt**. Ein Ersetzen hätte das Aussehen bestehender
+Rechnungen verändert, was Abschnitt 8 verbietet.
+
+**D-E4 — Snapshot-Version 2.** Die Verzweigung passiert beim Parsen, nicht
+an den Aufrufstellen — es gibt drei Stellen, die Snapshots einlesen, und
+eine davon hätte man vergessen. Eine Version-1-Rechnung wird **nicht**
+umgeschrieben, sondern beim Lesen aufgefüllt: Ein Dokument ändert man nicht
+nachträglich, nur weil das Programm dazugelernt hat.
+
+**D-E5 — Das XML wird eingefroren wie das PDF.** Es entsteht in derselben
+Transaktion, aus derselben Quelle, mit eigenem SHA-256. Wären es zwei
+Vorgänge, gäbe es einen Moment, in dem die Datei andere Beträge trüge als
+das Papier.
+
+**D-E6 — Profile sind versioniert und austauschbar.** XRechnung 3.0.2 gilt,
+**4.0 ist für Mitte bis Ende 2026 angekündigt** (revidierte
+EN 16931-1:2026). Ein fest verdrahtetes Profil wäre binnen eines Jahres
+Altlast.
+
+**D-E7 — Eine fehlende Angabe verhindert das Ausstellen nicht.** Eine
+Rechnung ohne Leitweg-ID ist nach § 14 UStG gültig; sie ließe sich nur nicht
+als XRechnung ausgeben. Deshalb ist `checkEinvoiceReady` von
+`checkFinalizable` getrennt: Das eine verhindert, das andere weist nur hin.
+Das Gegenteil hätte jede Bestandsrechnung unfinalisierbar gemacht, für ein
+Feld, das es beim Anlegen des Kunden noch nicht gab.
+
+**D-E8 — Kein XML-Baukasten als Abhängigkeit.** Ein sequenzstrenges Dokument
+mit festgelegter Struktur braucht keinen; die Verpackung (Abschnitt 16a)
+ringt schon mit Prisma und argon2. `xml.ts` maskiert, entfernt unzulässige
+Steuerzeichen und lässt weg, was nicht da ist.
+
+### Die Reihenfolge ist die Regel
+
+CII ist sequenzstreng: Das Schema schreibt vor, in welcher Reihenfolge die
+Elemente stehen. Ein vertauschtes Paar ist kein Schönheitsfehler, sondern
+ein Dokument, das der Prüfer abweist — und es fällt beim Lesen nicht auf,
+weil beide Fassungen gleich plausibel aussehen. Deshalb steht jede Gruppe in
+`cii.ts` als durchgehende Liste mit den Feldnummern daneben.
+
+### Geprüft wird mit fremdem Werkzeug
+
+Die eigenen Tests prüfen, ob herauskommt, was gedacht war. Ob das Gedachte
+stimmt, sagt nur, wer die Regeln gemacht hat. `pnpm --filter
+@agentur-tool/einvoice pruefen` lässt den offiziellen **KoSIT-Validator**
+über die Golden-Dateien laufen; die CI tut dasselbe bei jedem Push.
+
+Beim ersten Lauf hat er vier Dinge gefunden, die keine Selbstprüfung
+gefunden hätte:
+
+- Die Kennung der Spezifikation hat sich mit Fassung 3.0 geändert
+  (`xoev-de` → `xeinkauf.de`). Mit der alten wurde das Dokument nicht etwa
+  bemängelt, sondern **gar nicht erst als XRechnung erkannt**.
+- `currencyID` ist an einem Betrag nicht überflüssig, sondern **verboten** —
+  mit der einen Ausnahme BT-110, wo es Pflicht ist (CII-DT-031).
+- Ein Zeilenrabatt ohne Grund ist ungültig (BR-42, BR-CO-23).
+- XRechnung verlangt beim Verkäufer eine Kontaktstelle mit Name, Telefon und
+  E-Mail (BR-DE-5 bis BR-DE-7), und die Nummer braucht mindestens drei
+  Ziffern (BR-DE-27).
+
+Java läuft ausschließlich auf dem Bauserver und beim Entwickeln —
+ausgeliefert wird es nie.
+
+### Die eine bewusste Lücke
+
+Die neuen Spalten `TaxProfile.taxCategoryCode`, `InvoiceItem.unitCode` und
+`InvoiceDocument.kind` haben **keinen CHECK-Constraint**. SQLite kann einer
+bestehenden Tabelle keinen anfügen; das ginge nur über einen Neuaufbau, und
+der hätte die drei Trigger auf `InvoiceItem` verworfen — die Sperre, die
+Positionen finalisierter Rechnungen schützt. Die Trigger wiegen schwerer.
+Validiert wird über Zod; die Begründung steht in der Migration
+`20260911072246_einvoice_fields`.
+
+---
+
 ## Stand
 
 Die Reihenfolge aus Abschnitt 20 ist abgearbeitet: Schritte 0 bis 14 sind
@@ -1688,9 +1811,13 @@ eigenes Chromium (D34). Was während der Umsetzung an Entscheidungen
 dazukam, steht in den Abschnitten mit Buchstaben-Suffix (5a, 13a, 16a) bei
 dem Thema, zu dem es gehört.
 
+Danach kam die E-Rechnung dazu: XRechnung als eigenständige XML-Datei,
+eingefroren wie das PDF und mit dem offiziellen KoSIT-Validator geprüft
+(Abschnitt 24).
+
 Was bewusst offen bleibt, steht in Abschnitt 21 — unter anderem Mahnwesen,
-wiederkehrende Rechnungen, E-Rechnung (XRechnung/ZUGFeRD), Mehrbenutzerbetrieb
-und Auswertungen. Nichts davon ist verbaut: Die Snapshots tragen die Historie,
+wiederkehrende Rechnungen, ZUGFeRD, das Lesen eingehender E-Rechnungen,
+Mehrbenutzerbetrieb und Auswertungen. Nichts davon ist verbaut: Die Snapshots tragen die Historie,
 das Auth-Modul kennt bereits eine `User`-Tabelle, und die Berechnung liegt in
 `shared` und nicht in der Oberfläche. Neue Entscheidungen von Tragweite werden
 wie bisher vorher abgestimmt.
