@@ -43,6 +43,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@agentur-tool/einvoice':
+        specifier: workspace:*
+        version: link:../../packages/einvoice
       '@agentur-tool/invoice-template':
         specifier: workspace:*
         version: link:../../packages/invoice-template

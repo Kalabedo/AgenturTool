@@ -12,6 +12,7 @@ import {
   templateSnapshotFromSettings,
   templateSnapshotSchema,
   totalsSnapshotSchema,
+  DOCUMENT_KIND,
   type UnitCode,
   type BuyerData,
   type DiscountType,
@@ -73,12 +74,15 @@ export interface FrozenDocumentInput {
   items: RenderModelSourceItem[];
 }
 
-type InvoiceWithItems = Invoice & { items: InvoiceItem[]; documents: { path: string }[] };
+type InvoiceWithItems = Invoice & {
+  items: InvoiceItem[];
+  documents: { path: string; kind: string }[];
+};
 
 const WITH_ITEMS = {
   include: {
     items: { orderBy: { position: 'asc' } },
-    documents: { select: { path: true }, orderBy: { generatedAt: 'desc' } },
+    documents: { select: { path: true, kind: true }, orderBy: { generatedAt: 'desc' } },
   },
 } as const;
 
@@ -128,7 +132,10 @@ export class InvoicePdfService {
    */
   async deliver(id: number): Promise<RenderedInvoicePdf> {
     const invoice = await this.load(id);
-    const [document] = invoice.documents;
+    // Seit es die E-Rechnung gibt, hängen an einer Rechnung zwei Dateien.
+    // `documents[0]` wäre hier je nach Einfügereihenfolge mal das PDF und
+    // mal das XML — ein Fehler, der sich nur gelegentlich zeigt.
+    const document = invoice.documents.find((entry) => entry.kind === DOCUMENT_KIND.PDF);
 
     if (document !== undefined && this.documents.exists(document.path)) {
       return {

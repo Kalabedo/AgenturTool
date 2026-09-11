@@ -3,12 +3,20 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common';
+import {
+  DOCUMENT_KIND,
+  DOCUMENT_KIND_EXTENSION,
+  DOCUMENT_KIND_VALUES,
+  type DocumentKind,
+} from '@agentur-tool/shared';
 import { ApiError } from '../common/api-error';
 import { StorageConfig } from '../common/config.service';
 import { PrismaService } from '../common/prisma.service';
 
-/** Ein geschriebenes, aber noch nicht endgültig abgelegtes PDF. */
+/** Ein geschriebenes, aber noch nicht endgültig abgelegtes Dokument. */
 export interface StagedDocument {
+  /** PDF oder XML — dieselbe Ablage trägt beide. */
+  kind: DocumentKind;
   /** Absoluter Pfad unterhalb von `data/tmp`. */
   tempPath: string;
   /** Zielpfad relativ zu DATA_DIR, wie er in der Datenbank steht. */
@@ -71,9 +79,15 @@ export class InvoiceDocumentsService implements OnApplicationBootstrap {
     }
   }
 
-  /** `invoices/2026/2026-001.pdf` — nach Jahr sortiert wie ein Ordner im Regal. */
-  relativePathFor(year: number, number: string): string {
-    return path.posix.join('invoices', String(year), `${number}.pdf`);
+  /**
+   * `invoices/2026/2026-001.pdf` — nach Jahr sortiert wie ein Ordner im Regal.
+   *
+   * PDF und XML derselben Rechnung liegen nebeneinander und unterscheiden
+   * sich nur in der Endung. Damit bleibt der Unique-Index auf `path`
+   * aussagekräftig, ohne dass er die Art mit aufnehmen müsste.
+   */
+  relativePathFor(year: number, number: string, kind: DocumentKind = DOCUMENT_KIND.PDF): string {
+    return path.posix.join('invoices', String(year), `${number}${DOCUMENT_KIND_EXTENSION[kind]}`);
   }
 
   /**
@@ -82,13 +96,22 @@ export class InvoiceDocumentsService implements OnApplicationBootstrap {
    * Der Hash entsteht über genau die Bytes, die geschrieben werden — er ist
    * später die Grundlage der Integritätsprüfung im Backup.
    */
-  async stage(bytes: Buffer, year: number, number: string): Promise<StagedDocument> {
-    const tempPath = path.join(this.storage.tmpDir, `${crypto.randomUUID()}.pdf`);
+  async stage(
+    bytes: Buffer,
+    year: number,
+    number: string,
+    kind: DocumentKind = DOCUMENT_KIND.PDF,
+  ): Promise<StagedDocument> {
+    const tempPath = path.join(
+      this.storage.tmpDir,
+      `${crypto.randomUUID()}${DOCUMENT_KIND_EXTENSION[kind]}`,
+    );
     await fsp.writeFile(tempPath, bytes);
 
     return {
+      kind,
       tempPath,
-      relativePath: this.relativePathFor(year, number),
+      relativePath: this.relativePathFor(year, number, kind),
       sha256: crypto.createHash('sha256').update(bytes).digest('hex'),
       sizeBytes: bytes.length,
     };
@@ -115,7 +138,7 @@ export class InvoiceDocumentsService implements OnApplicationBootstrap {
       return await fsp.readFile(this.storage.resolve(relativePath));
     } catch {
       throw ApiError.notFound(
-        `Die Datei ${relativePath} fehlt. Das PDF lässt sich aus den gespeicherten Daten neu erzeugen.`,
+        `Die Datei ${relativePath} fehlt. Sie lässt sich aus den gespeicherten Daten neu erzeugen.`,
       );
     }
   }
@@ -158,14 +181,20 @@ export class InvoiceDocumentsService implements OnApplicationBootstrap {
     return { missingFiles, orphanedFiles };
   }
 
-  /** Alle abgelegten PDFs als Pfade relativ zu DATA_DIR. */
+  /** Alle abgelegten Dokumente als Pfade relativ zu DATA_DIR. */
   private listStoredFiles(): string[] {
     const root = this.storage.invoicesDir;
     if (!fs.existsSync(root)) return [];
 
     return fs
       .readdirSync(root, { recursive: true, withFileTypes: true })
-      .filter((entry) => entry.isFile() && entry.name.endsWith('.pdf'))
+      .filter(
+        (entry) =>
+          entry.isFile() &&
+          DOCUMENT_KIND_VALUES.some((kind) =>
+            entry.name.endsWith(DOCUMENT_KIND_EXTENSION[kind as DocumentKind]),
+          ),
+      )
       .map((entry) =>
         path
           .relative(this.storage.dataDir, path.join(entry.parentPath, entry.name))

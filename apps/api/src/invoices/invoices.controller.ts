@@ -28,6 +28,7 @@ import {
 } from '@agentur-tool/shared';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { InvoicePdfService, type RenderedInvoicePdf } from '../pdf/invoice-pdf.service';
+import { EinvoiceService } from '../einvoice/einvoice.service';
 import { InvoiceFinalizeService } from './invoice-finalize.service';
 import { InvoicesService } from './invoices.service';
 
@@ -49,6 +50,7 @@ export class InvoicesController {
     private readonly invoices: InvoicesService,
     private readonly finalizer: InvoiceFinalizeService,
     private readonly pdf: InvoicePdfService,
+    private readonly einvoice: EinvoiceService,
   ) {}
 
   /**
@@ -112,6 +114,31 @@ export class InvoicesController {
   @Get(':id/pdf')
   async pdfById(@Param('id', ParseIntPipe) id: number, @Res() response: Response): Promise<void> {
     this.sendPdf(response, await this.pdf.deliver(id));
+  }
+
+  /**
+   * Die E-Rechnung nach EN 16931 als XRechnung-XML (Abschnitt 24).
+   *
+   * `attachment` und nicht `inline`: Eine XML-Datei will niemand im
+   * Browser ansehen — sie geht an den Empfänger oder in dessen System.
+   */
+  @Get(':id/xml')
+  async einvoiceById(
+    @Param('id', ParseIntPipe) id: number,
+    @Res() response: Response,
+  ): Promise<void> {
+    const document = await this.einvoice.deliver(id);
+    const asciiName = document.filename.replace(/[^\x20-\x7e]/gu, '_');
+
+    response.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    response.setHeader('Content-Length', document.bytes.length);
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(document.filename)}`,
+    );
+    response.setHeader('Cache-Control', 'no-store');
+    response.setHeader('X-Content-Type-Options', 'nosniff');
+    response.end(document.bytes);
   }
 
   /**

@@ -13,6 +13,7 @@ import { HealthModule } from './health/health.module';
 import { BackupModule } from './backup/backup.module';
 import { AuthModule } from './auth/auth.module';
 import { WebModule } from './web/web.module';
+import { EinvoiceModule } from './einvoice/einvoice.module';
 
 /**
  * Die Anwendung.
@@ -27,6 +28,7 @@ export class AppModule {
     return {
       module: AppModule,
       imports: [
+        EinvoiceModule,
         HostModule.forRoot(options),
         // Die .env liegt im Repository neben den Paketen. In einer
         // gepackten Anwendung gibt es sie nicht — dort setzt der

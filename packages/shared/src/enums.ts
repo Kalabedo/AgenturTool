@@ -45,6 +45,27 @@ export const ZERO_TAX_KINDS: readonly TaxProfileKind[] = [
   TAX_PROFILE_KIND.SMALL_BUSINESS,
 ];
 
+/**
+ * Art eines abgelegten Dokuments.
+ *
+ * Dieselbe Ablage trägt beide Ausgaben einer Rechnung: das PDF fürs Auge
+ * und die XML-Datei für die Maschine. Unterschieden werden sie über diese
+ * Kennung — und über die Dateiendung, weshalb der Unique-Index auf `path`
+ * weiterhin trägt.
+ */
+export const DOCUMENT_KIND = {
+  PDF: 'PDF',
+  XML: 'XML',
+} as const;
+export type DocumentKind = (typeof DOCUMENT_KIND)[keyof typeof DOCUMENT_KIND];
+export const DOCUMENT_KIND_VALUES = Object.values(DOCUMENT_KIND);
+
+/** Dateiendung je Art. */
+export const DOCUMENT_KIND_EXTENSION: Record<DocumentKind, string> = {
+  [DOCUMENT_KIND.PDF]: '.pdf',
+  [DOCUMENT_KIND.XML]: '.xml',
+};
+
 export const DISCOUNT_TYPE = {
   /** Wert in Basispunkten: 12,5 % = 1250 */
   PERCENT: 'PERCENT',
