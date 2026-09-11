@@ -44,6 +44,17 @@ export const TAX_CATEGORY_CODE = {
 export type TaxCategoryCode = (typeof TAX_CATEGORY_CODE)[keyof typeof TAX_CATEGORY_CODE];
 export const TAX_CATEGORY_CODE_VALUES = Object.values(TAX_CATEGORY_CODE);
 
+/** Beschriftungen der Steuerkategorien, für die Auswahl in der Oberfläche. */
+export const TAX_CATEGORY_CODE_LABELS: Record<TaxCategoryCode, string> = {
+  [TAX_CATEGORY_CODE.STANDARD]: 'Regelsatz (S)',
+  [TAX_CATEGORY_CODE.ZERO_RATED]: 'Nullsatz (Z)',
+  [TAX_CATEGORY_CODE.EXEMPT]: 'Steuerbefreit (E)',
+  [TAX_CATEGORY_CODE.REVERSE_CHARGE]: 'Reverse Charge (AE)',
+  [TAX_CATEGORY_CODE.INTRA_COMMUNITY]: 'Innergemeinschaftliche Lieferung (K)',
+  [TAX_CATEGORY_CODE.EXPORT]: 'Ausfuhr in ein Drittland (G)',
+  [TAX_CATEGORY_CODE.OUT_OF_SCOPE]: 'Nicht steuerbar (O)',
+};
+
 /**
  * Kategorien, die zwingend einen Befreiungsgrund brauchen (BR-E-10,
  * BR-AE-10, BR-IC-10, BR-G-10, BR-O-10 der Norm).

@@ -256,6 +256,27 @@ export function InvoiceEditorPage(): JSX.Element {
 
   const data = invoice.data;
   const editable = isEditable(data.status);
+
+  /**
+   * Was der E-Rechnung noch fehlt.
+   *
+   * Nur für ausgestellte Rechnungen: Bei einem Entwurf gibt es noch keine
+   * eingefrorenen Daten, gegen die sich das prüfen ließe.
+   */
+  const einvoiceStatus = useQuery({
+    queryKey: queryKeys.invoices.einvoiceStatus(invoiceId),
+    queryFn: () =>
+      apiClient.get<{ ready: boolean; problems: { field: string; message: string }[] }>(
+        `/invoices/${invoiceId}/xml/status`,
+      ),
+    enabled: !editable,
+  });
+
+  const downloadEinvoice = useMutation({
+    mutationFn: () => apiClient.download(`/invoices/${invoiceId}/xml`, `Rechnung-${invoiceId}.xml`),
+    onSuccess: saveFile,
+  });
+
   const saveError = save.error instanceof ApiRequestError ? save.error : null;
   const saveMessage = formErrorOf(save.error);
   const finalizeMessage = formErrorOf(finalize.error);
@@ -635,6 +656,20 @@ export function InvoiceEditorPage(): JSX.Element {
           >
             {downloadPdf.isPending ? 'PDF wird erzeugt …' : 'PDF herunterladen'}
           </Button>
+          {!editable && (
+            <Button
+              variant="secondary"
+              disabled={downloadEinvoice.isPending || einvoiceStatus.data?.ready === false}
+              title={
+                einvoiceStatus.data?.ready === false
+                  ? 'Für die E-Rechnung fehlen noch Angaben.'
+                  : undefined
+              }
+              onClick={() => downloadEinvoice.mutate()}
+            >
+              {downloadEinvoice.isPending ? 'XML wird erzeugt …' : 'XRechnung (XML)'}
+            </Button>
+          )}
           {downloadMessage !== null && (
             <span role="alert" className="text-sm text-rose-600">
               {downloadMessage}
@@ -652,6 +687,28 @@ export function InvoiceEditorPage(): JSX.Element {
             <span role="alert" className="text-sm text-rose-600">
               {saveMessage}
             </span>
+          )}
+
+          {/*
+            Ein Hinweis und keine Fehlermeldung: Die Rechnung ist gültig,
+            sie lässt sich nur nicht als XRechnung ausgeben. Wer sie per
+            PDF verschickt, hat hier nichts zu tun.
+          */}
+          {!editable && einvoiceStatus.data?.ready === false && (
+            <div className="w-full rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <p className="text-sm font-medium text-amber-900">
+                Diese Rechnung lässt sich noch nicht als XRechnung ausgeben:
+              </p>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-800">
+                {einvoiceStatus.data.problems.map((problem) => (
+                  <li key={`${problem.field}-${problem.message}`}>{problem.message}</li>
+                ))}
+              </ul>
+              <p className="mt-2 text-sm text-amber-800">
+                Das PDF ist davon nicht betroffen. Die Angaben gelten ab der nächsten Rechnung —
+                eine bereits ausgestellte trägt ihre eingefrorenen Daten.
+              </p>
+            </div>
           )}
 
           {finalizeProblems.length > 0 && (

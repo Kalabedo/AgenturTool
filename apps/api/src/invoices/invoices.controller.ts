@@ -117,6 +117,22 @@ export class InvoicesController {
   }
 
   /**
+   * Was der E-Rechnung dieser Rechnung noch fehlt.
+   *
+   * Eigener Endpunkt und kein Feld an der Rechnung: Die Antwort hängt an
+   * den Snapshots und interessiert nur die eine Maske, die den
+   * Download-Knopf zeigt. Sie in jede Rechnungsantwort zu legen hieße, sie
+   * auch dort zu berechnen, wo niemand sie liest.
+   */
+  @Get(':id/xml/status')
+  async einvoiceStatus(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<{ ready: boolean; problems: { field: string; message: string }[] }> {
+    const problems = await this.einvoice.problems(id);
+    return { ready: problems.length === 0, problems };
+  }
+
+  /**
    * Die E-Rechnung nach EN 16931 als XRechnung-XML (Abschnitt 24).
    *
    * `attachment` und nicht `inline`: Eine XML-Datei will niemand im

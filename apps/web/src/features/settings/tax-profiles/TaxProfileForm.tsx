@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
+  TAX_CATEGORY_CODE_LABELS,
+  TAX_CATEGORY_CODE_VALUES,
   TAX_PROFILE_KIND,
   TAX_PROFILE_KIND_DESCRIPTIONS,
   TAX_PROFILE_KIND_LABELS,
@@ -14,6 +16,7 @@ import {
   type TaxProfileKind,
   type TaxProfilePayload,
   type TaxProfileResponse,
+  type TaxCategoryCode,
 } from '@agentur-tool/shared';
 import { Button } from '../../../components/ui/Button.js';
 import { Card } from '../../../components/ui/Card.js';
@@ -31,6 +34,9 @@ export function emptyTaxProfileValues(): FormValues {
     kind: TAX_PROFILE_KIND.STANDARD,
     defaultRateBasisPoints: '19',
     noteText: '',
+    taxCategoryCode: undefined,
+    exemptionReasonCode: '',
+    exemptionReasonText: '',
     showTaxColumn: true,
     isDefault: false,
     sortOrder: 0,
@@ -43,6 +49,9 @@ export function toTaxProfileValues(profile: TaxProfileResponse): FormValues {
     kind: profile.kind,
     defaultRateBasisPoints: basisPointsToPercentInput(profile.defaultRateBasisPoints),
     noteText: profile.noteText ?? '',
+    taxCategoryCode: profile.taxCategoryCode,
+    exemptionReasonCode: profile.exemptionReasonCode ?? '',
+    exemptionReasonText: profile.exemptionReasonText ?? '',
     showTaxColumn: profile.showTaxColumn,
     isDefault: profile.isDefault,
     sortOrder: profile.sortOrder,
@@ -192,6 +201,59 @@ export function TaxProfileForm({
             hint="Wird neuen Rechnungen vorgeschlagen. Es kann nur ein Standardprofil geben — ein bisheriges wird ersetzt."
             {...form.register('isDefault')}
           />
+        </div>
+      </Card>
+
+      <Card
+        title="E-Rechnung"
+        description="Wie dieser Sachverhalt in der XRechnung ausgewiesen wird."
+      >
+        <div className="space-y-4">
+          <Field
+            label="Steuerkategorie"
+            htmlFor="taxCategoryCode"
+            error={errorFor('taxCategoryCode')}
+            hint="Die Norm kennt mehr Fälle als die Steuerart oben. Steuerfrei kann eine innergemeinschaftliche Lieferung, eine Ausfuhr oder eine echte Befreiung sein — das weiß nur, wer die Rechnung schreibt."
+          >
+            <Select
+              id="taxCategoryCode"
+              invalid={errorFor('taxCategoryCode') !== undefined}
+              {...form.register('taxCategoryCode')}
+            >
+              {TAX_CATEGORY_CODE_VALUES.map((code) => (
+                <option key={code} value={code}>
+                  {TAX_CATEGORY_CODE_LABELS[code as TaxCategoryCode]}
+                </option>
+              ))}
+            </Select>
+          </Field>
+
+          <Field
+            label="Befreiungsgrund"
+            htmlFor="exemptionReasonText"
+            error={errorFor('exemptionReasonText')}
+            hint="Bei jeder Kategorie außer der Regelbesteuerung verlangt. Bleibt das Feld leer, wird der Hinweistext von oben übernommen."
+          >
+            <Textarea
+              id="exemptionReasonText"
+              rows={2}
+              invalid={errorFor('exemptionReasonText') !== undefined}
+              {...form.register('exemptionReasonText')}
+            />
+          </Field>
+
+          <Field
+            label="Befreiungsgrund als Code"
+            htmlFor="exemptionReasonCode"
+            error={errorFor('exemptionReasonCode')}
+            hint="Optional, z. B. VATEX-EU-AE für Reverse Charge. Code oder Text genügt — beides braucht es nicht."
+          >
+            <Input
+              id="exemptionReasonCode"
+              invalid={errorFor('exemptionReasonCode') !== undefined}
+              {...form.register('exemptionReasonCode')}
+            />
+          </Field>
         </div>
       </Card>
 
