@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isPlausibleVatId } from './banking.js';
+import { ELECTRONIC_ADDRESS_SCHEME_VALUES } from './einvoice/codes.js';
 
 /**
  * Verträge für die Kundenverwaltung.
@@ -65,6 +66,13 @@ const optionalReference = z
     return parsed;
   });
 
+/** Schema der elektronischen Adresse des Käufers (BT-49-1). */
+const optionalElectronicAddressScheme = optionalText.refine(
+  (value) =>
+    value === null || (ELECTRONIC_ADDRESS_SCHEME_VALUES as readonly string[]).includes(value),
+  { message: 'Unbekanntes Schema der elektronischen Adresse' },
+);
+
 export const customerInputSchema = z.object({
   // Frei vergeben und optional; die Eindeutigkeit erzwingt die Datenbank,
   // damit auch übernommene Nummern aus einem Vorsystem passen (D22).
@@ -82,6 +90,15 @@ export const customerInputSchema = z.object({
 
   email: optionalEmail,
   vatId: optionalVatId,
+
+  /**
+   * BT-10: Referenz des Käufers. In XRechnung ein Pflichtfeld; öffentliche
+   * Auftraggeber vergeben dafür eine Leitweg-ID.
+   */
+  buyerReference: optionalText.optional().default(null),
+  /** BT-49: elektronische Adresse des Käufers. */
+  electronicAddress: optionalText.optional().default(null),
+  electronicAddressScheme: optionalElectronicAddressScheme.optional().default(null),
 
   /** Interne Notiz, erscheint nicht auf der Rechnung. */
   notes: optionalText,

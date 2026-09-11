@@ -6,8 +6,10 @@ import {
   taxSnapshotSchema,
   templateSnapshotSchema,
   totalsSnapshotSchema,
+  LEGACY_SNAPSHOT_VERSION,
 } from '../src/snapshots.js';
 import { TAX_PROFILE_KIND } from '../src/enums.js';
+import { TAX_CATEGORY_CODE } from '../src/einvoice/codes.js';
 
 const seller = {
   snapshotVersion: CURRENT_SNAPSHOT_VERSION,
@@ -22,6 +24,8 @@ const seller = {
   iban: 'DE02120300000000202051',
   bic: 'BYLADEM1001',
   bankName: 'Beispielbank',
+  electronicAddress: 'rechnung@example.com',
+  electronicAddressScheme: 'EM',
   logoAssetId: null,
 };
 
@@ -34,6 +38,9 @@ const buyer = {
   email: null,
   vatId: null,
   customerNumber: 'K-0001',
+  buyerReference: '04011000-1234512345-06',
+  electronicAddress: null,
+  electronicAddressScheme: null,
 };
 
 describe('Snapshot-Schemas', () => {
@@ -65,8 +72,12 @@ describe('Snapshot-Schemas', () => {
       defaultRateBasisPoints: 0,
       noteText: 'Steuerschuldnerschaft des Leistungsempfängers.',
       showTaxColumn: false,
+      taxCategoryCode: TAX_CATEGORY_CODE.REVERSE_CHARGE,
+      exemptionReasonCode: null,
+      exemptionReasonText: 'Steuerschuldnerschaft des Leistungsempfängers.',
     });
     expect(tax.kind).toBe('REVERSE_CHARGE');
+    expect(tax.taxCategoryCode).toBe('AE');
 
     const template = templateSnapshotSchema.parse({
       snapshotVersion: CURRENT_SNAPSHOT_VERSION,
@@ -106,5 +117,89 @@ describe('Snapshot-Schemas', () => {
         taxGroups: [],
       }),
     ).toThrow();
+  });
+  describe('Version 1 wird beim Lesen aufgefüllt', () => {
+    // Rechnungen, die vor der E-Rechnung ausgestellt wurden, liegen weiter
+    // als Version 1 in der Datenbank. Sie müssen lesbar bleiben — und zwar
+    // ohne dass die Aufrufstellen etwas davon wissen.
+
+    it('füllt fehlende Felder des Verkäufers mit null', () => {
+      const { electronicAddress: _a, electronicAddressScheme: _b, ...rest } = seller;
+      const legacy = { ...rest, snapshotVersion: LEGACY_SNAPSHOT_VERSION };
+
+      const parsed = sellerSnapshotSchema.parse(JSON.parse(JSON.stringify(legacy)));
+
+      expect(parsed.snapshotVersion).toBe(CURRENT_SNAPSHOT_VERSION);
+      expect(parsed.electronicAddress).toBeNull();
+      expect(parsed.electronicAddressScheme).toBeNull();
+      // Alles Übrige steht unverändert da.
+      expect(parsed.iban).toBe(seller.iban);
+      expect(parsed.companyName).toBe(seller.companyName);
+    });
+
+    it('füllt die Käuferreferenz mit null', () => {
+      const {
+        buyerReference: _r,
+        electronicAddress: _a,
+        electronicAddressScheme: _b,
+        ...rest
+      } = buyer;
+      const parsed = buyerDataSchema.parse({ ...rest, snapshotVersion: LEGACY_SNAPSHOT_VERSION });
+
+      expect(parsed.buyerReference).toBeNull();
+      expect(parsed.customerNumber).toBe('K-0001');
+    });
+
+    it('leitet die Steuerkategorie aus der Steuerart ab', () => {
+      const standard = taxSnapshotSchema.parse({
+        snapshotVersion: LEGACY_SNAPSHOT_VERSION,
+        profileName: 'Deutschland 19 %',
+        kind: TAX_PROFILE_KIND.STANDARD,
+        defaultRateBasisPoints: 1900,
+        noteText: null,
+        showTaxColumn: true,
+      });
+      expect(standard.taxCategoryCode).toBe(TAX_CATEGORY_CODE.STANDARD);
+      expect(standard.exemptionReasonText).toBeNull();
+
+      // Ohne Steuerausweis: `E`, und der alte Hinweistext wird zum
+      // Befreiungsgrund — genau das, was BT-120 verlangt.
+      const kleinunternehmer = taxSnapshotSchema.parse({
+        snapshotVersion: LEGACY_SNAPSHOT_VERSION,
+        profileName: 'Kleinunternehmer',
+        kind: TAX_PROFILE_KIND.SMALL_BUSINESS,
+        defaultRateBasisPoints: 0,
+        noteText: 'Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.',
+        showTaxColumn: false,
+      });
+      expect(kleinunternehmer.taxCategoryCode).toBe(TAX_CATEGORY_CODE.EXEMPT);
+      expect(kleinunternehmer.exemptionReasonText).toBe(
+        'Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.',
+      );
+    });
+
+    it('liest Template- und Summen-Snapshots der Version 1', () => {
+      const template = templateSnapshotSchema.parse({
+        snapshotVersion: LEGACY_SNAPSHOT_VERSION,
+        templateKey: 'classic',
+        accentColor: '#1e293b',
+        fontFamily: 'Inter',
+        logoWidthMm: 40,
+        footerText: null,
+        paymentNote: null,
+        closingNote: null,
+      });
+      expect(template.snapshotVersion).toBe(CURRENT_SNAPSHOT_VERSION);
+
+      const totals = totalsSnapshotSchema.parse({
+        snapshotVersion: LEGACY_SNAPSHOT_VERSION,
+        netCents: 1000,
+        taxCents: 190,
+        grossCents: 1190,
+        totalDiscountCents: 0,
+        taxGroups: [{ rateBasisPoints: 1900, netCents: 1000, taxCents: 190 }],
+      });
+      expect(totals.grossCents).toBe(1190);
+    });
   });
 });

@@ -1,4 +1,5 @@
 import type { CompanyResponse } from './company.js';
+import { defaultTaxCategoryForKind } from './einvoice/codes.js';
 import { ZERO_TAX_KINDS, type TaxProfileKind } from './enums.js';
 import {
   CURRENT_SNAPSHOT_VERSION,
@@ -49,6 +50,8 @@ export function sellerSnapshotFromCompany(company: CompanyResponse): SellerSnaps
     iban: emptyToNull(company.iban),
     bic: emptyToNull(company.bic),
     bankName: emptyToNull(company.bankName),
+    electronicAddress: emptyToNull(company.electronicAddress),
+    electronicAddressScheme: emptyToNull(company.electronicAddressScheme),
     logoAssetId: company.logoAssetId,
   };
 }
@@ -70,6 +73,9 @@ export function taxSnapshotFromProfile(profile: TaxProfileResponse | null): TaxS
       defaultRateBasisPoints: 0,
       noteText: null,
       showTaxColumn: false,
+      taxCategoryCode: defaultTaxCategoryForKind('STANDARD'),
+      exemptionReasonCode: null,
+      exemptionReasonText: null,
     };
   }
 
@@ -80,6 +86,9 @@ export function taxSnapshotFromProfile(profile: TaxProfileResponse | null): TaxS
     defaultRateBasisPoints: profile.defaultRateBasisPoints,
     noteText: emptyToNull(profile.noteText),
     showTaxColumn: profile.showTaxColumn,
+    taxCategoryCode: profile.taxCategoryCode ?? defaultTaxCategoryForKind(profile.kind),
+    exemptionReasonCode: emptyToNull(profile.exemptionReasonCode),
+    exemptionReasonText: emptyToNull(profile.exemptionReasonText) ?? emptyToNull(profile.noteText),
   };
 }
 

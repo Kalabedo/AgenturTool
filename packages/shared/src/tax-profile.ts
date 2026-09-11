@@ -5,6 +5,12 @@ import {
   ZERO_TAX_KINDS,
   type TaxProfileKind,
 } from './enums.js';
+import {
+  CATEGORIES_NEEDING_EXEMPTION_REASON,
+  TAX_CATEGORY_CODE_VALUES,
+  defaultTaxCategoryForKind,
+  type TaxCategoryCode,
+} from './einvoice/codes.js';
 import { parsePercentToBasisPoints } from './money.js';
 
 /**
@@ -57,9 +63,24 @@ export const taxProfileInputSchema = z
     showTaxColumn: z.coerce.boolean(),
     isDefault: z.coerce.boolean(),
     sortOrder: z.coerce.number().int().min(0).max(9999).default(0),
+
+    // E-Rechnung (D-E2). Die Kategorie steht neben `kind`, nicht darin:
+    // `kind` steuert weiterhin nur Satz, Hinweistext und Steuerspalte.
+    // Weggelassen heißt "aus der Steuerart ableiten" — ein bestehendes
+    // Profil bleibt damit ohne Zutun gültig.
+    taxCategoryCode: z
+      .enum(TAX_CATEGORY_CODE_VALUES as [TaxCategoryCode, ...TaxCategoryCode[]])
+      .optional(),
+    exemptionReasonCode: optionalText.optional().default(null),
+    exemptionReasonText: optionalText.optional().default(null),
   })
   .transform((profile) => ({
     ...profile,
+    taxCategoryCode: profile.taxCategoryCode ?? defaultTaxCategoryForKind(profile.kind),
+    // Der Hinweistext ist bei Reverse Charge und Kleinunternehmer ohnehin
+    // Pflicht und sagt genau das, was BT-120 verlangt. Ihn hier zu
+    // übernehmen erspart es, denselben Satz zweimal zu tippen.
+    exemptionReasonText: profile.exemptionReasonText ?? profile.noteText,
     // Steuerfrei, Reverse Charge und Kleinunternehmer weisen keinen Steuersatz
     // aus. Den Satz hier zu erzwingen statt ihn nur im Formular auszublenden
     // stellt sicher, dass auch ein direkter API-Aufruf keine 19 % auf einer
@@ -85,6 +106,21 @@ export const taxProfileInputSchema = z
         message: 'Für diese Steuerart muss ein Hinweistext auf der Rechnung erscheinen',
       });
     }
+
+    // EN 16931 verlangt bei diesen Kategorien einen Befreiungsgrund —
+    // Code (BT-121) oder Text (BT-120), nicht beides. Ohne ihn entsteht
+    // später eine XML-Datei, die jeder Prüfer abweist.
+    if (
+      CATEGORIES_NEEDING_EXEMPTION_REASON.includes(profile.taxCategoryCode) &&
+      profile.exemptionReasonCode === null &&
+      profile.exemptionReasonText === null
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['exemptionReasonText'],
+        message: 'Für diese Steuerkategorie verlangt die E-Rechnung einen Befreiungsgrund',
+      });
+    }
   });
 
 export type TaxProfileInput = z.input<typeof taxProfileInputSchema>;
@@ -99,6 +135,9 @@ export const taxProfileResponseSchema = z.object({
   showTaxColumn: z.boolean(),
   isDefault: z.boolean(),
   sortOrder: z.number().int(),
+  taxCategoryCode: z.enum(TAX_CATEGORY_CODE_VALUES as [TaxCategoryCode, ...TaxCategoryCode[]]),
+  exemptionReasonCode: z.string().nullable(),
+  exemptionReasonText: z.string().nullable(),
   archivedAt: z.string().nullable(),
   /** Verwendungen in Rechnungen und als Kundenvorgabe — entscheidet über die Löschbarkeit. */
   invoiceCount: z.number().int(),
