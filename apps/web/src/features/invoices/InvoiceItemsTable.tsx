@@ -1,5 +1,10 @@
 import { type UseFieldArrayReturn, type UseFormReturn } from 'react-hook-form';
-import { DISCOUNT_TYPE, formatCents, type InvoiceCalculation } from '@agentur-tool/shared';
+import {
+  DEFAULT_UNIT_CODE,
+  DISCOUNT_TYPE,
+  formatCents,
+  type InvoiceCalculation,
+} from '@agentur-tool/shared';
 import { Button } from '../../components/ui/Button.js';
 import { Input } from '../../components/ui/Input.js';
 import { Select } from '../../components/ui/Select.js';
@@ -188,6 +193,7 @@ export function InvoiceItemsTable({
               description: '',
               quantity: '1',
               unit: '',
+              unitCode: DEFAULT_UNIT_CODE,
               unitPriceCents: '',
               discountType: DISCOUNT_TYPE.PERCENT,
               discountValue: '',

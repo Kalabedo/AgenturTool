@@ -181,6 +181,9 @@ export function buyerDataToFormFields(buyer: BuyerData): {
   email: string;
   vatId: string;
   customerNumber: string;
+  buyerReference: string;
+  electronicAddress: string;
+  electronicAddressScheme: string;
 } {
   return {
     companyName: buyer.companyName,
@@ -193,6 +196,9 @@ export function buyerDataToFormFields(buyer: BuyerData): {
     email: buyer.email ?? '',
     vatId: buyer.vatId ?? '',
     customerNumber: buyer.customerNumber ?? '',
+    buyerReference: buyer.buyerReference ?? '',
+    electronicAddress: buyer.electronicAddress ?? '',
+    electronicAddressScheme: buyer.electronicAddressScheme ?? '',
   };
 }
 

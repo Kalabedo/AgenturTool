@@ -20,6 +20,8 @@ export interface InvoiceItemFormValues {
   description: string;
   quantity: string;
   unit: string;
+  /** BT-130: Mengeneinheit als Code. Das Etikett bleibt `unit`. */
+  unitCode: string;
   unitPriceCents: string;
   discountType: DiscountType;
   discountValue: string;
@@ -40,6 +42,11 @@ export interface InvoiceFormValues {
   email: string;
   vatId: string;
   customerNumber: string;
+  /** BT-10, für die E-Rechnung. Bei Behörden die Leitweg-ID. */
+  buyerReference: string;
+  /** BT-49 samt Schema. */
+  electronicAddress: string;
+  electronicAddressScheme: string;
 
   invoiceDate: string;
   serviceDate: string;
@@ -69,6 +76,7 @@ export function toInvoiceFormValues(invoice: InvoiceResponse): InvoiceFormValues
       description: item.description,
       quantity: quantityToInput(item.quantity),
       unit: item.unit ?? '',
+      unitCode: item.unitCode,
       unitPriceCents: centsToInput(item.unitPriceCents),
       discountType: item.discountType,
       discountValue:
@@ -98,6 +106,9 @@ export function toInvoicePayload(values: InvoiceFormValues): Record<string, unkn
       email: values.email,
       vatId: values.vatId,
       customerNumber: values.customerNumber,
+      buyerReference: values.buyerReference,
+      electronicAddress: values.electronicAddress,
+      electronicAddressScheme: values.electronicAddressScheme,
     },
     invoiceDate: values.invoiceDate,
     serviceDate: values.serviceDate,

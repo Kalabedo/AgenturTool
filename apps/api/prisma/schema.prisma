@@ -43,6 +43,10 @@ model Company {
   vatId     String?
   taxNumber String?
 
+  /// BT-34: elektronische Adresse für E-Rechnungen, samt Schema (EAS).
+  electronicAddress       String?
+  electronicAddressScheme String?
+
   bankAccountHolder String?
   iban              String?
   bic               String?
@@ -96,6 +100,13 @@ model Customer {
 
   email String?
   vatId String?
+
+  /// BT-10: Referenz des Käufers. Bei Behörden die Leitweg-ID.
+  buyerReference String?
+
+  /// BT-49: elektronische Adresse des Käufers, samt Schema (EAS).
+  electronicAddress       String?
+  electronicAddressScheme String?
 
   notes String?
 
@@ -175,6 +186,14 @@ model TaxProfile {
 
   /// Erscheint auf der Rechnung, z. B. der Reverse-Charge-Hinweis.
   noteText String?
+
+  /// BT-118: Steuerkategorie nach UNTDID 5305 (S, Z, E, AE, K, G, O).
+  /// Steht neben `kind`, nicht darin — siehe D-E2 in Abschnitt 24.
+  taxCategoryCode String @default("S")
+
+  /// BT-121 und BT-120: Befreiungsgrund als Code beziehungsweise Klartext.
+  exemptionReasonCode String?
+  exemptionReasonText String?
 
   showTaxColumn Boolean @default(true)
   isDefault     Boolean @default(false)
@@ -308,7 +327,10 @@ model InvoiceItem {
 
   /// Tausendstel: 7,5 h = 7500
   quantity Int    @default(1000)
+  /// Das gedruckte Etikett. Freitext, wie eh und je.
   unit     String?
+  /// BT-130: Mengeneinheit nach UN/ECE 20. Geht nur ins XML (D-E3).
+  unitCode String @default("C62")
 
   unitPriceCents Int @default(0)
 
@@ -334,6 +356,9 @@ model InvoiceDocument {
 
   invoiceId Int
   invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  /// PDF | XML — dieselbe Ablage trägt beide Ausgaben einer Rechnung.
+  kind String @default("PDF")
 
   /// Pfad relativ zu DATA_DIR, z. B. invoices/2026/2026-001.pdf
   path      String @unique

@@ -8,9 +8,14 @@ import {
 } from '../src/einvoice/codes.js';
 import { checkEinvoiceReady, isEinvoiceReady } from '../src/einvoice/readiness.js';
 import { TAX_PROFILE_KIND } from '../src/enums.js';
-import { CURRENT_SNAPSHOT_VERSION } from '../src/snapshots.js';
+import {
+  CURRENT_SNAPSHOT_VERSION,
+  type BuyerData,
+  type SellerSnapshot,
+  type TaxSnapshot,
+} from '../src/snapshots.js';
 
-const seller = {
+const seller: SellerSnapshot = {
   snapshotVersion: CURRENT_SNAPSHOT_VERSION,
   companyName: 'Beispiel Agentur',
   address: { street: 'Musterweg 1', postalCode: '10115', city: 'Berlin', country: 'DE' },
@@ -28,7 +33,7 @@ const seller = {
   logoAssetId: null,
 };
 
-const buyer = {
+const buyer: BuyerData = {
   snapshotVersion: CURRENT_SNAPSHOT_VERSION,
   companyName: 'Kunde GmbH',
   contactName: null,
@@ -42,7 +47,7 @@ const buyer = {
   electronicAddressScheme: 'EM',
 };
 
-const tax = {
+const tax: TaxSnapshot = {
   snapshotVersion: CURRENT_SNAPSHOT_VERSION,
   profileName: 'Deutschland 19 %',
   kind: TAX_PROFILE_KIND.STANDARD,

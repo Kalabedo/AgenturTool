@@ -116,6 +116,9 @@ const BUYER = {
   email: null,
   vatId: 'CY60143029O',
   customerNumber: null,
+  buyerReference: 'BR-2026-0001',
+  electronicAddress: 'rechnung@soluxion.example',
+  electronicAddressScheme: 'EM',
 };
 
 async function createDraft(): Promise<number> {

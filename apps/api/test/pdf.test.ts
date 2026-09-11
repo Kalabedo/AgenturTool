@@ -98,6 +98,9 @@ async function createInvoice(count: number, overrides: Record<string, unknown> =
         email: null,
         vatId: null,
         customerNumber: null,
+        buyerReference: null,
+        electronicAddress: null,
+        electronicAddressScheme: null,
       }),
       items: {
         create: Array.from({ length: count }, (_, index) => ({
@@ -130,6 +133,8 @@ const FROZEN_SELLER: SellerSnapshot = {
   iban: null,
   bic: null,
   bankName: null,
+  electronicAddress: null,
+  electronicAddressScheme: null,
   logoAssetId: null,
 };
 
@@ -140,6 +145,9 @@ const FROZEN_TAX: TaxSnapshot = {
   defaultRateBasisPoints: 1900,
   noteText: null,
   showTaxColumn: true,
+  taxCategoryCode: 'S',
+  exemptionReasonCode: null,
+  exemptionReasonText: null,
 };
 
 const FROZEN_TEMPLATE: TemplateSnapshot = {
@@ -277,6 +285,9 @@ describe('PDF-Erzeugung', () => {
         email: null,
         vatId: null,
         customerNumber: null,
+        buyerReference: null,
+        electronicAddress: null,
+        electronicAddressScheme: null,
       },
       invoiceDate: '2026-03-01',
       serviceDate: '2026-03-01',

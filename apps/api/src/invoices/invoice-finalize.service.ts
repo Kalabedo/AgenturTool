@@ -34,6 +34,7 @@ import {
   type TaxSnapshot,
   type TemplateSnapshot,
   type TotalsSnapshot,
+  type UnitCode,
 } from '@agentur-tool/shared';
 import type { RenderModelSourceItem } from '@agentur-tool/invoice-template';
 import { ApiError } from '../common/api-error';
@@ -414,6 +415,7 @@ export class InvoiceFinalizeService {
               position: item.position,
               description: item.description,
               unit: item.unit,
+              unitCode: item.unitCode,
               quantity: negated.quantity,
               unitPriceCents: negated.unitPriceCents,
               discountType: negated.discountType,
@@ -441,7 +443,12 @@ export class InvoiceFinalizeService {
         taxRateBasisPoints: item.taxRateBasisPoints,
       });
 
-      return { description: item.description, unit: item.unit, ...negated };
+      return {
+        description: item.description,
+        unit: item.unit,
+        unitCode: item.unitCode as UnitCode,
+        ...negated,
+      };
     });
 
     return {
@@ -454,7 +461,15 @@ export class InvoiceFinalizeService {
     };
   }
 
-  private parseSnapshot<T>(schema: z.ZodType<T>, raw: string | null, invoiceId: number): T {
+  // `z.ZodTypeAny` statt `z.ZodType<T>`: Die Snapshot-Schemas sind seit
+  // Version 2 in ein `z.preprocess` gehüllt, das Version 1 beim Lesen
+  // auffüllt. Deren Eingabetyp ist `unknown`, weshalb `z.ZodType<T>` nicht
+  // mehr passt und T zu `unknown` zusammenfiele.
+  private parseSnapshot<S extends z.ZodTypeAny>(
+    schema: S,
+    raw: string | null,
+    invoiceId: number,
+  ): z.infer<S> {
     const result = schema.safeParse(raw === null ? null : JSON.parse(raw));
     if (!result.success) {
       throw ApiError.validation(
@@ -600,6 +615,7 @@ export class InvoiceFinalizeService {
       description: item.description,
       quantity: item.quantity,
       unit: item.unit,
+      unitCode: item.unitCode as UnitCode,
       unitPriceCents: item.unitPriceCents,
       discountType: item.discountType as DiscountType,
       discountValue: item.discountValue,

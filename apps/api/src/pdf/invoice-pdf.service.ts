@@ -12,6 +12,7 @@ import {
   templateSnapshotFromSettings,
   templateSnapshotSchema,
   totalsSnapshotSchema,
+  type UnitCode,
   type BuyerData,
   type DiscountType,
   type DocumentType,
@@ -189,6 +190,7 @@ export class InvoicePdfService {
         description: item.description,
         quantity: item.quantity,
         unit: item.unit,
+        unitCode: item.unitCode,
         unitPriceCents: item.unitPriceCents,
         discountType: item.discountType,
         discountValue: item.discountValue,
@@ -326,6 +328,7 @@ export class InvoicePdfService {
           description: item.description,
           quantity: item.quantity,
           unit: item.unit,
+          unitCode: item.unitCode as UnitCode,
           unitPriceCents: item.unitPriceCents,
           discountType: item.discountType as DiscountType,
           discountValue: item.discountValue,
@@ -381,12 +384,14 @@ export class InvoicePdfService {
     }
   }
 
-  private parseSnapshot<T>(
-    schema: z.ZodType<T>,
+  // Siehe die Anmerkung in invoice-finalize.service.ts: Die Snapshot-Schemas
+  // nehmen seit Version 2 `unknown` entgegen.
+  private parseSnapshot<S extends z.ZodTypeAny>(
+    schema: S,
     raw: string | null,
     invoiceId: number,
     field: string,
-  ): T {
+  ): z.infer<S> {
     if (raw === null) {
       throw ApiError.validation(`Der ${field} der Rechnung ${invoiceId} fehlt.`);
     }

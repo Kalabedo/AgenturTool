@@ -97,6 +97,8 @@ export class CompanyService {
       phone: company.phone,
       vatId: company.vatId,
       taxNumber: company.taxNumber,
+      electronicAddress: company.electronicAddress,
+      electronicAddressScheme: company.electronicAddressScheme,
       bankAccountHolder: company.bankAccountHolder,
       iban: company.iban,
       bic: company.bic,

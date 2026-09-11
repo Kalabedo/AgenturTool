@@ -9,6 +9,7 @@ import {
   type TaxSnapshot,
   type TemplateSnapshot,
   type TotalsSnapshot,
+  type UnitCode,
 } from '@agentur-tool/shared';
 import type { InvoiceRenderModel, InvoiceRenderItem } from './types.js';
 
@@ -17,7 +18,16 @@ export interface RenderModelSourceItem {
   description: string;
   /** Tausendstel: 7,5 h = 7500 */
   quantity: number;
+  /** Das gedruckte Etikett. */
   unit: string | null;
+  /**
+   * BT-130: Mengeneinheit als Code.
+   *
+   * Steht hier, obwohl das Template ihn nicht druckt: Dieselbe Quelle
+   * speist die Vorschau, das PDF und die E-Rechnung. Zwei getrennte
+   * Quellen wären genau der stille Fehler, den Abschnitt 12 beschreibt.
+   */
+  unitCode: UnitCode;
   unitPriceCents: number;
   discountType: DiscountType;
   /** Basispunkte bei PERCENT, Cent bei AMOUNT. */

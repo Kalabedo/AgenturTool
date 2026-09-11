@@ -21,6 +21,15 @@ export const EXPECTED_TRIGGERS = [
 /**
  * CHECK-Constraints je Tabelle. Geprüft wird gegen den in sqlite_master
  * hinterlegten CREATE-TABLE-Text.
+ *
+ * Die Spalten der E-Rechnung — `TaxProfile.taxCategoryCode`,
+ * `InvoiceItem.unitCode` und `InvoiceDocument.kind` — stehen hier bewusst
+ * nicht. SQLite kann einer bestehenden Tabelle keinen CHECK anfügen; das
+ * ginge nur über einen Neuaufbau, und der hätte die drei Trigger auf
+ * `InvoiceItem` verworfen. Die Trigger wiegen schwerer: Sie schützen eine
+ * ausgestellte Rechnung vor Veränderung. Validiert werden die neuen
+ * Spalten von Zod (packages/shared/src/einvoice/codes.ts); die Begründung
+ * steht in der Migration 20260911072246_einvoice_fields.
  */
 export const EXPECTED_CHECK_CONSTRAINTS: Record<string, readonly string[]> = {
   Company: ['Company_singleton_check'],

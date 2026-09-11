@@ -23,6 +23,8 @@ const SELLER: SellerSnapshot = {
   iban: 'DE12202208000052019114',
   bic: null,
   bankName: null,
+  electronicAddress: 'rechnung@xyz-agentur.de',
+  electronicAddressScheme: 'EM',
   logoAssetId: null,
 };
 
@@ -35,6 +37,9 @@ const BUYER: BuyerData = {
   email: null,
   vatId: 'CY60143029O',
   customerNumber: null,
+  buyerReference: null,
+  electronicAddress: null,
+  electronicAddressScheme: null,
 };
 
 const STANDARD_TAX: TaxSnapshot = {
@@ -44,6 +49,9 @@ const STANDARD_TAX: TaxSnapshot = {
   defaultRateBasisPoints: 1900,
   noteText: null,
   showTaxColumn: true,
+  taxCategoryCode: 'S',
+  exemptionReasonCode: null,
+  exemptionReasonText: null,
 };
 
 function input(overrides: Partial<FinalizationInput> = {}): FinalizationInput {
