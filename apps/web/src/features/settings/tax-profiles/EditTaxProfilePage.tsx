@@ -82,8 +82,8 @@ export function EditTaxProfilePage(): JSX.Element {
 
   if (profile.isError || profile.data === undefined) {
     return isNotFound(profile.error) ? (
-      <div className="rounded-lg border border-slate-200 bg-white p-5">
-        <p className="text-sm text-slate-700">Dieses Steuerprofil wurde nicht gefunden.</p>
+      <div className="rounded-lg border border-border bg-surface p-5">
+        <p className="text-sm text-ink-muted">Dieses Steuerprofil wurde nicht gefunden.</p>
         <Link
           to="/settings/tax-profiles"
           className="mt-3 inline-block text-sm font-medium underline"
@@ -124,8 +124,8 @@ export function EditTaxProfilePage(): JSX.Element {
       />
 
       {isArchived && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-          <p className="text-sm text-amber-900">
+        <div className="rounded-lg border border-attention-border bg-attention-surface p-4">
+          <p className="text-sm text-attention-ink">
             Dieses Profil ist archiviert und erscheint nicht mehr in der Auswahl.
           </p>
         </div>
@@ -167,7 +167,7 @@ export function EditTaxProfilePage(): JSX.Element {
             {removeError !== null ? (
               <StatusText tone="error">{removeError}</StatusText>
             ) : usageCount === 0 ? null : (
-              <span className="text-slate-500">
+              <span className="text-ink-subtle">
                 Endgültiges Löschen ist nicht möglich, solange Rechnungen oder Kunden dieses Profil
                 verwenden.
               </span>

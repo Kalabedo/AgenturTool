@@ -43,7 +43,7 @@ describe('Spielraum am rechten Rand', () => {
     const [screen, print] = rules('.page');
 
     expect(screen).toContain(
-      `padding: ${PAGE.marginMm}mm ${PAGE.marginMm + PAGE.edgeGapMm}mm ${PAGE.footerMm}mm ${PAGE.marginMm}mm;`,
+      `padding: ${PAGE.marginSideMm}mm ${PAGE.marginSideMm + PAGE.edgeGapMm}mm ${PAGE.footerMm}mm ${PAGE.marginSideMm}mm;`,
     );
     expect(print).toContain(`padding: 0 ${PAGE.edgeGapMm}mm 0 0;`);
   });
@@ -51,13 +51,15 @@ describe('Spielraum am rechten Rand', () => {
   it('lässt den linken Rand, wie er war', () => {
     // Der Spielraum ist eine Notwendigkeit am Beschnitt, keine Gestaltung:
     // Links gibt es nichts zu beschneiden, also bleibt der Rand dort ganz.
-    expect(css).toContain(`@page { size: A4; margin: ${PAGE.marginMm}mm ${PAGE.marginMm}mm`);
+    expect(css).toContain(`@page { size: A4; margin: ${PAGE.marginTopMm}mm ${PAGE.marginSideMm}mm`);
   });
 
   it('fluchtet die Fußzeile mit dem Textblock darüber', () => {
     const footer = renderInvoiceFooterTemplate(buildRenderModel(REFERENCE_INVOICE));
 
-    expect(footer).toContain(`padding:0 ${PAGE.marginMm + PAGE.edgeGapMm}mm 0 ${PAGE.marginMm}mm;`);
+    expect(footer).toContain(
+      `padding:0 ${PAGE.marginSideMm + PAGE.edgeGapMm}mm 0 ${PAGE.marginSideMm}mm;`,
+    );
   });
 });
 

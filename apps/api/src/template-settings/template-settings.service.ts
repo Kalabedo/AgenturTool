@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import type { TemplateSettings } from '@prisma/client';
+import {
+  TEMPLATE_DENSITY_VALUES,
+  TEMPLATE_FONT_FAMILY_VALUES,
+  TEMPLATE_KEY_VALUES,
+} from '@agentur-tool/shared';
 import type { TemplateSettingsResponse, UpdateTemplateSettingsPayload } from '@agentur-tool/shared';
 import { PrismaService } from '../common/prisma.service';
 
@@ -36,16 +41,37 @@ export class TemplateSettingsService {
     return this.toResponse(settings);
   }
 
+  /**
+   * Ein gespeicherter Wert, sofern er noch zur Auswahl gehört.
+   *
+   * In der Datenbank steht Text; die Auswahl kann sich mit einer neuen
+   * Fassung ändern. Ein Design oder eine Schrift, die es nicht mehr gibt,
+   * fällt hier auf die Vorgabe zurück, statt eine Antwort zu erzeugen, die
+   * ihrem eigenen Schema widerspricht — dieselbe Haltung wie bei
+   * `resolveTemplate`: lieber ein anderes Aussehen als gar keines.
+   */
+  private oneOf<T extends string>(value: string, allowed: readonly T[], fallback: T): T {
+    return allowed.includes(value as T) ? (value as T) : fallback;
+  }
+
   private toResponse(settings: TemplateSettings): TemplateSettingsResponse {
     return {
       id: settings.id,
-      templateKey: settings.templateKey,
+      templateKey: this.oneOf(settings.templateKey, TEMPLATE_KEY_VALUES, 'classic'),
       accentColor: settings.accentColor,
-      fontFamily: settings.fontFamily,
+      fontFamily: this.oneOf(settings.fontFamily, TEMPLATE_FONT_FAMILY_VALUES, 'Open Sans'),
       logoWidthMm: settings.logoWidthMm,
       footerText: settings.footerText,
       paymentNote: settings.paymentNote,
       closingNote: settings.closingNote,
+      inkColor: settings.inkColor,
+      inkSoftColor: settings.inkSoftColor,
+      ruleColor: settings.ruleColor,
+      bandColor: settings.bandColor,
+      density: this.oneOf(settings.density, TEMPLATE_DENSITY_VALUES, 'normal'),
+      showLogo: settings.showLogo,
+      showPaymentBlock: settings.showPaymentBlock,
+      showFooterRule: settings.showFooterRule,
       updatedAt: settings.updatedAt.toISOString(),
     };
   }

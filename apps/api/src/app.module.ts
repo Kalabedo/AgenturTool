@@ -10,6 +10,7 @@ import { InvoicesModule } from './invoices/invoices.module';
 import { TimeEntriesModule } from './time-entries/time-entries.module';
 import { FilesModule } from './files/files.module';
 import { HealthModule } from './health/health.module';
+import { AppThemeModule } from './app-theme/app-theme.module';
 import { BackupModule } from './backup/backup.module';
 import { AuthModule } from './auth/auth.module';
 import { WebModule } from './web/web.module';
@@ -41,6 +42,7 @@ export class AppModule {
         AuthModule,
         FilesModule,
         HealthModule,
+        AppThemeModule,
         CompanyModule,
         CustomersModule,
         TaxProfilesModule,

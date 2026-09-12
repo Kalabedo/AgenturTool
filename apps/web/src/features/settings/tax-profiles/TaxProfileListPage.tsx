@@ -50,8 +50,8 @@ export function TaxProfileListPage(): JSX.Element {
       />
 
       {profiles.isSuccess && !hasDefault && profiles.data.length > 0 && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-          <p className="text-sm text-amber-900">
+        <div className="rounded-lg border border-attention-border bg-attention-surface p-4">
+          <p className="text-sm text-attention-ink">
             Kein Profil ist als Standard markiert. Neue Rechnungen haben dann keinen Vorschlag.
           </p>
         </div>
@@ -80,9 +80,9 @@ export function TaxProfileListPage(): JSX.Element {
       )}
 
       {profiles.isSuccess && profiles.data.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+        <div className="overflow-x-auto rounded-lg border border-border bg-surface">
           <table className="w-full min-w-[40rem] text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-border bg-surface-sunken text-left text-xs uppercase tracking-wide text-ink-subtle">
               <tr>
                 <th className="px-4 py-2 font-medium">Profil</th>
                 <th className="px-4 py-2 font-medium">Steuerart</th>
@@ -90,13 +90,13 @@ export function TaxProfileListPage(): JSX.Element {
                 <th className="px-4 py-2 font-medium">Verwendung</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border">
               {profiles.data.map((profile) => (
-                <tr key={profile.id} className="hover:bg-slate-50">
+                <tr key={profile.id} className="hover:bg-surface-sunken">
                   <td className="px-4 py-3">
                     <Link
                       to={`/settings/tax-profiles/${profile.id}`}
-                      className="font-medium text-slate-900 hover:underline"
+                      className="font-medium text-ink hover:underline"
                     >
                       {profile.name}
                     </Link>
@@ -107,18 +107,18 @@ export function TaxProfileListPage(): JSX.Element {
                       {profile.archivedAt !== null && <Badge>archiviert</Badge>}
                     </div>
                     {profile.noteText !== null && (
-                      <p className="mt-1 max-w-md text-xs text-slate-500">{profile.noteText}</p>
+                      <p className="mt-1 max-w-md text-xs text-ink-subtle">{profile.noteText}</p>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">
+                  <td className="px-4 py-3 text-ink-muted">
                     {TAX_PROFILE_KIND_LABELS[profile.kind]}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">
+                  <td className="px-4 py-3 text-ink-muted">
                     {allowsRateInput(profile.kind)
                       ? formatBasisPoints(profile.defaultRateBasisPoints)
                       : '—'}
                   </td>
-                  <td className="px-4 py-3 text-slate-500">
+                  <td className="px-4 py-3 text-ink-subtle">
                     {profile.invoiceCount === 0 && profile.customerCount === 0
                       ? '—'
                       : [

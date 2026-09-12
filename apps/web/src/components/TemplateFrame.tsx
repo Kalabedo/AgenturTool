@@ -52,6 +52,13 @@ export function TemplateFrame({
       const style = doc.head.firstElementChild;
       if (style !== null) style.textContent = css;
       doc.body.style.margin = '0';
+      /*
+       * Fest weiß, auch im Dunkelmodus: Hier steht kein Stück Oberfläche,
+       * sondern ein Blatt Papier. Es soll aussehen wie das, was später aus
+       * dem Drucker kommt. Das iframe ist ein eigenes Dokument, an das die
+       * Marken der Anwendung ohnehin nicht heranreichen — der dunkle Rahmen
+       * ringsum macht aus dem weißen Kasten ein Blatt auf einer Unterlage.
+       */
       doc.body.style.background = '#ffffff';
       setMountNode(doc.body);
     }
@@ -101,7 +108,7 @@ export function TemplateFrame({
   return (
     <div ref={containerRef} className="w-full">
       <div
-        className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
+        className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm dark:ring-1 dark:ring-white/10"
         style={{ height: contentHeight * scale }}
       >
         <iframe

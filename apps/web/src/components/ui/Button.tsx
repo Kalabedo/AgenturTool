@@ -25,12 +25,13 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
  * eine Darstellungsform derselben Leiter, kein vierter Rang.
  */
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-slate-900 text-white hover:bg-slate-800 focus:ring-slate-300',
+  primary: 'bg-inverse text-on-inverse hover:bg-inverse-hover focus:ring-focus',
   secondary:
-    'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus:ring-slate-200',
-  danger: 'border border-rose-300 bg-white text-rose-700 hover:bg-rose-50 focus:ring-rose-200',
-  ghost: 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:ring-slate-200',
-  'ghost-danger': 'text-rose-700 hover:bg-rose-50 focus:ring-rose-200',
+    'border border-border-strong bg-surface text-ink-muted hover:bg-surface-sunken focus:ring-focus',
+  danger:
+    'border border-danger-border bg-surface text-danger-ink hover:bg-danger-surface focus:ring-danger-border',
+  ghost: 'text-ink-muted hover:bg-surface-raised hover:text-ink focus:ring-focus',
+  'ghost-danger': 'text-danger-ink hover:bg-danger-surface focus:ring-danger-border',
 };
 
 /*

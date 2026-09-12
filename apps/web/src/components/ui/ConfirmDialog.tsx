@@ -68,7 +68,7 @@ export function ConfirmDialog({
         </>
       }
     >
-      {description !== undefined && <p className="text-sm text-slate-700">{description}</p>}
+      {description !== undefined && <p className="text-sm text-ink-muted">{description}</p>}
       {children}
     </Dialog>
   );

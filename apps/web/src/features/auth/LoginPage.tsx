@@ -33,25 +33,28 @@ export function LoginPage({ hasUser }: { hasUser: boolean }): JSX.Element {
   const error = login.error instanceof ApiRequestError ? login.error : null;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-6">
+    <div className="flex min-h-screen items-center justify-center bg-surface-sunken px-6">
       <form
-        className="w-full max-w-sm space-y-5 rounded-lg border border-slate-200 bg-white p-6"
+        className="w-full max-w-sm space-y-5 rounded-lg border border-border bg-surface p-6"
         onSubmit={(event) => {
           event.preventDefault();
           if (hasUser) login.mutate();
         }}
       >
         <div>
-          <h1 className="text-lg font-semibold text-slate-900">AgenturTool</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="text-lg font-semibold text-ink">AgenturTool</h1>
+          <p className="mt-1 text-sm text-ink-subtle">
             {hasUser ? 'Bitte anmelden.' : 'Die Anmeldung muss einmalig eingerichtet werden.'}
           </p>
         </div>
 
         {!hasUser && (
-          <div role="status" className="rounded-md border border-amber-200 bg-amber-50 p-4">
-            <p className="text-sm font-medium text-amber-900">Noch kein Benutzer angelegt</p>
-            <p className="mt-1 text-sm text-amber-800">
+          <div
+            role="status"
+            className="rounded-md border border-attention-border bg-attention-surface p-4"
+          >
+            <p className="text-sm font-medium text-attention-ink">Noch kein Benutzer angelegt</p>
+            <p className="mt-1 text-sm text-attention-ink">
               Führe im Projektverzeichnis{' '}
               <code className="break-all font-mono text-xs">pnpm user:set deine@email.de</code> aus
               und lade diese Seite danach neu.
@@ -84,7 +87,7 @@ export function LoginPage({ hasUser }: { hasUser: boolean }): JSX.Element {
         </Field>
 
         {error !== null && (
-          <p role="alert" className="text-sm text-rose-600">
+          <p role="alert" className="text-sm text-danger-strong">
             {error.message}
           </p>
         )}

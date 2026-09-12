@@ -28,7 +28,7 @@ export function SegmentedControl<T extends string>({
     <div
       role="group"
       aria-label={label}
-      className={`flex max-w-full overflow-x-auto rounded-md border border-slate-300 bg-white p-0.5 ${className}`}
+      className={`flex max-w-full overflow-x-auto rounded-md border border-border-strong bg-surface p-0.5 ${className}`}
     >
       {options.map((option) => {
         const active = option.value === value;
@@ -40,8 +40,8 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(option.value)}
             className={[
               'whitespace-nowrap rounded px-3 py-1.5 text-sm transition-colors',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300',
-              active ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50',
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-focus',
+              active ? 'bg-inverse text-on-inverse' : 'text-ink-muted hover:bg-surface-sunken',
             ].join(' ')}
           >
             {option.label}

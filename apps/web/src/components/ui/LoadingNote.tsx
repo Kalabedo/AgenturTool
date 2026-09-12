@@ -7,7 +7,7 @@
  */
 export function LoadingNote({ children = 'Wird geladen …' }: { children?: string }): JSX.Element {
   return (
-    <p aria-live="polite" className="text-sm text-slate-500">
+    <p aria-live="polite" className="text-sm text-ink-subtle">
       {children}
     </p>
   );

@@ -118,5 +118,99 @@
       }
     ],
     "embedsOpenSans": true
+  },
+  "mehrseitig-modern": {
+    "pages": 2,
+    "sizesPt": [
+      {
+        "widthPt": 595,
+        "heightPt": 841.9
+      },
+      {
+        "widthPt": 595,
+        "heightPt": 841.9
+      }
+    ],
+    "contentAreasPt": [
+      {
+        "leftPt": 39.8,
+        "topPt": 0,
+        "widthPt": 515.9,
+        "heightPt": 796.5
+      },
+      {
+        "leftPt": 39.8,
+        "topPt": 0,
+        "widthPt": 515.9,
+        "heightPt": 796.5
+      }
+    ],
+    "embedsOpenSans": true
+  },
+  "mehrseitig-kompakt": {
+    "pages": 2,
+    "sizesPt": [
+      {
+        "widthPt": 595,
+        "heightPt": 841.9
+      },
+      {
+        "widthPt": 595,
+        "heightPt": 841.9
+      }
+    ],
+    "contentAreasPt": [
+      {
+        "leftPt": 28.5,
+        "topPt": 28.5,
+        "widthPt": 538.6,
+        "heightPt": 773.9
+      },
+      {
+        "leftPt": 28.5,
+        "topPt": 28.5,
+        "widthPt": 538.6,
+        "heightPt": 773.9
+      }
+    ],
+    "embedsOpenSans": true
+  },
+  "mehrseitig-schlicht": {
+    "pages": 3,
+    "sizesPt": [
+      {
+        "widthPt": 595,
+        "heightPt": 841.9
+      },
+      {
+        "widthPt": 595,
+        "heightPt": 841.9
+      },
+      {
+        "widthPt": 595,
+        "heightPt": 841.9
+      }
+    ],
+    "contentAreasPt": [
+      {
+        "leftPt": 62.3,
+        "topPt": 57,
+        "widthPt": 470.6,
+        "heightPt": 734.2
+      },
+      {
+        "leftPt": 62.3,
+        "topPt": 57,
+        "widthPt": 470.6,
+        "heightPt": 734.2
+      },
+      {
+        "leftPt": 62.3,
+        "topPt": 57,
+        "widthPt": 470.6,
+        "heightPt": 734.2
+      }
+    ],
+    "embedsOpenSans": true
   }
 }

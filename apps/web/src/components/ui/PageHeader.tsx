@@ -16,8 +16,8 @@ interface PageHeaderProps {
 /**
  * Der Kopf einer Seite.
  *
- * Jede Seite hatte ihren eigenen: mal `text-slate-500` unter der
- * Überschrift, mal `text-slate-600`, mal gar keine Beschreibung, und die
+ * Jede Seite hatte ihren eigenen: mal `text-ink-subtle` unter der
+ * Überschrift, mal `text-ink-muted`, mal gar keine Beschreibung, und die
  * Handlung mal rechts daneben, mal darunter. Beim Wechsel zwischen zwei
  * Seiten sprang dadurch genau das, was gleich bleiben sollte.
  *
@@ -35,7 +35,7 @@ export function PageHeader({
   return (
     <div>
       {back !== undefined && (
-        <Link to={back.to} className="text-sm text-slate-500 hover:underline">
+        <Link to={back.to} className="text-sm text-ink-subtle hover:underline">
           ← {back.label}
         </Link>
       )}
@@ -47,7 +47,7 @@ export function PageHeader({
         ].join(' ')}
       >
         <div className="flex min-w-0 flex-wrap items-center gap-3">
-          <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
+          <h1 className="text-xl font-semibold text-ink">{title}</h1>
           {badges}
         </div>
         {actions !== undefined && <div className="ml-auto flex items-center gap-3">{actions}</div>}
@@ -56,7 +56,7 @@ export function PageHeader({
       {description !== undefined && (
         // Die Breite ist begrenzt, damit der Erklärsatz auf einer breiten
         // Seite nicht über 1400 Pixel läuft — gelesen wird er sonst nicht.
-        <p className="mt-1 max-w-3xl text-sm text-slate-500">{description}</p>
+        <p className="mt-1 max-w-3xl text-sm text-ink-subtle">{description}</p>
       )}
     </div>
   );

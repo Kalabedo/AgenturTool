@@ -177,11 +177,11 @@ export function InvoiceListPage(): JSX.Element {
       <button
         type="button"
         onClick={() => sortBy(field)}
-        className="inline-flex items-center gap-1 rounded uppercase tracking-wide hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+        className="inline-flex items-center gap-1 rounded uppercase tracking-wide hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         aria-label={`Nach ${label} sortieren`}
       >
         {label}
-        <span aria-hidden className={sort === field ? 'text-slate-900' : 'text-transparent'}>
+        <span aria-hidden className={sort === field ? 'text-ink' : 'text-transparent'}>
           {order === 'asc' ? '▲' : '▼'}
         </span>
       </button>
@@ -283,9 +283,9 @@ export function InvoiceListPage(): JSX.Element {
           {/* Sechs Spalten passen auf ein Telefon nicht nebeneinander. Statt
               Spalten zu verstecken — und damit ausgerechnet Betrag oder Status —
               darf die Tabelle in ihrem eigenen Kasten scrollen. */}
-          <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+          <div className="overflow-x-auto rounded-lg border border-border bg-surface">
             <table className="w-full min-w-[52rem] text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+              <thead className="border-b border-border bg-surface-sunken text-left text-xs uppercase tracking-wide text-ink-subtle">
                 <tr>
                   {sortableHeader(INVOICE_SORT_FIELD.NUMBER, 'Rechnung')}
                   <th className="px-4 py-2 font-medium">Empfänger</th>
@@ -300,31 +300,31 @@ export function InvoiceListPage(): JSX.Element {
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border">
                 {result.items.map((invoice) => (
-                  <tr key={invoice.id} className="hover:bg-slate-50">
+                  <tr key={invoice.id} className="hover:bg-surface-sunken">
                     <td className="px-4 py-3">
                       <Link
                         to={`/invoices/${invoice.id}`}
-                        className="font-medium text-slate-900 hover:underline"
+                        className="font-medium text-ink hover:underline"
                       >
                         {invoiceDisplayName(invoice)}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-4 py-3 text-ink-muted">
                       {invoice.buyerData.companyName === '' ? (
-                        <span className="text-slate-400">kein Empfänger</span>
+                        <span className="text-ink-faint">kein Empfänger</span>
                       ) : (
                         invoice.buyerData.companyName
                       )}
                     </td>
-                    <td className="px-4 py-3 text-slate-500">
+                    <td className="px-4 py-3 text-ink-subtle">
                       {formatDateDe(toIsoDate(invoice.invoiceDate))}
                     </td>
-                    <td className="px-4 py-3 text-slate-500">
+                    <td className="px-4 py-3 text-ink-subtle">
                       {formatDateDe(toIsoDate(invoice.dueDate))}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-slate-900">
+                    <td className="px-4 py-3 text-right tabular-nums text-ink">
                       {formatCents(invoice.totals.grossCents)}
                     </td>
                     <td className="px-4 py-3">
@@ -358,7 +358,7 @@ export function InvoiceListPage(): JSX.Element {
             </table>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-ink-subtle">
             <span>{describeRange(result)}</span>
             {result.pageCount > 1 && (
               <div className="flex items-center gap-2">

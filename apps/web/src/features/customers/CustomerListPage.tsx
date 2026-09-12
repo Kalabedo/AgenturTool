@@ -110,9 +110,9 @@ export function CustomerListPage(): JSX.Element {
       )}
 
       {customers.isSuccess && hasResults && (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+        <div className="overflow-x-auto rounded-lg border border-border bg-surface">
           <table className="w-full min-w-[36rem] text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-border bg-surface-sunken text-left text-xs uppercase tracking-wide text-ink-subtle">
               <tr>
                 <th className="px-4 py-2 font-medium">Kunde</th>
                 <th className="px-4 py-2 font-medium">Nr.</th>
@@ -120,26 +120,26 @@ export function CustomerListPage(): JSX.Element {
                 <th className="px-4 py-2 font-medium">Rechnungen</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border">
               {customers.data.map((customer) => (
-                <tr key={customer.id} className="hover:bg-slate-50">
+                <tr key={customer.id} className="hover:bg-surface-sunken">
                   <td className="px-4 py-3">
                     <Link
                       to={`/customers/${customer.id}`}
-                      className="font-medium text-slate-900 hover:underline"
+                      className="font-medium text-ink hover:underline"
                     >
                       {customer.companyName}
                     </Link>
                     {customer.contactName !== null && (
-                      <span className="block text-xs text-slate-500">{customer.contactName}</span>
+                      <span className="block text-xs text-ink-subtle">{customer.contactName}</span>
                     )}
                     {customer.archivedAt !== null && <Badge className="mt-1">archiviert</Badge>}
                   </td>
-                  <td className="px-4 py-3 text-slate-500">{customer.customerNumber ?? '—'}</td>
-                  <td className="px-4 py-3 text-slate-500">
+                  <td className="px-4 py-3 text-ink-subtle">{customer.customerNumber ?? '—'}</td>
+                  <td className="px-4 py-3 text-ink-subtle">
                     {formatCustomerLocation(customer) || '—'}
                   </td>
-                  <td className="px-4 py-3 text-slate-500">{customer.invoiceCount}</td>
+                  <td className="px-4 py-3 text-ink-subtle">{customer.invoiceCount}</td>
                 </tr>
               ))}
             </tbody>

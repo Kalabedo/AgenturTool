@@ -297,5 +297,24 @@ export function referenceDocuments(): ReferenceDocument[] {
         },
       ],
     }),
+
+    /*
+     * Je ein mehrseitiges Dokument pro weiterem Design.
+     *
+     * Nicht das volle Kreuzprodukt: Vier Designs mal fünf Varianten wären
+     * zwanzig echte Chromium-Läufe je Testlauf. Der mehrseitige Fall ist
+     * der, der etwas findet — er belastet Seitengeometrie,
+     * Kopfwiederholung und Fußzeile gleichzeitig, und genau die bringt
+     * jedes Design selbst mit.
+     */
+    ...(['modern', 'kompakt', 'schlicht'] as const).map((templateKey) =>
+      document(`mehrseitig-${templateKey}`, {
+        ...BASE,
+        template: { ...TEMPLATE, templateKey },
+        items: Array.from({ length: 34 }, (_, index) =>
+          item(`Position ${String(index + 1)}`, 6500 + index * 10, 0),
+        ),
+      }),
+    ),
   ];
 }

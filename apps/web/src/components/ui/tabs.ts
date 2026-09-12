@@ -9,9 +9,9 @@
 export function tabClassName(active: boolean): string {
   return [
     '-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-sm transition-colors',
-    'focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300',
+    'focus:outline-none focus-visible:ring-2 focus-visible:ring-focus',
     active
-      ? 'border-slate-900 font-medium text-slate-900'
-      : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-800',
+      ? 'border-ink font-medium text-ink'
+      : 'border-transparent text-ink-subtle hover:border-border-strong hover:text-ink',
   ].join(' ');
 }

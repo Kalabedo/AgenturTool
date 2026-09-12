@@ -140,38 +140,36 @@ export function MailTemplatesCard(): JSX.Element {
         </Field>
 
         <div>
-          <h3 className="text-sm font-medium text-slate-700">Platzhalter</h3>
+          <h3 className="text-sm font-medium text-ink-muted">Platzhalter</h3>
           <dl className="mt-2 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
             {MAIL_PLACEHOLDERS[key].map((placeholder) => (
               <div key={placeholder.key} className="flex gap-2">
-                <dt className="shrink-0 font-mono text-xs text-slate-900">
-                  {`{{${placeholder.key}}}`}
-                </dt>
-                <dd className="text-slate-500">{placeholder.description}</dd>
+                <dt className="shrink-0 font-mono text-xs text-ink">{`{{${placeholder.key}}}`}</dt>
+                <dd className="text-ink-subtle">{placeholder.description}</dd>
               </div>
             ))}
           </dl>
         </div>
 
         {unknown.length > 0 && (
-          <p role="alert" className="text-sm text-amber-800">
+          <p role="alert" className="text-sm text-attention-ink">
             Unbekannt und damit unersetzt: {unknown.map((name) => `{{${name}}}`).join(', ')}. So
             stünde es wörtlich in der Nachricht.
           </p>
         )}
 
         <div>
-          <h3 className="text-sm font-medium text-slate-700">Vorschau mit Beispielwerten</h3>
-          <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 p-4 text-sm">
-            <p className="font-medium text-slate-900">{renderMailTemplate(subject, values)}</p>
-            <p className="mt-2 whitespace-pre-wrap text-slate-700">
+          <h3 className="text-sm font-medium text-ink-muted">Vorschau mit Beispielwerten</h3>
+          <div className="mt-2 rounded-md border border-border bg-surface-sunken p-4 text-sm">
+            <p className="font-medium text-ink">{renderMailTemplate(subject, values)}</p>
+            <p className="mt-2 whitespace-pre-wrap text-ink-muted">
               {renderMailTemplate(body, values)}
             </p>
           </div>
         </div>
 
         <FormActions
-          className="border-t border-slate-200 pt-5"
+          className="border-t border-border pt-5"
           status={
             saveError !== null ? (
               <StatusText tone="error">{saveError}</StatusText>

@@ -133,6 +133,12 @@ export function ToastProvider({ children }: { children: ReactNode }): JSX.Elemen
   );
 }
 
+/*
+ * Die Punkte stehen auf der umgekehrten Fläche und nicht auf der Seite —
+ * sie brauchen deshalb keine Marken, sondern müssen gegen `bg-inverse`
+ * bestehen. Die 400er-Töne tun das in beiden Modi: hell genug für das
+ * dunkle Schiefer, satt genug für das helle.
+ */
 const DOTS: Record<Tone, string> = {
   success: 'bg-emerald-400',
   error: 'bg-rose-400',
@@ -173,7 +179,7 @@ function ToastItem({
       onBlur={() => setPaused(false)}
       className={[
         'toast-enter pointer-events-auto flex w-full max-w-md items-start gap-3',
-        'rounded-lg bg-slate-900 px-4 py-3 text-sm text-white shadow-lg',
+        'rounded-lg bg-inverse px-4 py-3 text-sm text-on-inverse shadow-lg',
       ].join(' ')}
     >
       <span
@@ -190,7 +196,7 @@ function ToastItem({
             toast.action?.onClick();
             onDismiss(toast.id);
           }}
-          className="shrink-0 rounded font-medium text-white underline underline-offset-2 hover:text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+          className="shrink-0 rounded font-medium text-on-inverse underline underline-offset-2 hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
           {toast.action.label}
         </button>
@@ -200,7 +206,7 @@ function ToastItem({
         type="button"
         onClick={() => onDismiss(toast.id)}
         aria-label="Meldung schließen"
-        className="-my-1 -mr-1.5 shrink-0 rounded px-1.5 py-1 text-slate-400 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+        className="-my-1 -mr-1.5 shrink-0 rounded px-1.5 py-1 text-on-inverse opacity-70 hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
       >
         <span aria-hidden="true">✕</span>
       </button>

@@ -68,9 +68,9 @@ export function Dialog({
       }}
       onClose={onClose}
       className={[
-        'm-auto rounded-lg border border-slate-200 bg-white p-0',
+        'm-auto rounded-lg border border-border bg-surface p-0',
         size === 'wide' ? 'w-[min(64rem,calc(100vw-2rem))]' : 'w-[min(40rem,calc(100vw-2rem))]',
-        'text-slate-900 shadow-xl backdrop:bg-slate-900/40',
+        'text-ink shadow-xl backdrop:bg-inverse/40',
       ].join(' ')}
     >
       {/* Der Inhalt scrollt in sich selbst, damit eine lange Feldliste den
@@ -82,18 +82,18 @@ export function Dialog({
           size === 'wide' ? 'max-h-[calc(100vh-4rem)]' : 'max-h-[min(44rem,calc(100vh-4rem))]',
         ].join(' ')}
       >
-        <header className="border-b border-slate-200 px-6 py-4">
-          <h2 id={titleId} className="text-base font-semibold text-slate-900">
+        <header className="border-b border-border px-6 py-4">
+          <h2 id={titleId} className="text-base font-semibold text-ink">
             {title}
           </h2>
           {description !== undefined && (
-            <p className="mt-1 text-sm text-slate-500">{description}</p>
+            <p className="mt-1 text-sm text-ink-subtle">{description}</p>
           )}
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">{children}</div>
 
-        <footer className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
+        <footer className="flex flex-wrap items-center justify-end gap-3 border-t border-border bg-surface-sunken px-6 py-4">
           {footer}
         </footer>
       </div>

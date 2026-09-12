@@ -21,49 +21,107 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = join(here, '..');
-const fontDir = join(packageRoot, 'node_modules', '@fontsource', 'open-sans', 'files');
 
 /**
- * Nur Regular und Bold. Die Referenzrechnung nutzt genau diese beiden
- * Schnitte; jeder weitere kostet rund 25 kB im Bundle, ohne dass er auf dem
- * Dokument vorkäme.
+ * Die mitgelieferten Familien.
+ *
+ * Nur Regular und Bold je Familie. Jeder weitere Schnitt kostet rund 25 kB,
+ * ohne auf dem Dokument vorzukommen — und Kursive bleibt bewusst draußen:
+ * Ohne echten kursiven Schnitt stellt Chromium die Regular schräg, deren
+ * Tinte bis zu 2 pt über die Laufweite hinausragt. Rechtsbündig ist das der
+ * sichere Weg in den Beschnitt (siehe .meta__value--placeholder).
+ *
+ * `dir` und `file` stehen als Angabe je Familie da und nicht als Schablone:
+ * Die Paketnamen von @fontsource folgen keiner verlässlichen Regel, und ein
+ * danebengegriffener Dateiname erzeugt ein leeres Base64 statt eines
+ * Fehlers.
  */
-const weights = [400, 700];
+const families = [
+  {
+    name: 'Open Sans',
+    dir: 'open-sans',
+    file: (weight) => `open-sans-latin-${weight}-normal.woff2`,
+    weights: [400, 700],
+    license: '@fontsource/open-sans (SIL Open Font License 1.1), Subset "latin"',
+  },
+  {
+    name: 'Source Serif 4',
+    dir: 'source-serif-4',
+    file: (weight) => `source-serif-4-latin-${weight}-normal.woff2`,
+    weights: [400, 700],
+    license: '@fontsource/source-serif-4 (SIL Open Font License 1.1), Subset "latin"',
+  },
+];
 
-const faces = weights.map((weight) => {
-  const file = join(fontDir, `open-sans-latin-${weight}-normal.woff2`);
-  const base64 = readFileSync(file).toString('base64');
-  return { weight, base64 };
-});
-
-const css = faces
-  .map(
-    ({ weight, base64 }) => `@font-face {
-  font-family: 'Open Sans';
+function faceCss(family) {
+  return family.weights
+    .map((weight) => {
+      const path = join(
+        packageRoot,
+        'node_modules',
+        '@fontsource',
+        family.dir,
+        'files',
+        family.file(weight),
+      );
+      const base64 = readFileSync(path).toString('base64');
+      if (base64.length === 0) throw new Error(`Leere Schriftdatei: ${path}`);
+      return `@font-face {
+  font-family: '${family.name}';
   font-style: normal;
   font-weight: ${weight};
   font-display: block;
   src: url(data:font/woff2;base64,${base64}) format('woff2');
-}`,
+}`;
+    })
+    .join('\n');
+}
+
+const entries = families.map((family) => ({ family, css: faceCss(family) }));
+
+const table = entries
+  .map(
+    ({ family, css }) =>
+      `  ${JSON.stringify(family.name)}: {\n    css: ${JSON.stringify(css)},\n    weights: [${family.weights.join(', ')}] as const,\n  },`,
   )
   .join('\n');
 
 const contents = `// AUTOMATISCH ERZEUGT von scripts/embed-fonts.mjs — nicht von Hand ändern.
-// Quelle: @fontsource/open-sans (SIL Open Font License 1.1), Subset "latin".
+// Quellen:
+${families.map((f) => `//   ${f.license}`).join('\n')}
 // Neu erzeugen: pnpm --filter @agentur-tool/invoice-template fonts
 
-/** @font-face-Regeln mit eingebetteter Schrift, ohne jeden Netzwerkzugriff. */
-export const EMBEDDED_FONT_CSS = ${JSON.stringify(css)};
+/**
+ * Die eingebetteten Schriften, je Familie.
+ *
+ * Ein Dokument bekommt nur die Familie, die es benutzt — siehe
+ * \`embeddedFontCss\` in fonts.ts. Alle einzubetten wäre bequemer und
+ * kostete rund 50 kB in jedem PDF und jeder Vorschau.
+ */
+export const EMBEDDED_FONTS = {
+${table}
+} as const;
 
-/** Die Schnitte, die tatsächlich eingebettet sind. */
-export const EMBEDDED_FONT_WEIGHTS = [${weights.join(', ')}] as const;
-
-/** Name der eingebetteten Schriftfamilie. */
+/** Die Familie, auf die alles zurückfällt, was sonst nirgends passt. */
 export const EMBEDDED_FONT_FAMILY = 'Open Sans';
+
+/**
+ * Das Font-CSS der Vorgabefamilie.
+ *
+ * Bleibt als eigener Export bestehen: Der Zeitnachweis baut sein eigenes
+ * Dokument und kennt keine Design-Einstellung, die er nachschlagen könnte.
+ */
+export const EMBEDDED_FONT_CSS = EMBEDDED_FONTS[EMBEDDED_FONT_FAMILY].css;
+
+/** Die Schnitte der Vorgabefamilie. */
+export const EMBEDDED_FONT_WEIGHTS = EMBEDDED_FONTS[EMBEDDED_FONT_FAMILY].weights;
 `;
 
 const target = join(packageRoot, 'src', 'fonts.generated.ts');
 writeFileSync(target, contents, 'utf8');
 
 const kilobytes = Math.round(Buffer.byteLength(contents, 'utf8') / 1024);
-console.log(`fonts.generated.ts geschrieben (${weights.length} Schnitte, ${kilobytes} kB)`);
+const faceCount = families.reduce((sum, f) => sum + f.weights.length, 0);
+console.log(
+  `fonts.generated.ts geschrieben (${families.length} Familien, ${faceCount} Schnitte, ${kilobytes} kB)`,
+);

@@ -47,6 +47,14 @@ const templateSettings: TemplateSettingsResponse = {
   footerText: '',
   paymentNote: 'Bitte bis zum Fälligkeitsdatum überweisen.',
   closingNote: null,
+  inkColor: '#1f2328',
+  inkSoftColor: '#4b5563',
+  ruleColor: '#e3e6ea',
+  bandColor: '#f4f5f7',
+  density: 'normal',
+  showLogo: true,
+  showPaymentBlock: true,
+  showFooterRule: true,
   updatedAt: '2026-09-08T10:00:00.000Z',
 };
 

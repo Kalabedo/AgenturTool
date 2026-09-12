@@ -16,8 +16,8 @@ import {
   type TemplateSettingsResponse,
 } from '@agentur-tool/shared';
 import {
-  CLASSIC_CSS,
-  ClassicTemplate,
+  embeddedFontCss,
+  resolveTemplate,
   buildRenderModel,
   type RenderModelSourceItem,
 } from '@agentur-tool/invoice-template';
@@ -115,7 +115,7 @@ export function InvoicePreview({
 
   if (company.data === undefined || templateSettings.data === undefined) {
     return (
-      <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-500">
+      <div className="rounded-lg border border-border bg-surface p-6 text-sm text-ink-subtle">
         Vorschau wird geladen …
       </div>
     );
@@ -152,9 +152,22 @@ export function InvoicePreview({
     items: toRenderItems(values),
   });
 
+  const design = resolveTemplate(model.template.templateKey);
+
   return (
-    <TemplateFrame css={CLASSIC_CSS} title="Vorschau der Rechnung">
-      <ClassicTemplate model={model} />
+    /*
+     * Das Design kommt aus den Einstellungen und nicht fest aus dem Code:
+     * Sonst zeigte die Vorschau weiter „classic", während das PDF längst
+     * anders aussähe — genau das Auseinanderlaufen, das die gemeinsame
+     * Komponente verhindern soll.
+     */
+    <TemplateFrame
+      css={`
+        ${embeddedFontCss(model.template.fontFamily)}${design.css}
+      `}
+      title="Vorschau der Rechnung"
+    >
+      {design.render(model)}
     </TemplateFrame>
   );
 }

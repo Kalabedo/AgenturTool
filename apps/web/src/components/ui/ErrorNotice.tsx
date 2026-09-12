@@ -29,9 +29,9 @@ export function ErrorNotice({
   return (
     <div
       role="alert"
-      className={`rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 ${className}`}
+      className={`rounded-lg border border-danger-border bg-danger-surface p-4 text-sm text-danger-ink ${className}`}
     >
-      {title !== undefined && <p className="font-medium text-rose-900">{title}</p>}
+      {title !== undefined && <p className="font-medium text-danger-ink">{title}</p>}
       <p className={title === undefined ? '' : 'mt-1'}>{messageOf(error)}</p>
       {onRetry !== undefined && (
         <Button variant="secondary" className="mt-3" onClick={onRetry}>

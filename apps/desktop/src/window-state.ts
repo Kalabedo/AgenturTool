@@ -22,6 +22,19 @@ export interface WindowState {
   x?: number;
   y?: number;
   maximized: boolean;
+  /**
+   * Die zuletzt gewählte Darstellung.
+   *
+   * Sie steht hier und nicht in der Datenbank, weil sie zu einem Zeitpunkt
+   * gebraucht wird, zu dem es die Datenbank noch nicht gibt: Electron legt
+   * die Hintergrundfarbe eines Fensters bei der Erzeugung fest und kann sie
+   * danach nicht mehr ändern. Ohne diesen Wert blitzte jedes Fenster beim
+   * Start kurz weiß auf, bevor die Oberfläche ihr Dunkel setzt.
+   *
+   * „system" wird nicht gespeichert — es bedeutet ja gerade, nicht
+   * gespeichert zu haben, sondern zu fragen.
+   */
+  theme?: 'light' | 'dark';
 }
 
 const DEFAULT: WindowState = { width: 1280, height: 860, maximized: false };
@@ -49,6 +62,10 @@ export function readWindowState(stateDir: string): WindowState {
   const height = size(stored.height, DEFAULT.height);
   const state: WindowState = { width, height, maximized: stored.maximized === true };
 
+  if (stored.theme === 'light' || stored.theme === 'dark') {
+    state.theme = stored.theme;
+  }
+
   if (
     typeof stored.x === 'number' &&
     typeof stored.y === 'number' &&
@@ -68,9 +85,14 @@ export function readWindowState(stateDir: string): WindowState {
  * verkleinertes Fenster gäbe sonst die Maße des Bildschirms zurück, und
  * beim Wiederherstellen ließe sich das Fenster nicht mehr verkleinern.
  */
-export function saveWindowState(window: BrowserWindow, stateDir: string): void {
+export function saveWindowState(
+  window: BrowserWindow,
+  stateDir: string,
+  theme?: 'light' | 'dark',
+): void {
   const bounds = window.getNormalBounds();
   const state: WindowState = { ...bounds, maximized: window.isMaximized() };
+  if (theme !== undefined) state.theme = theme;
 
   try {
     fs.mkdirSync(stateDir, { recursive: true });

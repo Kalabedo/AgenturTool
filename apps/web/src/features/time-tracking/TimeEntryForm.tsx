@@ -162,7 +162,7 @@ export function TimeEntryForm({
           ? 'Änderungen gelten nur für offene Einträge.'
           : 'Beginn und Ende lassen sich tippen: 9, 930 oder 14:15.'
       }
-      className={isEditing ? 'border-slate-400 ring-1 ring-slate-200' : undefined}
+      className={isEditing ? 'border-border-strong ring-1 ring-focus' : undefined}
     >
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
         <div className="grid gap-4 sm:grid-cols-12">
@@ -303,11 +303,11 @@ export function TimeEntryForm({
           status={
             <span aria-live="polite" className="block text-right">
               {duration === null ? (
-                <span className="text-slate-400">Dauer ergibt sich aus Beginn und Ende</span>
+                <span className="text-ink-faint">Dauer ergibt sich aus Beginn und Ende</span>
               ) : (
                 <>
-                  <span className="text-slate-500">Dauer</span>{' '}
-                  <span className="text-base font-semibold tabular-nums text-slate-900">
+                  <span className="text-ink-subtle">Dauer</span>{' '}
+                  <span className="text-base font-semibold tabular-nums text-ink">
                     {formatDuration(duration)} h
                   </span>
                 </>

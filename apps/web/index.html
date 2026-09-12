@@ -10,6 +10,33 @@
     />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>AgenturTool</title>
+    <!--
+      Setzt den Modus, bevor irgendetwas gezeichnet wird.
+
+      Ohne dieses Skript malte der Browser erst die helle Grundfarbe aus
+      index.css und die Anwendung stellte danach auf Dunkel um — ein
+      sichtbares Aufblitzen bei jedem Laden. Deshalb inline und blockierend
+      und nicht im Modul.
+
+      In try/catch: Der bloße Zugriff auf localStorage kann werfen (frisches
+      Electron-Profil, gesperrte Seitendaten). Ein Wurf hier ließe die Seite
+      ohne Attribut und damit ungestylt zurück.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('agentur-tool.theme');
+          // Nicht `=== 'system'`: Ein fehlender oder beschädigter Wert soll
+          // ebenfalls dem Betriebssystem folgen.
+          var dark =
+            stored === 'dark' ||
+            (stored !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+          document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        } catch (e) {
+          document.documentElement.dataset.theme = 'light';
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

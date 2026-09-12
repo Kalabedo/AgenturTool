@@ -291,8 +291,8 @@ export function InvoiceEditorPage(): JSX.Element {
 
   if (invoice.isError || invoice.data === undefined) {
     return isNotFound(invoice.error) ? (
-      <div className="rounded-lg border border-slate-200 bg-white p-5">
-        <p className="text-sm text-slate-700">Diese Rechnung wurde nicht gefunden.</p>
+      <div className="rounded-lg border border-border bg-surface p-5">
+        <p className="text-sm text-ink-muted">Diese Rechnung wurde nicht gefunden.</p>
         <Link to="/invoices" className="mt-3 inline-block text-sm font-medium underline">
           Zurück zur Übersicht
         </Link>
@@ -376,8 +376,8 @@ export function InvoiceEditorPage(): JSX.Element {
         />
 
         {!editable && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-            <p className="text-sm text-amber-900">
+          <div className="rounded-lg border border-attention-border bg-attention-surface p-4">
+            <p className="text-sm text-attention-ink">
               Diese Rechnung ist ausgestellt und kann nicht mehr geändert werden. Für eine Korrektur
               wird sie storniert und neu ausgestellt.
             </p>
@@ -392,7 +392,7 @@ export function InvoiceEditorPage(): JSX.Element {
                   Finalisierung zurücknehmen
                 </Button>
               ) : (
-                <p className="text-sm text-amber-800">{data.unfinalizeBlocker}</p>
+                <p className="text-sm text-attention-ink">{data.unfinalizeBlocker}</p>
               )}
               {unfinalizeError !== null && (
                 <StatusText tone="error">{unfinalizeError.message}</StatusText>
@@ -404,8 +404,8 @@ export function InvoiceEditorPage(): JSX.Element {
         {!editable && <InvoiceLifecycleCard invoice={data} />}
 
         {data.documentMissing && (
-          <div className="rounded-lg border border-rose-200 bg-rose-50 p-4">
-            <p className="text-sm text-rose-900">
+          <div className="rounded-lg border border-danger-border bg-danger-surface p-4">
+            <p className="text-sm text-danger-ink">
               Zu dieser Rechnung fehlt die PDF-Datei. Sie lässt sich aus den gespeicherten Daten
               unverändert neu erzeugen.
             </p>
@@ -575,7 +575,7 @@ export function InvoiceEditorPage(): JSX.Element {
         </Card>
 
         <div>
-          <h2 className="mb-2 text-base font-semibold text-slate-900">Positionen</h2>
+          <h2 className="mb-2 text-base font-semibold text-ink">Positionen</h2>
           <InvoiceItemsTable
             form={form as never}
             fieldArray={fieldArray}
@@ -585,29 +585,27 @@ export function InvoiceEditorPage(): JSX.Element {
         </div>
 
         <div className="flex justify-end">
-          <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-5">
+          <div className="w-full max-w-sm rounded-lg border border-border bg-surface p-5">
             <dl className="space-y-1 text-sm">
               <div className="flex justify-between">
-                <dt className="text-slate-600">Nettobetrag</dt>
-                <dd className="tabular-nums text-slate-900">{formatCents(calculation.netCents)}</dd>
+                <dt className="text-ink-muted">Nettobetrag</dt>
+                <dd className="tabular-nums text-ink">{formatCents(calculation.netCents)}</dd>
               </div>
               {calculation.taxGroups.map((group) => (
                 <div key={group.rateBasisPoints} className="flex justify-between">
-                  <dt className="text-slate-600">
+                  <dt className="text-ink-muted">
                     {formatBasisPoints(group.rateBasisPoints)} von {formatCents(group.netCents)}
                   </dt>
-                  <dd className="tabular-nums text-slate-900">{formatCents(group.taxCents)}</dd>
+                  <dd className="tabular-nums text-ink">{formatCents(group.taxCents)}</dd>
                 </div>
               ))}
-              <div className="flex justify-between border-t border-slate-200 pt-2 text-base font-semibold">
-                <dt className="text-slate-900">Rechnungsbetrag</dt>
-                <dd className="tabular-nums text-slate-900">
-                  {formatCents(calculation.grossCents)}
-                </dd>
+              <div className="flex justify-between border-t border-border pt-2 text-base font-semibold">
+                <dt className="text-ink">Rechnungsbetrag</dt>
+                <dd className="tabular-nums text-ink">{formatCents(calculation.grossCents)}</dd>
               </div>
             </dl>
             {calculation.totalDiscountCents !== 0 && (
-              <p className="mt-2 text-xs text-slate-500">
+              <p className="mt-2 text-xs text-ink-subtle">
                 enthaltene Rabatte: {formatCents(calculation.totalDiscountCents)}
               </p>
             )}
@@ -722,7 +720,7 @@ export function InvoiceEditorPage(): JSX.Element {
             Ausnahme und der Fall, in dem jemand etwas wissen muss.
           */}
           {!editable && data.hasDocument && (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-ink-subtle">
               {data.pdfEinvoiceProfile === null
                 ? 'Dieses PDF enthält keinen strukturierten Datensatz. Es ist eine gültige Rechnung; ein Empfänger, der sie maschinell einlesen will, braucht die XRechnung daneben.'
                 : 'Dieses PDF ist ein ZUGFeRD-Dokument: Der strukturierte Datensatz steckt darin und wird beim Verschicken mitgeliefert.'}
@@ -735,16 +733,16 @@ export function InvoiceEditorPage(): JSX.Element {
             PDF verschickt, hat hier nichts zu tun.
           */}
           {!editable && einvoiceStatus.data?.ready === false && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-              <p className="text-sm font-medium text-amber-900">
+            <div className="rounded-lg border border-attention-border bg-attention-surface p-4">
+              <p className="text-sm font-medium text-attention-ink">
                 Diese Rechnung lässt sich noch nicht als XRechnung ausgeben:
               </p>
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-800">
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-attention-ink">
                 {einvoiceStatus.data.problems.map((problem) => (
                   <li key={`${problem.field}-${problem.message}`}>{problem.message}</li>
                 ))}
               </ul>
-              <p className="mt-2 text-sm text-amber-800">
+              <p className="mt-2 text-sm text-attention-ink">
                 Das PDF ist davon nicht betroffen. Die Angaben gelten ab der nächsten Rechnung —
                 eine bereits ausgestellte trägt ihre eingefrorenen Daten.
               </p>
@@ -752,11 +750,14 @@ export function InvoiceEditorPage(): JSX.Element {
           )}
 
           {finalizeProblems.length > 0 && (
-            <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-4">
-              <p className="text-sm font-medium text-rose-900">
+            <div
+              role="alert"
+              className="rounded-lg border border-danger-border bg-danger-surface p-4"
+            >
+              <p className="text-sm font-medium text-danger-ink">
                 Diese Angaben fehlen noch, damit die Rechnung ausgestellt werden kann:
               </p>
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-rose-800">
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-danger-ink">
                 {finalizeProblems.map((problem) => (
                   <li key={`${problem.field}-${problem.message}`}>{problem.message}</li>
                 ))}
