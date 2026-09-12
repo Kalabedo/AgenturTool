@@ -9,6 +9,7 @@ const NAVIGATION = [
   { to: '/invoices', label: 'Rechnungen' },
   { to: '/customers', label: 'Kunden' },
   { to: '/time-tracking', label: 'Zeiterfassung' },
+  { to: '/design', label: 'Design' },
   { to: '/settings/company', label: 'Einstellungen' },
 ];
 
@@ -28,7 +29,14 @@ export function AppLayout({ error }: { error?: ReactNode }): JSX.Element {
    * Alle übrigen Seiten bleiben schmal, weil lange Zeilen sich schlechter
    * lesen.
    */
-  const wideLayout = useMatch('/invoices/:id') !== null;
+  const invoiceEditor = useMatch('/invoices/:id') !== null;
+  /*
+   * Der Designer hat denselben Bedarf: links die Regler, rechts ein
+   * A4-Blatt. `useMatch` ist ein Hook und muss deshalb unbedingt aufgerufen
+   * werden — die Bedingung steht hinterher, nicht davor.
+   */
+  const designer = useMatch('/design') !== null;
+  const wideLayout = invoiceEditor || designer;
 
   /**
    * Die Zeiterfassung liegt dazwischen. Ihr Erfassungsformular stellt fünf

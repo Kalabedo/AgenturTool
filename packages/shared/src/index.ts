@@ -22,3 +22,4 @@ export * from './backup.js';
 export * from './auth.js';
 export * from './tax-advisor-export.js';
 export * from './mail.js';
+export * from './design-sample.js';
