@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   DOCUMENT_KIND,
   buyerDataSchema,
+  invoiceDocumentFilename,
   checkEinvoiceReady,
   sellerSnapshotSchema,
   taxSnapshotSchema,
@@ -67,7 +68,14 @@ export class EinvoiceService {
     }
 
     const stored = invoice.documents.find((document) => document.kind === DOCUMENT_KIND.XML);
-    const filename = `${invoice.number}.xml`;
+    const filename = invoiceDocumentFilename(
+      {
+        documentType: invoice.documentType as DocumentType,
+        number: invoice.number,
+        id: invoice.id,
+      },
+      DOCUMENT_KIND.XML,
+    );
 
     if (stored !== undefined && this.documents.exists(stored.path)) {
       return { filename, bytes: await this.documents.read(stored.path) };

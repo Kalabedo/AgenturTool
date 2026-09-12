@@ -2,11 +2,13 @@ import { z } from 'zod';
 import {
   DISCOUNT_TYPE,
   DISCOUNT_TYPE_VALUES,
+  DOCUMENT_KIND,
   DOCUMENT_TYPE,
   DOCUMENT_TYPE_VALUES,
   INVOICE_STATUS,
   INVOICE_STATUS_VALUES,
   type DiscountType,
+  type DocumentKind,
   type DocumentType,
   type InvoiceStatus,
 } from './enums.js';
@@ -481,6 +483,33 @@ export function defaultInvoiceDates(
  */
 export function isEditable(status: InvoiceStatus): boolean {
   return status === INVOICE_STATUS.DRAFT;
+}
+
+/**
+ * Der Dateiname, unter dem ein Dokument dieser Rechnung ausgeliefert wird.
+ *
+ * Hier und nicht im PDF- beziehungsweise E-Rechnungs-Dienst, seit ein
+ * dritter Ort denselben Namen kennen muss: Der Versanddialog zeigt vor dem
+ * Absenden, wie die Anhänge heißen werden. Nennt er andere Namen als die,
+ * die dann ankommen, ist die Liste eine Behauptung statt einer Auskunft.
+ *
+ * PDF und XML unterscheiden sich in der Form, und das bleibt so: Das PDF
+ * landet im Downloads-Ordner eines Menschen und trägt deshalb „Rechnung"
+ * oder „Storno" im Namen; die XML-Datei geht in das System des Empfängers,
+ * das sie an der Rechnungsnummer erkennt.
+ */
+export function invoiceDocumentFilename(
+  invoice: Pick<InvoiceResponse, 'documentType' | 'number' | 'id'>,
+  kind: DocumentKind,
+): string {
+  const name = invoice.number ?? `Entwurf-${invoice.id}`;
+  if (kind === DOCUMENT_KIND.XML) return `${name}.xml`;
+
+  const prefix = invoice.documentType === DOCUMENT_TYPE.CANCELLATION ? 'Storno' : 'Rechnung';
+  // Alles außerhalb von Buchstaben, Ziffern und Bindestrich fliegt raus:
+  // Der Name geht durch einen HTTP-Header und über die Dateisysteme dreier
+  // Betriebssysteme.
+  return `${prefix}-${name.replace(/[^\p{L}\p{N}-]+/gu, '-')}.pdf`;
 }
 
 /** Anzeigename: Nummer, sonst „Entwurf #12“. */

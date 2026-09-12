@@ -20,6 +20,7 @@ import { bootstrap } from '@agentur-tool/api/dist/main';
 import { pdfTimeoutMs } from './config';
 import { prepareDatabase } from './database';
 import { buildMenu } from './menu';
+import { ElectronMailHandoff, SafeStorageSecretStore } from './mail';
 import { blockOutboundRequests } from './network';
 import { resolvePaths } from './paths';
 import { ElectronPdfRenderer } from './pdf-renderer';
@@ -143,6 +144,11 @@ async function start(): Promise<void> {
       pdfRenderer: new ElectronPdfRenderer(pdfTimeoutMs(), (url) => {
         log(`Anfrage aus dem Dokument abgewiesen: ${url}`);
       }),
+      // Der E-Mail-Versand ist der einzige Anlass, zu dem diese Anwendung
+      // von sich aus nach außen spricht — und auch nur, wenn jemand ihn
+      // eingerichtet und ausgelöst hat (D43, D45).
+      mailHandoff: new ElectronMailHandoff(log),
+      secretStore: SafeStorageSecretStore.create(log),
     });
 
     api = running.app;

@@ -48,20 +48,26 @@ Deutschland und anschließend auf einer breiteren Nutzung in der EU.
   - Fortschritt anzeigen und späteres Fortsetzen ermöglichen.
   - Am Ende klar zeigen, welche Angaben für PDF und XRechnung noch fehlen.
 
-- [ ] **Neue Rechnung auf Basis einer alten Rechnung**
-  - Bei einer bestehenden Rechnung die Aktion „Neue Rechnung auf Basis
-    dieser Rechnung“ anbieten.
-  - Einen neuen, vollständig bearbeitbaren Entwurf erzeugen; das alte
-    Dokument bleibt unverändert.
-  - Rechnungs- und Leistungsdatum auf das aktuelle Datum setzen und das
-    Fälligkeitsdatum anhand des kundenspezifischen Zahlungsziels neu
-    berechnen.
-  - Positionen, Beschreibungen und passende Rechnungstexte aus der alten
-    Rechnung übernehmen.
-  - Aktuelle Kundendaten sowie aktuelle kundenspezifische Vorgaben für
-    Steuerprofil, Stundensatz, Zahlungsziel und Sprache verwenden.
-  - Vor dem Erstellen verständlich anzeigen, welche alten Inhalte übernommen
-    und welche Werte aktualisiert werden.
+- [x] **Neue Rechnung auf Basis einer alten Rechnung**
+  - [x] Bei einer bestehenden Rechnung die Aktion „Neue Rechnung auf Basis
+        dieser Rechnung“ anbieten — in der Vorgang-Karte der Rechnung und als
+        Zeilenaktion „Als Vorlage“ in der Rechnungsliste.
+  - [x] Einen neuen, vollständig bearbeitbaren Entwurf erzeugen; das alte
+        Dokument bleibt unverändert.
+  - [x] Rechnungs- und Leistungsdatum auf das aktuelle Datum setzen und das
+        Fälligkeitsdatum anhand des kundenspezifischen Zahlungsziels neu
+        berechnen.
+  - [x] Positionen, Beschreibungen und passende Rechnungstexte aus der alten
+        Rechnung übernehmen.
+  - [x] Aktuelle Kundendaten sowie aktuelle kundenspezifische Vorgaben für
+        Steuerprofil und Zahlungsziel verwenden; abwählbar, weil die
+        Korrektur nach einem Storno die Angaben von damals braucht.
+  - [x] Vor dem Erstellen verständlich anzeigen, welche alten Inhalte
+        übernommen und welche Werte aktualisiert werden.
+  - Offen geblieben: **Stundensatz und Sprache** gibt es im Datenmodell noch
+    nicht. Der Stundensatz gehört zum Thema Projekte, die Sprache zum Punkt
+    „Rechnungssprachen Deutsch und Englisch“ weiter unten — beides wird dort
+    nachgezogen, statt hier vorweggenommen zu werden.
 
 - [ ] **Projekte**
   - Ein Projekt gehört zu genau einem Kunden und kann aktiv oder archiviert
@@ -76,15 +82,25 @@ Deutschland und anschließend auf einer breiteren Nutzung in der EU.
   - Projektzuordnung optional halten, damit kleine Einzelaufträge weiterhin
     ohne zusätzliche Verwaltung abgerechnet werden können.
 
-- [ ] **Direkter E-Mail-Versand**
-  - Rechnungen, XRechnungen und Zeitnachweise direkt aus der Anwendung
-    versenden.
-  - PDF, XML und Zeitnachweis vor dem Senden als Anhänge auswählen.
-  - Betreff und Nachricht aus editierbaren Vorlagen vorbelegen.
-  - Empfänger aus dem Kunden übernehmen und vor dem Versand änderbar machen.
-  - Versandzeitpunkt, Empfänger und Anhänge im Rechnungsverlauf protokollieren.
-  - Wahlweise SMTP oder eine lokal konfigurierte Mail-Anwendung unterstützen;
-    Netzwerkzugriff bleibt eine ausdrückliche, optionale Entscheidung.
+- [x] **Direkter E-Mail-Versand**
+  - [x] Rechnungen, XRechnungen und Zeitnachweise direkt aus der Anwendung
+        versenden — aus der Vorgang-Karte der Rechnung und aus dem Archiv der
+        Zeiterfassung.
+  - [x] PDF, XML und Zeitnachweis vor dem Senden als Anhänge auswählen; was
+        nicht geht, steht mit seinem Grund daneben statt zu fehlen.
+  - [x] Betreff und Nachricht aus editierbaren Vorlagen vorbelegen — je eine
+        für Rechnung, Storno und Zeitnachweis, mit Platzhaltern, Vorschau und
+        Rückweg zum Auslieferungstext.
+  - [x] Empfänger aus dem Kunden übernehmen und vor dem Versand änderbar
+        machen; Kopie und Blindkopie auf Wunsch.
+  - [x] Versandzeitpunkt, Empfänger und Anhänge protokollieren — vollständig
+        im Versandprotokoll, als Kurzfassung im Rechnungsverlauf. Ein
+        gescheiterter Versuch wird ebenfalls festgehalten.
+  - [x] Wahlweise SMTP oder eine lokal konfigurierte Mail-Anwendung; ohne
+        Einrichtung baut die Anwendung keine Verbindung nach außen auf.
+  - Der Versandvermerk entsteht nur beim SMTP-Versand von selbst. Über die
+    Mail-Anwendung weiß die Anwendung nicht, ob die Nachricht abging — dort
+    bietet der Dialog den Vermerk als eigenen Klick an (D45, Abschnitt 27).
 
 - [ ] **CSV- und DATEV-kompatible Exporte**
   - Rechnungen und Stornos für einen frei wählbaren Zeitraum exportieren.

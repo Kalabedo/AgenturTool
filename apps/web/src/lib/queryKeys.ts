@@ -36,5 +36,15 @@ export const queryKeys = {
     list: (queryString: string) => ['invoices', 'list', queryString] as const,
     byId: (id: number) => ['invoices', 'detail', id] as const,
     einvoiceStatus: (id: number) => ['invoices', 'detail', id, 'einvoice'] as const,
+    rebillPreview: (id: number) => ['invoices', 'detail', id, 'rebill-preview'] as const,
+  },
+  mail: {
+    all: ['mail'] as const,
+    settings: ['mail', 'settings'] as const,
+    templates: ['mail', 'templates'] as const,
+    // Der Entwurf hängt an der Quelle — Rechnung oder Zeitraum —, und die
+    // steckt vollständig in dieser Zeichenkette.
+    draft: (source: string) => ['mail', 'draft', source] as const,
+    messages: (queryString: string) => ['mail', 'messages', queryString] as const,
   },
 };

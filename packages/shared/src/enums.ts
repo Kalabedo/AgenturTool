@@ -86,6 +86,10 @@ export const INVOICE_EVENT_TYPE = {
   PAYMENT_CLEARED: 'PAYMENT_CLEARED',
   SENT_MARKED: 'SENT_MARKED',
   PDF_REGENERATED: 'PDF_REGENERATED',
+  /** Per SMTP verschickt; der Server hat die Nachricht angenommen. */
+  MAIL_SENT: 'MAIL_SENT',
+  /** An die lokale Mail-Anwendung übergeben — ob sie abging, weiß nur der Benutzer. */
+  MAIL_PREPARED: 'MAIL_PREPARED',
 } as const;
 export type InvoiceEventType = (typeof INVOICE_EVENT_TYPE)[keyof typeof INVOICE_EVENT_TYPE];
 export const INVOICE_EVENT_TYPE_VALUES = Object.values(INVOICE_EVENT_TYPE);
@@ -96,3 +100,73 @@ export const NUMBER_SEQUENCE_SCOPE = {
 } as const;
 export type NumberSequenceScope =
   (typeof NUMBER_SEQUENCE_SCOPE)[keyof typeof NUMBER_SEQUENCE_SCOPE];
+
+/**
+ * Auf welchem Weg eine E-Rechnung das Haus verlässt.
+ *
+ * `NONE` ist die Vorbelegung und keine Verlegenheitslösung: Solange nichts
+ * eingerichtet ist, greift die Anwendung nicht nach außen (D45). Die beiden
+ * anderen Werte unterscheiden sich in dem, was sie zusagen können —
+ * `SMTP` weiß, dass der Server die Nachricht angenommen hat, `MAIL_APP`
+ * weiß nur, dass ein Entwurf übergeben wurde.
+ */
+export const MAIL_TRANSPORT = {
+  NONE: 'NONE',
+  SMTP: 'SMTP',
+  MAIL_APP: 'MAIL_APP',
+} as const;
+export type MailTransport = (typeof MAIL_TRANSPORT)[keyof typeof MAIL_TRANSPORT];
+export const MAIL_TRANSPORT_VALUES = Object.values(MAIL_TRANSPORT);
+
+/** Wie die Verbindung zum SMTP-Server verschlüsselt wird. */
+export const MAIL_SECURITY = {
+  /** Klartextverbindung, die per STARTTLS hochgestuft wird — der Regelfall auf Port 587. */
+  STARTTLS: 'STARTTLS',
+  /** Verschlüsselt ab der ersten Verbindung — der Regelfall auf Port 465. */
+  TLS: 'TLS',
+  /** Ohne Verschlüsselung. Nur für einen Mailserver auf derselben Maschine. */
+  NONE: 'NONE',
+} as const;
+export type MailSecurity = (typeof MAIL_SECURITY)[keyof typeof MAIL_SECURITY];
+export const MAIL_SECURITY_VALUES = Object.values(MAIL_SECURITY);
+
+/**
+ * Die Anlässe, für die es eine Textvorlage gibt.
+ *
+ * Ein fester Satz und keine frei anlegbare Vorlagenverwaltung: Es gibt drei
+ * Dinge, die dieses Programm verschickt, und für jedes davon genau einen
+ * Text, den man bearbeiten kann. Alles darüber hinaus wäre Verwaltung von
+ * Verwaltung.
+ */
+export const MAIL_TEMPLATE_KEY = {
+  INVOICE: 'INVOICE',
+  CANCELLATION: 'CANCELLATION',
+  TIME_REPORT: 'TIME_REPORT',
+} as const;
+export type MailTemplateKey = (typeof MAIL_TEMPLATE_KEY)[keyof typeof MAIL_TEMPLATE_KEY];
+export const MAIL_TEMPLATE_KEY_VALUES = Object.values(MAIL_TEMPLATE_KEY);
+
+/** Was sich an eine Nachricht hängen lässt. */
+export const MAIL_ATTACHMENT_KIND = {
+  INVOICE_PDF: 'INVOICE_PDF',
+  INVOICE_XML: 'INVOICE_XML',
+  TIME_REPORT: 'TIME_REPORT',
+} as const;
+export type MailAttachmentKind = (typeof MAIL_ATTACHMENT_KIND)[keyof typeof MAIL_ATTACHMENT_KIND];
+export const MAIL_ATTACHMENT_KIND_VALUES = Object.values(MAIL_ATTACHMENT_KIND);
+
+/**
+ * Was aus einem Versandversuch geworden ist.
+ *
+ * `PREPARED` ist der Zustand, den es ohne den Weg über die lokale
+ * Mail-Anwendung nicht gäbe: Der Entwurf ist übergeben, ob er abgeschickt
+ * wurde, weiß nur der Benutzer. Ihn als `SENT` zu führen wäre eine
+ * Behauptung.
+ */
+export const MAIL_STATUS = {
+  SENT: 'SENT',
+  PREPARED: 'PREPARED',
+  FAILED: 'FAILED',
+} as const;
+export type MailStatus = (typeof MAIL_STATUS)[keyof typeof MAIL_STATUS];
+export const MAIL_STATUS_VALUES = Object.values(MAIL_STATUS);

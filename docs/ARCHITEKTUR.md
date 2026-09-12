@@ -11,48 +11,51 @@ sie hier korrigiert und nicht nur im Code.
 
 ### Getroffene Entscheidungen
 
-| ID  | Thema                    | Gewählt                                                                                                                                                                       |
-| --- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | Betriebsmodell           | **Desktop-Anwendung** (Electron; Server im Hauptprozess, Daten in `userData`, Auth-Modul vorhanden aber deaktiviert) — ersetzt das ursprüngliche Docker-Image (Abschnitt 16a) |
-| D2  | Datenbank                | **SQLite** (portabel gehalten für späteren Postgres-Wechsel)                                                                                                                  |
-| D3  | DB-Zugriff               | **Prisma**                                                                                                                                                                    |
-| D4  | Backend                  | **NestJS**                                                                                                                                                                    |
-| D5  | Rechnungsnummer          | **Erst beim Finalisieren** vergeben                                                                                                                                           |
-| D6  | Nach Finalisierung       | **Gesperrt + Storno**, plus eng begrenztes „Finalisierung zurücknehmen"                                                                                                       |
-| D7  | Zahlungen                | **Nur `paidAt`** (Teilzahlungen später)                                                                                                                                       |
-| D8  | Historische Daten        | **JSON-Snapshots auf der Rechnung**                                                                                                                                           |
-| D9  | Entwurfsdaten            | **Kunde kopiert** (editierbar + Refresh), **eigene Firmendaten live** bis zum Finalisieren                                                                                    |
-| D10 | Storno-Nummern           | **Dieselbe Sequenz** wie Rechnungen                                                                                                                                           |
-| D11 | Rabatt                   | **Je Position**, umschaltbar Prozent ⇄ Betrag; kein Gesamtrabatt                                                                                                              |
-| D12 | Rundung                  | **Steuer je Steuersatzgruppe** auf Summenebene                                                                                                                                |
-| D13 | PDF-Ablage               | **Dateisystem** + Metadaten/Hash in der DB                                                                                                                                    |
-| D14 | Vorschau                 | **React-Template im iframe** (eine Implementierung, zwei Konsumenten)                                                                                                         |
-| D15 | Template-Optionen V1     | **Mittel**: Logo/-größe, Akzentfarbe, Schrift (2–3), Fußzeile, Standardtexte                                                                                                  |
-| D16 | Preiseingabe             | **Nur netto**                                                                                                                                                                 |
-| D17 | Auth in V1               | **Vorhanden, per `AUTH_ENABLED` deaktiviert** (folgt aus D1)                                                                                                                  |
-| D18 | ~~Späterer Zugriff~~     | ~~Tailscale + aktiver Login~~ — gegenstandslos mit D1 (Abschnitt 16)                                                                                                          |
-| D19 | Backup                   | Button in der App **und** Skript für Cron; Offsite optional                                                                                                                   |
-| D20 | Tooling                  | pnpm, kein Turborepo, Vitest, ESLint + Prettier                                                                                                                               |
-| D21 | Kalenderdaten            | **ISO-String `"YYYY-MM-DD"`**; echte Zeitstempel bleiben `DateTime`                                                                                                           |
-| D22 | Kundennummer             | **Freies Feld, optional, eindeutig wenn gesetzt**                                                                                                                             |
-| D23 | Primärschlüssel          | `Int @id @default(autoincrement())`                                                                                                                                           |
-| D24 | Build der Pakete         | `tsup` → ESM + CJS + `.d.ts` (NestJS läuft CJS, Vite ESM)                                                                                                                     |
-| D29 | Schrift im Dokument      | **Open Sans, als Base64 im Paket eingebettet** — kein Netzwerkzugriff beim PDF-Rendern                                                                                        |
-| D30 | Vorschau-Einbindung      | **iframe + React-Portal** (nicht `srcdoc`): dieselbe Komponente wie im PDF, inkrementell aktualisiert                                                                         |
-| D31 | Seitenränder             | **`@page`-Ränder im Druck**, Padding nur am Bildschirm — Padding wirkt sonst nur auf der ersten Seite                                                                         |
-| D32 | ~~Puppeteer-Paket~~      | ~~`puppeteer-core` mit gefundenem Chromium~~ — überholt durch D34                                                                                                             |
-| D33 | Backup-Format            | **ZIP** statt tar.gz — mit Bordmitteln auf Windows, macOS und iOS zu öffnen (Abschnitt 17)                                                                                    |
-| D34 | PDF-Renderer             | **Electrons `printToPDF`** statt eines ferngesteuerten Browsers — die Anwendung bringt ihr Chromium mit (Abschnitt 13a)                                                       |
-| D35 | asar-Archiv              | **Keins.** Prisma startet und lädt seine Engines über selbst gebildete Pfade, an Electrons asar-Umleitung vorbei (Abschnitt 16a)                                              |
-| D36 | Netzverkehr des Fensters | **Alles außer der Rückschleife wird abgewiesen** — ein `webRequest`-Filter, wie ihn der PDF-Renderer schon hat (Abschnitt 16)                                                 |
-| D37 | Steuerberater-Export     | **Ehrliches Übergabe-ZIP** aus Snapshots, CSV und Originalbelegen; kein vorgeblicher DATEV-Stapel ohne Konten-/Kanzleikonfiguration (Abschnitt 26)                            |
-| D38 | Verkaufskanal            | **Eigene Website zuerst**; Microsoft Store und Mac App Store bleiben optionale spätere Zusatzkanäle                                                                          |
-| D39 | Lizenzmodell             | **Einmalkauf mit dauerhaftem Nutzungsrecht**; zwölf Monate Updates inklusive, danach optional bezahlbare Verlängerung des Updatezeitraums                                    |
-| D40 | Offline-Nutzung          | **Keine dauerhafte Aktivierungspflicht.** Nach einmaliger Aktivierung beziehungsweise Import einer signierten Lizenzdatei funktioniert die berechtigte Version dauerhaft offline |
-| D41 | Anwendungsupdates        | **Eigener, signierter Updatekanal** über eine fest erlaubte HTTPS-Domain; Prüfung im Electron-Hauptprozess, Installation nur nach Zustimmung und lokalem Backup               |
-| D42 | App-Identität            | **Stabil ab öffentlichem Release:** `AgenturTool`, App-ID `de.agenturtool.app`, bestehende Datenpfade und dieselben Herausgeber-/Signaturidentitäten                           |
-| D43 | Externe Verbindungen     | **Nach Zweck getrennt und minimal erlaubt:** Updates, Aktivierung und bewusst ausgelöster E-Mail-Versand; keine Telemetrie und keine Kunden- oder Rechnungsdaten beim Updatecheck |
-| D44 | Preisvalidierung         | **Vor Ausbau des Vertriebs und weiterer großer Module** mit Solo-Agenturen testen; Preis zunächst Hypothese, kein allein aus Entwicklungskosten abgeleiteter Beschluss        |
+| ID  | Thema                    | Gewählt                                                                                                                                                                                                                                |
+| --- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Betriebsmodell           | **Desktop-Anwendung** (Electron; Server im Hauptprozess, Daten in `userData`, Auth-Modul vorhanden aber deaktiviert) — ersetzt das ursprüngliche Docker-Image (Abschnitt 16a)                                                          |
+| D2  | Datenbank                | **SQLite** (portabel gehalten für späteren Postgres-Wechsel)                                                                                                                                                                           |
+| D3  | DB-Zugriff               | **Prisma**                                                                                                                                                                                                                             |
+| D4  | Backend                  | **NestJS**                                                                                                                                                                                                                             |
+| D5  | Rechnungsnummer          | **Erst beim Finalisieren** vergeben                                                                                                                                                                                                    |
+| D6  | Nach Finalisierung       | **Gesperrt + Storno**, plus eng begrenztes „Finalisierung zurücknehmen"                                                                                                                                                                |
+| D7  | Zahlungen                | **Nur `paidAt`** (Teilzahlungen später)                                                                                                                                                                                                |
+| D8  | Historische Daten        | **JSON-Snapshots auf der Rechnung**                                                                                                                                                                                                    |
+| D9  | Entwurfsdaten            | **Kunde kopiert** (editierbar + Refresh), **eigene Firmendaten live** bis zum Finalisieren                                                                                                                                             |
+| D10 | Storno-Nummern           | **Dieselbe Sequenz** wie Rechnungen                                                                                                                                                                                                    |
+| D11 | Rabatt                   | **Je Position**, umschaltbar Prozent ⇄ Betrag; kein Gesamtrabatt                                                                                                                                                                       |
+| D12 | Rundung                  | **Steuer je Steuersatzgruppe** auf Summenebene                                                                                                                                                                                         |
+| D13 | PDF-Ablage               | **Dateisystem** + Metadaten/Hash in der DB                                                                                                                                                                                             |
+| D14 | Vorschau                 | **React-Template im iframe** (eine Implementierung, zwei Konsumenten)                                                                                                                                                                  |
+| D15 | Template-Optionen V1     | **Mittel**: Logo/-größe, Akzentfarbe, Schrift (2–3), Fußzeile, Standardtexte                                                                                                                                                           |
+| D16 | Preiseingabe             | **Nur netto**                                                                                                                                                                                                                          |
+| D17 | Auth in V1               | **Vorhanden, per `AUTH_ENABLED` deaktiviert** (folgt aus D1)                                                                                                                                                                           |
+| D18 | ~~Späterer Zugriff~~     | ~~Tailscale + aktiver Login~~ — gegenstandslos mit D1 (Abschnitt 16)                                                                                                                                                                   |
+| D19 | Backup                   | Button in der App **und** Skript für Cron; Offsite optional                                                                                                                                                                            |
+| D20 | Tooling                  | pnpm, kein Turborepo, Vitest, ESLint + Prettier                                                                                                                                                                                        |
+| D21 | Kalenderdaten            | **ISO-String `"YYYY-MM-DD"`**; echte Zeitstempel bleiben `DateTime`                                                                                                                                                                    |
+| D22 | Kundennummer             | **Freies Feld, optional, eindeutig wenn gesetzt**                                                                                                                                                                                      |
+| D23 | Primärschlüssel          | `Int @id @default(autoincrement())`                                                                                                                                                                                                    |
+| D24 | Build der Pakete         | `tsup` → ESM + CJS + `.d.ts` (NestJS läuft CJS, Vite ESM)                                                                                                                                                                              |
+| D29 | Schrift im Dokument      | **Open Sans, als Base64 im Paket eingebettet** — kein Netzwerkzugriff beim PDF-Rendern                                                                                                                                                 |
+| D30 | Vorschau-Einbindung      | **iframe + React-Portal** (nicht `srcdoc`): dieselbe Komponente wie im PDF, inkrementell aktualisiert                                                                                                                                  |
+| D31 | Seitenränder             | **`@page`-Ränder im Druck**, Padding nur am Bildschirm — Padding wirkt sonst nur auf der ersten Seite                                                                                                                                  |
+| D32 | ~~Puppeteer-Paket~~      | ~~`puppeteer-core` mit gefundenem Chromium~~ — überholt durch D34                                                                                                                                                                      |
+| D33 | Backup-Format            | **ZIP** statt tar.gz — mit Bordmitteln auf Windows, macOS und iOS zu öffnen (Abschnitt 17)                                                                                                                                             |
+| D34 | PDF-Renderer             | **Electrons `printToPDF`** statt eines ferngesteuerten Browsers — die Anwendung bringt ihr Chromium mit (Abschnitt 13a)                                                                                                                |
+| D35 | asar-Archiv              | **Keins.** Prisma startet und lädt seine Engines über selbst gebildete Pfade, an Electrons asar-Umleitung vorbei (Abschnitt 16a)                                                                                                       |
+| D36 | Netzverkehr des Fensters | **Alles außer der Rückschleife wird abgewiesen** — ein `webRequest`-Filter, wie ihn der PDF-Renderer schon hat (Abschnitt 16)                                                                                                          |
+| D37 | Steuerberater-Export     | **Ehrliches Übergabe-ZIP** aus Snapshots, CSV und Originalbelegen; kein vorgeblicher DATEV-Stapel ohne Konten-/Kanzleikonfiguration (Abschnitt 26)                                                                                     |
+| D38 | Verkaufskanal            | **Eigene Website zuerst**; Microsoft Store und Mac App Store bleiben optionale spätere Zusatzkanäle                                                                                                                                    |
+| D39 | Lizenzmodell             | **Einmalkauf mit dauerhaftem Nutzungsrecht**; zwölf Monate Updates inklusive, danach optional bezahlbare Verlängerung des Updatezeitraums                                                                                              |
+| D40 | Offline-Nutzung          | **Keine dauerhafte Aktivierungspflicht.** Nach einmaliger Aktivierung beziehungsweise Import einer signierten Lizenzdatei funktioniert die berechtigte Version dauerhaft offline                                                       |
+| D41 | Anwendungsupdates        | **Eigener, signierter Updatekanal** über eine fest erlaubte HTTPS-Domain; Prüfung im Electron-Hauptprozess, Installation nur nach Zustimmung und lokalem Backup                                                                        |
+| D42 | App-Identität            | **Stabil ab öffentlichem Release:** `AgenturTool`, App-ID `de.agenturtool.app`, bestehende Datenpfade und dieselben Herausgeber-/Signaturidentitäten                                                                                   |
+| D43 | Externe Verbindungen     | **Nach Zweck getrennt und minimal erlaubt:** Updates, Aktivierung und bewusst ausgelöster E-Mail-Versand; keine Telemetrie und keine Kunden- oder Rechnungsdaten beim Updatecheck                                                      |
+| D44 | Preisvalidierung         | **Vor Ausbau des Vertriebs und weiterer großer Module** mit Solo-Agenturen testen; Preis zunächst Hypothese, kein allein aus Entwicklungskosten abgeleiteter Beschluss                                                                 |
+| D45 | E-Mail-Versandwege       | **Zwei Wege mit verschiedenen Zusagen:** SMTP verschickt selbst und setzt den Versandvermerk; die lokale Mail-Anwendung bekommt nur einen Entwurf, und der Vermerk bleibt beim Benutzer. Vorbelegung ist „kein Versand" (Abschnitt 27) |
+| D46 | SMTP-Passwort            | **Verschlüsselt in der Datenbank, Schlüssel außerhalb:** Schlüsselbund des Betriebssystems, ersatzweise eine Schlüsseldatei unter DATA_DIR. Beide liegen nicht im Backup — ein anderswo eingespieltes Backup verlangt eine Neueingabe  |
+| D47 | E-Mail-Vorlagen          | **Drei feste Vorlagen mit Platzhaltern**, bearbeitbar und zurücksetzbar; das Einsetzen liegt in `shared` und läuft für Vorschau und Versand durch dieselbe Funktion                                                                    |
 
 Zu D21: Rechnungs-, Leistungs- und Fälligkeitsdatum sind Kalendertage, keine
 Zeitpunkte. Als `DateTime` müsste an jeder Grenze zwischen Browser, API und
@@ -578,10 +581,43 @@ Zwei Festlegungen, die dabei anfielen:
   Originalrechnung und stellt sie neu aus. `isCancellable()` im geteilten
   Paket ist die eine Stelle, an der diese Frage beantwortet wird.
 
-**Duplizieren** kopiert Empfänger, Positionen und Texte, nicht aber Nummer,
-Snapshots, Zahlungs- und Versandvermerke oder die interne Notiz — die gehören
-zu einem abgeschlossenen Vorgang. Die Daten werden neu gesetzt: Ein Duplikat
-ist eine Rechnung von heute, kein Abzug von damals.
+**„Neue Rechnung auf Basis dieser Rechnung"** (in der Oberfläche früher
+„Duplizieren") kopiert Positionen und Texte, nicht aber Nummer, Snapshots,
+Zahlungs- und Versandvermerke oder die interne Notiz — die gehören zu einem
+abgeschlossenen Vorgang. Die Daten werden neu gesetzt: Ein Duplikat ist eine
+Rechnung von heute, kein Abzug von damals.
+
+Bei den Empfängerdaten stehen sich zwei berechtigte Erwartungen gegenüber,
+und das ist der eigentliche Entwurfspunkt dieser Funktion:
+
+- **Wiederkehrende Leistung.** Dieselben Positionen, aber der Kunde ist
+  umgezogen oder hat inzwischen eine USt-IdNr. Die alten Empfängerdaten sind
+  hier schlicht falsch.
+- **Korrektur nach einem Storno.** Dasselbe Dokument noch einmal — womöglich
+  mit einer bewusst abweichenden Rechnungsanschrift, die in den Stammdaten
+  gar nicht vorkommt. Hier wären die aktuellen Stammdaten falsch.
+
+Deshalb entscheidet der Benutzer, aber erst, nachdem er gesehen hat, worum es
+geht: `GET /invoices/:id/rebill-preview` liefert die Gegenüberstellung —
+was übernommen wird, was neu gesetzt wird und welche Kundenangaben sich
+geändert haben —, und ein Dialog zeigt sie vor dem Anlegen. Ein Häkchen
+„Aktuelle Kundenvorgaben übernehmen" ist vorbelegt; abgewählt entsteht genau
+das frühere Verhalten.
+
+Zwei Festlegungen dabei:
+
+- **Vorschau und Anlegen teilen sich eine Auflösung** (`planRebill` im
+  Service). Eine zweite Berechnung für die Anzeige könnte eine Anschrift
+  versprechen, die anschließend nicht auf der Rechnung steht — und ein
+  Dialog, der etwas anderes ankündigt als das, was geschieht, ist schlimmer
+  als gar keiner.
+- **Das Steuerprofil folgt der Kundenvorgabe nur, wenn es eine gibt und sie
+  nicht archiviert ist.** Sonst bleibt das Profil der alten Rechnung stehen;
+  es war eine bewusste Wahl für diesen Kunden. Ein stiller Rückfall auf das
+  Standardprofil machte aus einer Reverse-Charge-Rechnung eine mit
+  ausgewiesener Steuer — der teuerste denkbare Fehler an dieser Stelle.
+  Deshalb nennt der Dialog einen Profilwechsel gesondert und hervorgehoben,
+  nicht als eine Zeile unter den Adressfeldern.
 
 ### „Finalisierung zurücknehmen" (eng begrenztes Undo)
 
@@ -1208,6 +1244,12 @@ Grundsätze unabhängig vom Betriebsmodell:
   den Hostnamen und nicht über den Anfang der Zeichenkette; sonst käme
   `http://127.0.0.1.angreifer.example/` durch. Alles Abgewiesene steht im
   Protokoll, und die Rauchprobe verlangt, dass die Liste leer bleibt.
+- **Die eine Ausnahme liegt woanders:** Der E-Mail-Versand (Abschnitt 27)
+  baut eine Verbindung nach draußen auf — aber nicht aus dem Fenster heraus,
+  sondern aus dem Serverprozess, und nur, wenn jemand einen Versandweg
+  eingerichtet und auf „Senden" geklickt hat. Der Filter oben bleibt davon
+  unberührt und soll es bleiben: Was ein Dokument oder eine Seite von sich
+  aus lädt, geht niemanden etwas an.
 
 ### Zugriffsmodell: der eigene Rechner (D18, überarbeitet)
 
@@ -1568,18 +1610,18 @@ Kein flächendeckendes UI-Testing im MVP.
 
 ## 21. Abgrenzung MVP ↔ später
 
-| Bereich          | V1                                 | Später                                              |
-| ---------------- | ---------------------------------- | --------------------------------------------------- |
-| Dokumenttypen    | Rechnung, Storno                   | Angebot, Auftragsbestätigung, Mahnung, Gutschrift   |
-| Templates        | 1 Template + Optionen              | mehrere Templates, mehr Optionen                    |
-| Versand          | PDF-Download                       | E-Mail-Versand, Anhänge, Versandprotokoll           |
-| Zahlungen        | bezahlt am / offen                 | Teilzahlungen, Zahlungserinnerungen, Mahnstufen     |
-| Positionen       | frei erfasst                       | Produkt-/Leistungskatalog, Import aus Zeiterfassung |
-| Wiederholung     | Duplizieren                        | echte wiederkehrende Rechnungen mit Zeitplan        |
-| Export           | Backup-Archiv, Steuerberater-Paket | DATEV-Buchungsstapel nach Kanzleikonfiguration      |
-| Mandanten/Nutzer | einer                              | mehrere Unternehmen, mehrere Benutzer, Rollen       |
-| Auswertung       | Dashboard mit letzten Rechnungen   | Umsatzübersichten, Statistiken, offene Posten       |
-| E-Rechnung       | nur PDF                            | ZUGFeRD / XRechnung (siehe unten)                   |
+| Bereich          | V1                                 | Später                                                       |
+| ---------------- | ---------------------------------- | ------------------------------------------------------------ |
+| Dokumenttypen    | Rechnung, Storno                   | Angebot, Auftragsbestätigung, Mahnung, Gutschrift            |
+| Templates        | 1 Template + Optionen              | mehrere Templates, mehr Optionen                             |
+| Versand          | PDF-Download                       | ~~E-Mail-Versand, Anhänge, Versandprotokoll~~ (Abschnitt 27) |
+| Zahlungen        | bezahlt am / offen                 | Teilzahlungen, Zahlungserinnerungen, Mahnstufen              |
+| Positionen       | frei erfasst                       | Produkt-/Leistungskatalog, Import aus Zeiterfassung          |
+| Wiederholung     | Duplizieren                        | echte wiederkehrende Rechnungen mit Zeitplan                 |
+| Export           | Backup-Archiv, Steuerberater-Paket | DATEV-Buchungsstapel nach Kanzleikonfiguration               |
+| Mandanten/Nutzer | einer                              | mehrere Unternehmen, mehrere Benutzer, Rollen                |
+| Auswertung       | Dashboard mit letzten Rechnungen   | Umsatzübersichten, Statistiken, offene Posten                |
+| E-Rechnung       | nur PDF                            | ZUGFeRD / XRechnung (siehe unten)                            |
 
 **Hinweis E-Rechnung (strategisch relevant):** In Deutschland läuft die
 Umstellung auf strukturierte E-Rechnungen im B2B-Bereich stufenweise; die
@@ -1722,8 +1764,11 @@ Nicht gebaut, in dieser Reihenfolge sinnvoll:
 - **Eingehende E-Rechnungen lesen** ist ein eigenes Feature mit eigener
   Oberfläche.
 - **Peppol-Versand** wird **nicht** gebaut. Er bräuchte einen akkreditierten
-  Access Point und widerspräche der Zusicherung aus Abschnitt 16, dass die
-  Anwendung nicht nach außen spricht. Die Datei geht per E-Mail; das genügt.
+  Access Point, also eine dauerhafte Anbindung an einen fremden Dienst. Der
+  E-Mail-Versand (Abschnitt 27) ist die Gegenprobe dazu und zeigt, wo die
+  Grenze liegt: eine Verbindung, die der Benutzer einrichtet, die auf
+  Knopfdruck entsteht und die ohne Einrichtung gar nicht existiert. Die Datei
+  geht per E-Mail; das genügt.
 
 ### Entscheidungen
 
@@ -1855,6 +1900,134 @@ abgestimmten Kontierungskonfiguration.
 
 ---
 
+## 27. E-Mail-Versand
+
+Rechnungen, Stornos und Zeitnachweise gehen aus der Anwendung heraus, ohne
+dass jemand vorher Dateien in ein Mailprogramm zieht. Der Versand ist eine
+Handlung auf dem Bestand und keine Eigenschaft davon: `MailModule` liest
+Rechnungen, Kunden, Zeiten und Dokumente, aber keines dieser Module weiß von
+ihm. Eine Rechnung, die ihren eigenen Versand kennte, hätte einen Grund, ins
+Netz zu greifen.
+
+### Zwei Wege, zwei Zusagen (D45)
+
+| Weg                | Was passiert                                                      | Was die Anwendung danach weiß      |
+| ------------------ | ----------------------------------------------------------------- | ---------------------------------- |
+| **SMTP**           | Die Anwendung verbindet sich und übergibt die Nachricht           | Der Server hat sie angenommen      |
+| **Mail-Anwendung** | `mailto` öffnet einen Entwurf, die Anhänge landen in einem Ordner | Ein Entwurf ist offen. Mehr nicht. |
+| **Kein Versand**   | Vorbelegung; es gibt keinen Knopf, der nach außen führt           | —                                  |
+
+Der Unterschied ist nicht kosmetisch, denn an ihm hängt `sentAt` und damit der
+Lauf des Zahlungsziels. Über SMTP setzt die Anwendung den Versandvermerk
+selbst; über die Mail-Anwendung setzt sie ihn **nicht** und bietet stattdessen
+den Knopf dafür an. `mailto` kann keine Dateien tragen — eine Grenze des
+Formats, nicht der Umsetzung —, also schreibt die Anwendung die Anhänge in
+einen Ordner unter `data/mail-anhaenge/` und öffnet ihn; angehängt werden sie
+von Hand. Der bequeme Weg wäre gewesen, den Vorgang trotzdem als „versendet"
+zu verbuchen. Das wäre eine Behauptung über etwas, das in einem fremden
+Programm geschieht.
+
+Der Ordner ist bewusst **nicht** Teil des Backups: Er enthält Kopien von
+Dokumenten, die längst abgelegt und gesichert sind. Was älter als sieben Tage
+ist, räumt der nächste Versand weg.
+
+Beide Wege brauchen ein Fenster auf diesem Rechner, deshalb reicht die
+Desktop-Anwendung die Umsetzung über `HostOptions` herein — dieselbe Brücke
+wie beim PDF-Renderer (Abschnitt 13a). Im Browserbetrieb sagt der Versandweg
+„Mail-Anwendung" das, statt ins Leere zu laufen.
+
+### Das SMTP-Passwort (D46)
+
+Verschlüsselt in der Datenbank, Schlüssel außerhalb davon:
+
+1. **Schlüsselbund des Betriebssystems**, über Electrons `safeStorage` —
+   Keychain auf macOS, DPAPI auf Windows.
+2. **Schlüsseldatei** `data/mail.key` mit Rechten `0600`, wenn es keinen
+   Schlüsselbund gibt: Entwicklung, Tests, Linux ohne Dienst.
+
+Das schützt nicht gegen jemanden, der ohnehin an diesem Rechner arbeitet —
+diese Behauptung wäre falsch. Es schützt gegen den Weg, auf dem ein Passwort
+am ehesten verloren geht: eine Sicherung, die anderswohin wandert. Das Backup
+enthält die Datenbank, aber weder Schlüsselbund noch Schlüsseldatei. Wer es
+auf einem anderen Rechner einspielt, findet den Wert unlesbar vor — und die
+Einstellungen sagen genau das („bitte einmal neu eingeben"), statt den ersten
+Versand daran scheitern zu lassen. Dem gespeicherten Wert ist seine Herkunft
+vorangestellt (`os:` oder `file:`), damit diese Unterscheidung nicht als
+unverständlicher Entschlüsselungsfehler endet.
+
+Herausgegeben wird das Passwort nie, auch nicht an die eigene Oberfläche. Die
+Antwort trägt stattdessen zwei Wahrheitswerte: ob eines hinterlegt ist und ob
+es hier lesbar ist. Beim Speichern heißt ein fehlendes Feld „unverändert", ein
+leeres „löschen" — sonst müsste die Maske bei jeder Änderung am Absendernamen
+das Passwort erneut abfragen.
+
+### Vorlagen und Platzhalter (D47)
+
+Drei Vorlagen — Rechnung, Storno, Zeitnachweis —, angelegt beim Seed,
+bearbeitbar und jederzeit auf den Auslieferungstext zurücksetzbar. Keine frei
+anlegbare Vorlagenverwaltung: Es gibt drei Dinge, die dieses Programm
+verschickt, und eine vierte Vorlage hätte keinen Anlass.
+
+Die Platzhalter stehen deutsch in geschweiften Klammern
+(`{{rechnungsnummer}}`), weil sie jemand liest, der kein Programmierer ist.
+Das Einsetzen liegt in `packages/shared/src/mail.ts` und hat zwei Aufrufer:
+die Vorschau in der Einstellungsmaske mit Beispielwerten und den Server mit
+den eingefrorenen Werten der Rechnung. Dasselbe Prinzip wie beim
+Rechnungstemplate (D14) — zwei Umsetzungen liefen auseinander, und der
+Unterschied fiele erst im Postfach des Kunden auf.
+
+Ein **unbekannter Platzhalter bleibt stehen**, statt zu verschwinden. Eine
+Leerstelle sähe aus wie ein fertiger Satz; `{{rechnugsnummer}}` mitten im Text
+fällt auf — in der Vorlagenmaske, die ihn benennt, und spätestens im
+Versanddialog. `{{anrede}}` ist der einzige Platzhalter, der etwas entscheidet:
+Mit hinterlegtem Ansprechpartner wird er angesprochen, sonst bleibt es bei der
+förmlichen Wendung.
+
+### Entwurf und Versand
+
+`GET /mail/draft/invoice/:id` beziehungsweise `GET /mail/draft/time-report`
+stellen den Entwurf zusammen: Empfänger aus den eingefrorenen Empfängerdaten,
+Betreff und Text aus der Vorlage, dazu die Liste der möglichen Anhänge.
+**Erzeugt wird dabei nichts** — ein geöffneter Dialog soll kein PDF drucken.
+Die Bytes entstehen erst bei `POST /mail/send`, und zwar für genau die
+Anhänge, die dann noch angehakt sind.
+
+Was nicht geht, verschwindet nicht aus der Liste, sondern steht mit dem Grund
+daneben: „Der E-Rechnung fehlen Angaben: …", „Im Leistungszeitraum sind für
+diesen Kunden keine Zeiten erfasst." Eine fehlende Auswahl wirft sonst die
+Frage auf, ob man sie übersehen hat. PDF und XML sind vorausgewählt, der
+Zeitnachweis nicht — er ist ein Beleg, den längst nicht jede Rechnung braucht.
+
+Die Reihenfolge beim Versand ist die eigentliche Zusage dieses Teils:
+
+1. Anhänge erzeugen — was hier scheitert, ist nicht verschickt worden.
+2. Verschicken beziehungsweise übergeben.
+3. **Protokollieren, auch wenn es fehlschlug.** Ein gescheiterter Versand, von
+   dem nichts übrig bleibt, ist genau der Fall, in dem man später nicht mehr
+   weiß, ob die Rechnung nun draußen ist.
+4. Erst danach der Versandvermerk — und nur auf dem Weg, der ihn verdient.
+
+Ein bestehender Versandvermerk wird dabei **nicht** überschrieben: Eine zweite
+Sendung ist der Normalfall bei einer Nachfrage, und von der ersten aus zählt
+das Zahlungsziel.
+
+### Protokoll
+
+`MailMessage` hält jede Nachricht fest: Weg, Ergebnis, Empfänger, Betreff,
+Text, Anhänge mit Größe und im Fehlerfall die Meldung des Servers. Eine eigene
+Tabelle und nicht bloß ein `InvoiceEvent`, weil nicht jede Nachricht zu einer
+Rechnung gehört — ein Zeitnachweis geht auch ohne sie raus. Gehört sie zu
+einer, entsteht zusätzlich ein Verlaufseintrag `MAIL_SENT` oder
+`MAIL_PREPARED` mit der Kurzfassung. Ein **fehlgeschlagener** Versuch steht im
+Protokoll, aber nicht im Verlauf der Rechnung: Dort steht, was mit dem
+Dokument geschehen ist, und geschehen ist nichts.
+
+Die beiden Ereignisarten stehen nebeneinander, weil sie Verschiedenes
+behaupten. Sie unter `SENT_MARKED` zu führen hieße, den Unterschied zu
+verlieren, auf den es beim Nachweis ankommt.
+
+---
+
 ## Stand
 
 Die Reihenfolge aus Abschnitt 20 ist abgearbeitet: Schritte 0 bis 14 sind
@@ -1868,7 +2041,10 @@ dem Thema, zu dem es gehört.
 Danach kam die E-Rechnung dazu: XRechnung als eigenständige XML-Datei,
 eingefroren wie das PDF und mit dem offiziellen KoSIT-Validator geprüft
 (Abschnitt 24). Für die Übergabe an die Kanzlei gibt es nun das geprüfte ZIP
-aus CSV, PDFs und vorhandenen XMLs (Abschnitt 26).
+aus CSV, PDFs und vorhandenen XMLs (Abschnitt 26). Zuletzt verlassen die
+Dokumente das Haus auch selbst: per SMTP oder über die Mail-Anwendung des
+Rechners, mit Vorlagen und einem Protokoll, das auch den gescheiterten
+Versuch festhält (Abschnitt 27).
 
 Was bewusst offen bleibt, steht in Abschnitt 21 — unter anderem Mahnwesen,
 wiederkehrende Rechnungen, ZUGFeRD, das Lesen eingehender E-Rechnungen,

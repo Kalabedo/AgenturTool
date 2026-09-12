@@ -15,6 +15,8 @@ import { Button } from '../../components/ui/Button.js';
 import { Card } from '../../components/ui/Card.js';
 import { Field } from '../../components/ui/Field.js';
 import { Input } from '../../components/ui/Input.js';
+import { SendMailDialog } from '../mail/SendMailDialog.js';
+import { RebillDialog } from './RebillDialog.js';
 
 /**
  * Was mit einer ausgestellten Rechnung noch geschieht: bezahlt, versendet,
@@ -28,6 +30,8 @@ export function InvoiceLifecycleCard({ invoice }: { invoice: InvoiceResponse }):
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [paidAt, setPaidAt] = useState(invoice.paidAt ?? '');
+  const [rebillOpen, setRebillOpen] = useState(false);
+  const [mailOpen, setMailOpen] = useState(false);
 
   const applyUpdate = async (updated: InvoiceResponse): Promise<void> => {
     queryClient.setQueryData(queryKeys.invoices.byId(invoice.id), updated);
@@ -46,14 +50,6 @@ export function InvoiceLifecycleCard({ invoice }: { invoice: InvoiceResponse }):
     onSuccess: applyUpdate,
   });
 
-  const duplicate = useMutation({
-    mutationFn: () => apiClient.post<InvoiceResponse>(`/invoices/${invoice.id}/duplicate`, {}),
-    onSuccess: async (created) => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.invoices.all });
-      navigate(`/invoices/${created.id}`);
-    },
-  });
-
   const cancel = useMutation({
     mutationFn: () => apiClient.post<InvoiceResponse>(`/invoices/${invoice.id}/cancel`, {}),
     onSuccess: async (cancellation) => {
@@ -63,7 +59,7 @@ export function InvoiceLifecycleCard({ invoice }: { invoice: InvoiceResponse }):
     },
   });
 
-  const error = [payment.error, sent.error, duplicate.error, cancel.error].find(
+  const error = [payment.error, sent.error, cancel.error].find(
     (candidate): candidate is ApiRequestError => candidate instanceof ApiRequestError,
   );
 
@@ -125,6 +121,11 @@ export function InvoiceLifecycleCard({ invoice }: { invoice: InvoiceResponse }):
         )}
 
         <div className="flex flex-wrap items-center gap-3">
+          {/* Der Versand steht vor dem Vermerk: Der übliche Weg ist, die
+              Rechnung von hier aus zu verschicken — das Häkchen daneben ist
+              für die Rechnung, die per Post ging. */}
+          <Button onClick={() => setMailOpen(true)}>Per E-Mail senden</Button>
+
           {invoice.sentAt === null ? (
             <Button variant="secondary" disabled={sent.isPending} onClick={() => sent.mutate(null)}>
               Als versendet markieren
@@ -147,12 +148,8 @@ export function InvoiceLifecycleCard({ invoice }: { invoice: InvoiceResponse }):
 
         <div className="flex flex-wrap items-center gap-3 border-t border-slate-200 pt-4">
           {!isCancellation && (
-            <Button
-              variant="secondary"
-              disabled={duplicate.isPending}
-              onClick={() => duplicate.mutate()}
-            >
-              Duplizieren
+            <Button variant="secondary" onClick={() => setRebillOpen(true)}>
+              Neue Rechnung auf Basis dieser Rechnung
             </Button>
           )}
           {isCancellable(invoice) && (
@@ -182,6 +179,27 @@ export function InvoiceLifecycleCard({ invoice }: { invoice: InvoiceResponse }):
           </p>
         )}
       </div>
+
+      {/* Erst beim Öffnen eingehängt, damit der Dialog jedes Mal mit der
+          vorbelegten Auswahl beginnt statt mit der vom letzten Mal. */}
+      {mailOpen && (
+        <SendMailDialog
+          source={{ kind: 'INVOICE', invoiceId: invoice.id }}
+          title={`${invoiceDisplayName(invoice)} per E-Mail senden`}
+          description="Betreff und Text kommen aus der Vorlage und lassen sich hier ändern."
+          open
+          onClose={() => setMailOpen(false)}
+        />
+      )}
+
+      {rebillOpen && (
+        <RebillDialog
+          invoiceId={invoice.id}
+          invoiceName={invoiceDisplayName(invoice)}
+          open
+          onClose={() => setRebillOpen(false)}
+        />
+      )}
     </Card>
   );
 }

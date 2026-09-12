@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, type Invoice, type InvoiceItem } from '@prisma/client';
+import { Prisma, type Customer, type Invoice, type InvoiceItem } from '@prisma/client';
 import {
   DOCUMENT_TYPE,
   INVOICE_EVENT_TYPE,
   INVOICE_STATUS,
+  REBILL_CUSTOMER_STATE,
   paginate,
   todayIso,
   unfinalizeBlocker,
@@ -11,6 +12,7 @@ import {
   calculateInvoice,
   customerToBuyerData,
   defaultInvoiceDates,
+  diffBuyerData,
   emptyBuyerData,
   isEditable,
   resolvePaymentTermDays,
@@ -19,6 +21,7 @@ import {
   type DiscountType,
   type UnitCode,
   type DocumentType,
+  type InvoiceDateDefaults,
   type InvoiceDraftPayload,
   type InvoiceListQuery,
   type InvoiceListResponse,
@@ -26,6 +29,9 @@ import {
   type InvoiceSentPayload,
   type InvoiceResponse,
   type InvoiceStatus,
+  type RebillCustomerState,
+  type RebillPayload,
+  type RebillPreviewResponse,
   type TotalsSnapshot,
 } from '@agentur-tool/shared';
 import { ApiError } from '../common/api-error';
@@ -54,6 +60,28 @@ const WITH_ITEMS = {
     cancelledByInvoice: { select: { id: true } },
   },
 } as const;
+
+/**
+ * Beide Stände nebeneinander, bevor einer gewählt ist.
+ *
+ * Grundlage von Vorschau und Anlegen (`planRebill`). Dass hier `source…`
+ * und `current…` als Paar stehen, ist der Zweck: Die Vorschau zeigt den
+ * Unterschied, das Anlegen nimmt eine Seite davon.
+ */
+interface RebillPlan {
+  source: InvoiceWithItems;
+  /** „2026-014" oder „Entwurf #3" — für Verlaufseintrag und Dialog. */
+  sourceName: string;
+  customer: Customer | null;
+  customerState: RebillCustomerState;
+  sourceBuyerData: BuyerData;
+  currentBuyerData: BuyerData;
+  currentTaxProfileId: number | null;
+  taxProfileChange: { from: string; to: string } | null;
+  paymentTermDays: number;
+  paymentTermFromCustomer: boolean;
+  dates: InvoiceDateDefaults;
+}
 
 @Injectable()
 export class InvoicesService {
@@ -396,47 +424,44 @@ export class InvoicesService {
    * Legt einen neuen Entwurf mit den Inhalten dieser Rechnung an.
    *
    * Der Weg für wiederkehrende Leistungen und für die Korrektur nach einem
-   * Storno. Kopiert werden Empfänger, Positionen und Texte; **nicht**
-   * kopiert werden Nummer, Snapshots, Zahlungs- und Versandvermerke sowie
-   * die interne Notiz — sie gehören zu dem Vorgang, der abgeschlossen ist.
-   * Die Daten werden neu gesetzt: Ein Duplikat ist eine Rechnung von heute.
+   * Storno. Kopiert werden Positionen und Texte; **nicht** kopiert werden
+   * Nummer, Snapshots, Zahlungs- und Versandvermerke sowie die interne
+   * Notiz — sie gehören zu dem Vorgang, der abgeschlossen ist. Die Daten
+   * werden neu gesetzt: Ein Duplikat ist eine Rechnung von heute.
+   *
+   * Was mit den Empfängerdaten geschieht, entscheidet
+   * `refreshCustomerDefaults`, und zwar aus dem Grund, der in
+   * `packages/shared/src/rebill.ts` steht: Die beiden Anlässe für diesen
+   * Vorgang widersprechen sich, und keiner von beiden ist der seltenere.
    */
-  async duplicate(id: number): Promise<InvoiceResponse> {
-    const source = await this.load(id);
+  async duplicate(
+    id: number,
+    // Derselbe Standard wie im Schema und in der Oberfläche: Wer nichts sagt,
+    // bekommt die aktuellen Kundenvorgaben. Ihn hier zu wiederholen statt das
+    // Argument zu erzwingen hält die Vorbelegung an einer Stelle lesbar —
+    // abweichen kann nur, wer es ausdrücklich tut.
+    payload: RebillPayload = { refreshCustomerDefaults: true },
+  ): Promise<InvoiceResponse> {
+    const plan = await this.planRebill(id);
+    const useCurrent = payload.refreshCustomerDefaults;
 
-    if (source.documentType === DOCUMENT_TYPE.CANCELLATION) {
-      throw ApiError.validation(
-        'Ein Storno lässt sich nicht duplizieren. Für eine Neuausstellung wird die ursprüngliche Rechnung dupliziert.',
-      );
-    }
-
-    const company = await this.company.get();
-    const customer =
-      source.customerId === null
-        ? null
-        : await this.prisma.customer.findUnique({ where: { id: source.customerId } });
-
-    const dates = defaultInvoiceDates(
-      resolvePaymentTermDays(
-        customer?.defaultPaymentTermDays ?? null,
-        company.defaultPaymentTermDays,
-      ),
-    );
+    const buyerData = useCurrent ? plan.currentBuyerData : plan.sourceBuyerData;
+    const taxProfileId = useCurrent ? plan.currentTaxProfileId : plan.source.taxProfileId;
 
     const invoice = await this.prisma.$transaction(async (tx) => {
       const created = await tx.invoice.create({
         data: {
-          customerId: source.customerId,
-          taxProfileId: source.taxProfileId,
-          currency: source.currency,
-          buyerData: source.buyerData,
-          invoiceDate: dates.invoiceDate,
-          serviceDate: dates.serviceDate,
-          dueDate: dates.dueDate,
-          notes: source.notes,
-          footerNote: source.footerNote,
+          customerId: plan.source.customerId,
+          taxProfileId,
+          currency: plan.source.currency,
+          buyerData: JSON.stringify(buyerData),
+          invoiceDate: plan.dates.invoiceDate,
+          serviceDate: plan.dates.serviceDate,
+          dueDate: plan.dates.dueDate,
+          notes: plan.source.notes,
+          footerNote: plan.source.footerNote,
           items: {
-            create: source.items.map((item) => ({
+            create: plan.source.items.map((item) => ({
               position: item.position,
               description: item.description,
               quantity: item.quantity,
@@ -459,7 +484,9 @@ export class InvoicesService {
           invoiceId: created.id,
           type: INVOICE_EVENT_TYPE.CREATED,
           metadata: JSON.stringify({
-            note: `Dupliziert aus ${source.number ?? `Entwurf #${source.id}`}`,
+            note:
+              `Auf Basis von ${plan.sourceName} angelegt` +
+              (useCurrent ? ', mit den aktuellen Kundenvorgaben' : ', mit den Angaben von damals'),
           }),
         },
       });
@@ -468,6 +495,156 @@ export class InvoicesService {
     });
 
     return this.respond(invoice);
+  }
+
+  /**
+   * Was beim Anlegen geschähe — ohne es zu tun.
+   *
+   * Damit im Dialog nichts anderes stehen kann als das, was gleich
+   * passiert, benutzen Vorschau und Anlegen dieselbe Auflösung
+   * (`planRebill`). Eine zweite Formulierung derselben Regeln wäre genau
+   * der Fall, in dem die Vorschau eine Adresse verspricht, die dann nicht
+   * auf der Rechnung steht.
+   */
+  async rebillPreview(id: number): Promise<RebillPreviewResponse> {
+    const plan = await this.planRebill(id);
+
+    const calculation = calculateInvoice(
+      plan.source.items.map((item) => ({
+        quantity: item.quantity,
+        unitPriceCents: item.unitPriceCents,
+        discountType: item.discountType as DiscountType,
+        discountValue: item.discountValue,
+        taxRateBasisPoints: item.taxRateBasisPoints,
+      })),
+    );
+
+    return {
+      sourceName: plan.sourceName,
+
+      itemCount: plan.source.items.length,
+      netCents: calculation.netCents,
+      grossCents: calculation.grossCents,
+      carriesNotes: (plan.source.notes ?? '').trim() !== '',
+      carriesFooterNote: (plan.source.footerNote ?? '').trim() !== '',
+
+      invoiceDate: plan.dates.invoiceDate,
+      serviceDate: plan.dates.serviceDate,
+      dueDate: plan.dates.dueDate,
+      paymentTermDays: plan.paymentTermDays,
+      paymentTermFromCustomer: plan.paymentTermFromCustomer,
+
+      customerState: plan.customerState,
+      customerName: plan.customer?.companyName ?? null,
+      customerArchived: plan.customer?.archivedAt != null,
+      buyerChanges: diffBuyerData(plan.sourceBuyerData, plan.currentBuyerData),
+      taxProfileChange: plan.taxProfileChange,
+    };
+  }
+
+  /**
+   * Die gemeinsame Auflösung hinter Vorschau und Anlegen.
+   *
+   * Liefert beide Stände nebeneinander — den von damals und den von heute —
+   * statt schon einen davon auszuwählen. Die Wahl trifft der Aufrufer, und
+   * die Vorschau kann beide zeigen.
+   */
+  private async planRebill(id: number): Promise<RebillPlan> {
+    const source = await this.load(id);
+
+    if (source.documentType === DOCUMENT_TYPE.CANCELLATION) {
+      throw ApiError.validation(
+        'Auf ein Storno lässt sich keine neue Rechnung stützen. Grundlage ist die ursprüngliche Rechnung.',
+      );
+    }
+
+    const company = await this.company.get();
+    const customer =
+      source.customerId === null
+        ? null
+        : await this.prisma.customer.findUnique({ where: { id: source.customerId } });
+
+    const customerState =
+      source.customerId === null
+        ? REBILL_CUSTOMER_STATE.NONE
+        : customer === null
+          ? REBILL_CUSTOMER_STATE.MISSING
+          : REBILL_CUSTOMER_STATE.AVAILABLE;
+
+    const sourceBuyerData = this.parseBuyerData(source);
+
+    // Ohne Kunden gibt es nichts nachzuziehen; dann ist der aktuelle Stand
+    // der alte, und die Gegenüberstellung bleibt leer statt zwölf Zeilen
+    // „wird gelöscht" zu behaupten.
+    const currentBuyerData =
+      customer === null
+        ? sourceBuyerData
+        : customerToBuyerData({
+            ...customer,
+            archivedAt: customer.archivedAt?.toISOString() ?? null,
+            invoiceCount: 0,
+            createdAt: customer.createdAt.toISOString(),
+            updatedAt: customer.updatedAt.toISOString(),
+          });
+
+    const { taxProfileId: currentTaxProfileId, change: taxProfileChange } =
+      await this.resolveRebillTaxProfile(
+        source.taxProfileId,
+        customer?.defaultTaxProfileId ?? null,
+      );
+
+    const paymentTermDays = resolvePaymentTermDays(
+      customer?.defaultPaymentTermDays ?? null,
+      company.defaultPaymentTermDays,
+    );
+
+    return {
+      source,
+      sourceName: source.number ?? `Entwurf #${source.id}`,
+      customer,
+      customerState,
+      sourceBuyerData,
+      currentBuyerData,
+      currentTaxProfileId,
+      taxProfileChange,
+      paymentTermDays,
+      paymentTermFromCustomer: customer?.defaultPaymentTermDays != null,
+      dates: defaultInvoiceDates(paymentTermDays),
+    };
+  }
+
+  /**
+   * Welches Steuerprofil die neue Rechnung bekäme.
+   *
+   * Zwei Fälle bleiben bewusst beim alten Profil, statt auf das
+   * Standardprofil zurückzufallen: wenn der Kunde gar keine Vorgabe hat und
+   * wenn seine Vorgabe archiviert ist. Das Profil der alten Rechnung war
+   * eine bewusste Wahl für genau diesen Kunden; ein stiller Rückfall auf
+   * „Deutschland 19 %" machte aus einer Reverse-Charge-Rechnung eine mit
+   * ausgewiesener Steuer — der teuerste denkbare Fehler an dieser Stelle.
+   */
+  private async resolveRebillTaxProfile(
+    sourceTaxProfileId: number | null,
+    customerTaxProfileId: number | null,
+  ): Promise<{ taxProfileId: number | null; change: { from: string; to: string } | null }> {
+    if (customerTaxProfileId === null || customerTaxProfileId === sourceTaxProfileId) {
+      return { taxProfileId: sourceTaxProfileId, change: null };
+    }
+
+    const target = await this.prisma.taxProfile.findUnique({ where: { id: customerTaxProfileId } });
+    if (target === null || target.archivedAt !== null) {
+      return { taxProfileId: sourceTaxProfileId, change: null };
+    }
+
+    const previous =
+      sourceTaxProfileId === null
+        ? null
+        : await this.prisma.taxProfile.findUnique({ where: { id: sourceTaxProfileId } });
+
+    return {
+      taxProfileId: target.id,
+      change: { from: previous?.name ?? 'kein Steuerprofil', to: target.name },
+    };
   }
 
   async deleteDraft(id: number): Promise<void> {

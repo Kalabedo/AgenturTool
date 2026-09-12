@@ -13,6 +13,7 @@ import {
   templateSnapshotSchema,
   totalsSnapshotSchema,
   DOCUMENT_KIND,
+  invoiceDocumentFilename,
   type UnitCode,
   type BuyerData,
   type DiscountType,
@@ -434,9 +435,17 @@ export class InvoicePdfService {
    * über die Dateisysteme dreier Betriebssysteme.
    */
   private filenameFor(invoice: Pick<Invoice, 'documentType' | 'number' | 'id'>): string {
-    const prefix = invoice.documentType === DOCUMENT_TYPE.CANCELLATION ? 'Storno' : 'Rechnung';
-    const name = invoice.number ?? `Entwurf-${invoice.id}`;
-    return `${prefix}-${name.replace(/[^\p{L}\p{N}-]+/gu, '-')}.pdf`;
+    // Der Name entsteht in `shared`, weil ihn drei Stellen kennen müssen:
+    // dieser Download, die abgelegte Datei und der Versanddialog, der die
+    // Anhänge vorher benennt.
+    return invoiceDocumentFilename(
+      {
+        documentType: invoice.documentType as DocumentType,
+        number: invoice.number,
+        id: invoice.id,
+      },
+      DOCUMENT_KIND.PDF,
+    );
   }
 
   /** Titel des HTML-Dokuments; Chromium schreibt ihn in die PDF-Metadaten. */

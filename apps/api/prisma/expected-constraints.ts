@@ -62,6 +62,17 @@ export const EXPECTED_CHECK_CONSTRAINTS: Record<string, readonly string[]> = {
     'TimeEntry_breakMinutes_check',
   ],
   InvoiceEvent: ['InvoiceEvent_type_check'],
+  // Der Versandweg: Wer hier von Hand einen unbekannten Transport oder einen
+  // Port 70000 einträgt, bekommt keine halb funktionierende Einrichtung,
+  // sondern eine Ablehnung.
+  MailSettings: [
+    'MailSettings_singleton_check',
+    'MailSettings_transport_check',
+    'MailSettings_security_check',
+    'MailSettings_port_check',
+  ],
+  MailTemplate: ['MailTemplate_key_check'],
+  MailMessage: ['MailMessage_transport_check', 'MailMessage_status_check'],
 };
 
 /** Unique-Indizes, auf die sich fachliche Garantien stützen. */
@@ -74,6 +85,9 @@ export const EXPECTED_UNIQUE_INDEXES = [
   'InvoiceItem_invoiceId_position_key',
   // Partieller Index: höchstens ein Steuerprofil ist Standard.
   'TaxProfile_single_default',
+  // Genau eine Vorlage je Anlass — sonst erwischt der Versand mal die eine
+  // und mal die andere.
+  'MailTemplate_key_key',
 ] as const;
 
 export interface VerificationResult {

@@ -23,6 +23,7 @@ import { Field } from '../../components/ui/Field.js';
 import { Input } from '../../components/ui/Input.js';
 import { LoadingNote } from '../../components/ui/LoadingNote.js';
 import { Select } from '../../components/ui/Select.js';
+import { SendMailDialog } from '../mail/SendMailDialog.js';
 import { saveFile } from '../invoices/saveFile.js';
 import { TimeEntryTable } from './TimeEntryTable.js';
 
@@ -58,6 +59,7 @@ function shiftMonth(range: Range, direction: -1 | 1): Range {
 export function BilledArchive(): JSX.Element {
   const [range, setRange] = useState<Range>(() => currentMonth());
   const [exportError, setExportError] = useState<unknown>(null);
+  const [mailOpen, setMailOpen] = useState(false);
 
   const rangeIsValid = range.from !== '' && range.to !== '' && range.to >= range.from;
 
@@ -161,6 +163,18 @@ export function BilledArchive(): JSX.Element {
           >
             {exportPdf.isPending ? 'PDF wird erzeugt …' : 'Nachweis erneut erzeugen'}
           </Button>
+          {/* Der Versand braucht einen Empfänger, und den gibt es erst mit
+              einem ausgewählten Kunden — „Alle Kunden" hat keine Adresse. */}
+          <Button
+            variant="secondary"
+            disabled={!rangeIsValid || range.customerId === '' || items.length === 0}
+            title={
+              range.customerId === '' ? 'Dafür bitte einen einzelnen Kunden wählen.' : undefined
+            }
+            onClick={() => setMailOpen(true)}
+          >
+            Per E-Mail senden
+          </Button>
         </div>
 
         {exportError !== null && (
@@ -205,6 +219,21 @@ export function BilledArchive(): JSX.Element {
 
           <TimeEntryTable entries={items} editingId={null} showBilledAt />
         </>
+      )}
+
+      {mailOpen && range.customerId !== '' && (
+        <SendMailDialog
+          source={{
+            kind: 'TIME_REPORT',
+            customerId: Number(range.customerId),
+            from: range.from,
+            to: range.to,
+          }}
+          title="Zeitnachweis per E-Mail senden"
+          description="Der Nachweis entsteht aus dem Zeitraum und dem Kunden, die oben eingestellt sind."
+          open
+          onClose={() => setMailOpen(false)}
+        />
       )}
     </div>
   );

@@ -43,6 +43,17 @@ export class StorageConfig {
     return path.join(this.dataDir, 'orphans');
   }
 
+  /**
+   * Anhänge, die auf ihre Übergabe an die Mail-Anwendung warten.
+   *
+   * Kopien von Dokumenten, die längst abgelegt und gesichert sind — deshalb
+   * steht dieses Verzeichnis nicht in der Liste des Backups. Was hier
+   * liegt, räumt der Versand nach sieben Tagen selbst auf.
+   */
+  get mailOutboxDir(): string {
+    return path.join(this.dataDir, 'mail-anhaenge');
+  }
+
   ensureDirectories(): void {
     for (const dir of [
       this.dataDir,
@@ -50,6 +61,7 @@ export class StorageConfig {
       this.invoicesDir,
       this.tmpDir,
       this.orphansDir,
+      this.mailOutboxDir,
     ]) {
       fs.mkdirSync(dir, { recursive: true });
     }

@@ -1,5 +1,7 @@
 import { Global, Module, type DynamicModule } from '@nestjs/common';
 import { PDF_RENDERER_HOST, type PdfRenderer } from '../pdf/pdf-renderer';
+import { MAIL_HANDOFF_HOST, type MailHandoff } from '../mail/mail-handoff';
+import { SECRET_STORE_HOST, type SecretStore } from '../mail/secret-store';
 
 /** Was der Gastgeber der Anwendung mitbringen kann. */
 export interface HostOptions {
@@ -11,6 +13,26 @@ export interface HostOptions {
    * PDF-Routen antworten dann mit einer Meldung statt mit einem Dokument.
    */
   pdfRenderer?: PdfRenderer;
+
+  /**
+   * Der Weg zur Mail-Anwendung dieses Rechners.
+   *
+   * Aus demselben Grund von außen wie der Renderer: Einen Entwurf im
+   * Standard-Mailprogramm zu öffnen und einen Ordner im Dateimanager zu
+   * zeigen, kann nur ein Prozess, der auf diesem Rechner ein Fenster hat.
+   * Bleibt es leer, sagt der Versandweg „Mail-Anwendung" das, statt es zu
+   * versuchen.
+   */
+  mailHandoff?: MailHandoff;
+
+  /**
+   * Die Ablage für das SMTP-Passwort.
+   *
+   * Die Desktop-Anwendung reicht hier den Schlüsselbund des Betriebssystems
+   * herein. Ohne Angabe greift die Schlüsseldatei neben der Datenbank
+   * (`mail/secret-store.ts`).
+   */
+  secretStore?: SecretStore;
 }
 
 /**
@@ -28,12 +50,16 @@ export interface HostOptions {
 @Module({})
 export class HostModule {
   static forRoot(options: HostOptions = {}): DynamicModule {
-    const provider = { provide: PDF_RENDERER_HOST, useValue: options.pdfRenderer ?? null };
+    const providers = [
+      { provide: PDF_RENDERER_HOST, useValue: options.pdfRenderer ?? null },
+      { provide: MAIL_HANDOFF_HOST, useValue: options.mailHandoff ?? null },
+      { provide: SECRET_STORE_HOST, useValue: options.secretStore ?? null },
+    ];
 
     return {
       module: HostModule,
-      providers: [provider],
-      exports: [provider],
+      providers,
+      exports: providers,
     };
   }
 }

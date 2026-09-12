@@ -308,6 +308,7 @@ model Invoice {
   items     InvoiceItem[]
   documents InvoiceDocument[]
   events    InvoiceEvent[]
+  mails     MailMessage[]
 
   @@index([status])
   @@index([invoiceDate])
@@ -424,4 +425,94 @@ model Session {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+/// Einrichtung des E-Mail-Versands. Singleton, per CHECK auf id = 1.
+///
+/// Der Versandweg steht auf NONE, solange niemand etwas eingerichtet hat:
+/// Die Anwendung greift erst nach außen, wenn es jemand ausdrücklich
+/// beschlossen hat (D45).
+model MailSettings {
+  id Int @id @default(1)
+
+  /// NONE | SMTP | MAIL_APP
+  transport String @default("NONE")
+
+  fromName    String?
+  fromAddress String?
+  replyTo     String?
+  /// Blindkopie an die eigene Absenderadresse — der Beleg im eigenen Postfach.
+  bccSelf     Boolean @default(false)
+
+  host     String?
+  port     Int?
+  /// STARTTLS | TLS | NONE
+  security String  @default("STARTTLS")
+  username String?
+
+  /// Das SMTP-Passwort, verschlüsselt (D46).
+  ///
+  /// Der Schlüssel liegt außerhalb der Datenbank und außerhalb des Backups:
+  /// im Schlüsselbund des Betriebssystems, ersatzweise in einer Schlüsseldatei
+  /// neben der Datenbank. Ein eingespieltes Backup auf einem anderen Rechner
+  /// trägt diesen Wert deshalb als unlesbar mit sich — und die Einstellungen
+  /// sagen das, statt den Versand daran scheitern zu lassen.
+  passwordSecret String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Textvorlage für eine der drei Versandarten.
+model MailTemplate {
+  id Int @id @default(autoincrement())
+
+  /// INVOICE | CANCELLATION | TIME_REPORT — fester Satz, beim Seed angelegt.
+  key String @unique
+
+  subject String
+  body    String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Was verschickt wurde: das Versandprotokoll.
+///
+/// Eigene Tabelle und nicht bloß ein `InvoiceEvent`, weil nicht jede
+/// Nachricht zu einer Rechnung gehört — ein Zeitnachweis geht auch ohne sie
+/// raus. Zu einer Rechnung entsteht zusätzlich ein Verlaufseintrag; er
+/// trägt die Kurzfassung, hier steht der vollständige Text.
+model MailMessage {
+  id Int @id @default(autoincrement())
+
+  /// Null beim freien Zeitnachweis. SetNull statt Cascade: Das Protokoll
+  /// überlebt das Löschen eines Entwurfs — was verschickt wurde, wurde
+  /// verschickt.
+  invoiceId Int?
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  /// SMTP | MAIL_APP
+  transport String
+  /// SENT | PREPARED | FAILED
+  status    String
+
+  /// Adresslisten als JSON-Array.
+  toAddresses  String
+  ccAddresses  String @default("[]")
+  bccAddresses String @default("[]")
+
+  subject String
+  body    String
+
+  /// JSON: [{ kind, filename, sizeBytes }]
+  attachments String @default("[]")
+
+  /// Die Meldung des Servers, wenn der Versand fehlschlug.
+  error String?
+
+  createdAt DateTime @default(now())
+
+  @@index([invoiceId, createdAt])
+  @@index([createdAt])
 }

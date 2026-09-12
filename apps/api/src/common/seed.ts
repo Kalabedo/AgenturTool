@@ -1,7 +1,10 @@
 import {
+  MAIL_TEMPLATE_DEFAULTS,
+  MAIL_TEMPLATE_KEY_VALUES,
   TAX_CATEGORY_CODE,
   TAX_PROFILE_KIND,
   VAT_EXEMPTION_REASON_CODE,
+  type MailTemplateKey,
 } from '@agentur-tool/shared';
 import type { PrismaClient } from '@prisma/client';
 
@@ -10,6 +13,7 @@ export interface SeedCounts {
   steuerprofile: number;
   company: number;
   templateSettings: number;
+  mailVorlagen: number;
 }
 
 /**
@@ -110,9 +114,25 @@ export async function seed(prisma: PrismaClient): Promise<SeedCounts> {
     });
   }
 
+  // Die drei E-Mail-Vorlagen im Auslieferungsstand. `update: {}` wie
+  // überall hier: Ein zweiter Lauf darf einen bearbeiteten Text nicht
+  // zurücksetzen — dafür gibt es den Knopf in den Einstellungen.
+  for (const key of MAIL_TEMPLATE_KEY_VALUES as MailTemplateKey[]) {
+    await prisma.mailTemplate.upsert({
+      where: { key },
+      update: {},
+      create: { key, ...MAIL_TEMPLATE_DEFAULTS[key] },
+    });
+  }
+
+  // Der Versandweg entsteht als Zeile, aber auf NONE: Die Anwendung greift
+  // erst nach außen, wenn es jemand einrichtet (D45).
+  await prisma.mailSettings.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } });
+
   return {
     steuerprofile: await prisma.taxProfile.count(),
     company: await prisma.company.count(),
     templateSettings: await prisma.templateSettings.count(),
+    mailVorlagen: await prisma.mailTemplate.count(),
   };
 }

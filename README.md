@@ -5,7 +5,7 @@ Rechnungsdiensten. Rechnungen erstellen, verwalten und als PDF exportieren.
 
 **Status:** V1 — alle 15 Schritte der Roadmap sind umgesetzt. Rechnungen lassen sich erfassen und ausstellen (Nummer, eingefrorene Stammdaten, abgelegtes PDF), als versendet und bezahlt vermerken, stornieren und duplizieren; die Übersicht filtert, sortiert und blättert, das Dashboard zeigt Entwürfe, offene und überfällige Rechnungen. Eine Zeiterfassung hält gearbeitete Zeit je Kunde in Viertelstunden fest und druckt daraus einen Zeitnachweis für einen frei wählbaren Zeitraum. Beim Ausstellen entsteht neben dem PDF eine XRechnung nach EN 16931, geprüft
 mit dem offiziellen KoSIT-Validator. Ein Backup umfasst Datenbank, Logos und
-alle erzeugten Dateien in einer ZIP-Datei; der Weg zurück ist einmal wirklich getestet. Ein Steuerberater-Paket sammelt für einen Rechnungszeitraum CSV-Auswertungen, Steueraufteilung, Positionen und die unveränderten PDF-/XML-Belege. Ausgeliefert wird sie als Desktop-Anwendung für macOS und Windows: Doppelklick, eigenes Fenster, kein installierter Browser nötig — die PDFs entstehen über Electrons eigenes Chromium. Die Oberfläche sagt, wenn etwas schiefgeht, lässt sich mit der Tastatur bedienen und läuft vom Telefon bis zum breiten Bildschirm.
+alle erzeugten Dateien in einer ZIP-Datei; der Weg zurück ist einmal wirklich getestet. Ein Steuerberater-Paket sammelt für einen Rechnungszeitraum CSV-Auswertungen, Steueraufteilung, Positionen und die unveränderten PDF-/XML-Belege. Verschickt wird direkt aus der Anwendung — per SMTP oder über die Mail-Anwendung des Rechners, mit PDF, XRechnung und Zeitnachweis als Anhängen, editierbaren Textvorlagen und einem Protokoll, das auch den gescheiterten Versuch festhält. Ausgeliefert wird sie als Desktop-Anwendung für macOS und Windows: Doppelklick, eigenes Fenster, kein installierter Browser nötig — die PDFs entstehen über Electrons eigenes Chromium. Die Oberfläche sagt, wenn etwas schiefgeht, lässt sich mit der Tastatur bedienen und läuft vom Telefon bis zum breiten Bildschirm.
 
 ## Architektur
 
@@ -217,9 +217,11 @@ Fehlt etwas davon, lässt sich die Rechnung trotzdem ausstellen — sie ist
 nach § 14 UStG gültig. Nur die XML-Datei entsteht dann nicht, und die
 Rechnungsmaske sagt, was fehlt.
 
-Verschickt wird die Datei per E-Mail. Einen Peppol-Zugang gibt es bewusst
-nicht: Er widerspräche der Zusicherung, dass die Anwendung nicht nach
-außen spricht.
+Verschickt wird die Datei per E-Mail — direkt aus der Anwendung, siehe
+unten. Einen Peppol-Zugang gibt es bewusst nicht: Er bräuchte einen
+akkreditierten Zugangspunkt und damit eine dauerhafte Anbindung an einen
+Dienst. Der E-Mail-Versand ist demgegenüber eine Verbindung, die nur auf
+Knopfdruck entsteht und die es ohne Einrichtung gar nicht gibt.
 
 Dass die erzeugten Dateien gültig sind, prüft nicht die Anwendung selbst,
 sondern der offizielle **KoSIT-Validator** — bei jedem Push in der CI und
@@ -228,6 +230,46 @@ auf Wunsch von Hand:
 ```bash
 pnpm einrechnung:pruefen      # braucht Java, wird nie ausgeliefert
 ```
+
+### E-Mail-Versand
+
+Unter **Einstellungen → E-Mail** wird eingerichtet, wie Rechnungen das Haus
+verlassen. Ohne Einrichtung baut AgenturTool keine Verbindung nach außen auf —
+das ist die Vorbelegung, nicht ein Zustand, aus dem man herausmuss.
+
+| Weg                | Was AgenturTool tut                                               |
+| ------------------ | ----------------------------------------------------------------- |
+| **SMTP-Server**    | verschickt selbst und vermerkt die Rechnung als versendet         |
+| **Mail-Anwendung** | öffnet einen Entwurf und legt die Anhänge in einen Ordner daneben |
+| **Kein Versand**   | Vorbelegung                                                       |
+
+Verschickt wird aus der Vorgang-Karte einer Rechnung („Per E-Mail senden") und
+aus dem Archiv der Zeiterfassung. Der Dialog belegt Empfänger, Betreff und Text
+aus der Vorlage vor und bietet PDF, XRechnung und Zeitnachweis als Anhänge an;
+alles davon lässt sich vor dem Absenden ändern. Was nicht anhängbar ist, steht
+mit seinem Grund daneben, statt aus der Liste zu verschwinden.
+
+Der Unterschied zwischen den beiden Wegen ist kein Detail: Über SMTP weiß die
+Anwendung, dass der Mailserver die Nachricht angenommen hat, und setzt den
+Versandvermerk. Über die Mail-Anwendung weiß sie nur, dass ein Entwurf offen
+ist — `mailto` trägt keine Anhänge, die liegen im geöffneten Ordner und
+wandern von Hand hinein. Den Versandvermerk setzt dort ein eigener Klick.
+
+Jede Nachricht steht anschließend im Versandprotokoll, **auch die
+fehlgeschlagene**: Ein Versuch, von dem nichts übrig bleibt, ist genau der,
+bei dem man später nicht mehr weiß, ob die Rechnung draußen ist.
+
+Betreff und Text kommen aus drei bearbeitbaren Vorlagen — Rechnung, Storno,
+Zeitnachweis. Platzhalter wie `{{rechnungsnummer}}` oder `{{anrede}}` setzt
+AgenturTool beim Öffnen des Dialogs ein; die Einstellungsseite zeigt daneben
+eine Vorschau mit Beispielwerten und findet auf Wunsch zum Auslieferungstext
+zurück.
+
+Das SMTP-Passwort liegt verschlüsselt in der Datenbank, sein Schlüssel im
+Schlüsselbund des Betriebssystems (ersatzweise in `data/mail.key`). Beides
+liegt **nicht** im Backup: Wer eine Sicherung auf einem anderen Rechner
+einspielt, muss das Passwort einmal neu eingeben, und die Einstellungen sagen
+das auch.
 
 ### Steuerberater-Export
 

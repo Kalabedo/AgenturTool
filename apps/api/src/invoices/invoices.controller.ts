@@ -19,12 +19,15 @@ import {
   invoiceListQuerySchema,
   invoicePaymentInputSchema,
   invoiceSentInputSchema,
+  rebillInputSchema,
   type InvoiceDraftPayload,
   type InvoiceListQuery,
   type InvoiceListResponse,
   type InvoicePaymentPayload,
   type InvoiceResponse,
   type InvoiceSentPayload,
+  type RebillPayload,
+  type RebillPreviewResponse,
 } from '@agentur-tool/shared';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { InvoicePdfService, type RenderedInvoicePdf } from '../pdf/invoice-pdf.service';
@@ -191,11 +194,25 @@ export class InvoicesController {
     return this.invoices.findById(await this.finalizer.cancel(id));
   }
 
-  /** Legt einen neuen Entwurf mit denselben Inhalten an. */
+  /**
+   * Was beim Anlegen auf Basis dieser Rechnung geschähe.
+   *
+   * Lesend und folgenlos, deshalb GET: Der Dialog fragt es beim Öffnen ab
+   * und zeigt es, bevor irgendetwas entsteht.
+   */
+  @Get(':id/rebill-preview')
+  rebillPreview(@Param('id', ParseIntPipe) id: number): Promise<RebillPreviewResponse> {
+    return this.invoices.rebillPreview(id);
+  }
+
+  /** Legt einen neuen Entwurf auf Basis dieser Rechnung an. */
   @Post(':id/duplicate')
   @HttpCode(HttpStatus.CREATED)
-  duplicate(@Param('id', ParseIntPipe) id: number): Promise<InvoiceResponse> {
-    return this.invoices.duplicate(id);
+  duplicate(
+    @Param('id', ParseIntPipe) id: number,
+    @Body(new ZodValidationPipe(rebillInputSchema)) payload: RebillPayload,
+  ): Promise<InvoiceResponse> {
+    return this.invoices.duplicate(id, payload);
   }
 
   /** Zahldatum setzen oder entfernen; der Status folgt dem Feld (D7). */

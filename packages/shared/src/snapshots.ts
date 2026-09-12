@@ -209,5 +209,16 @@ export const invoiceEventMetadataSchema = z.object({
   documentType: z.enum(DOCUMENT_TYPE_VALUES as [string, ...string[]]).optional(),
   paidAt: isoDateSchema.nullable().optional(),
   note: z.string().optional(),
+
+  /**
+   * Der E-Mail-Versand im Verlauf: an wen, mit welchen Anhängen, auf
+   * welchem Weg. Die vollständige Nachricht steht im Versandprotokoll
+   * (`MailMessage`) — hier steht, was man im Verlauf einer Rechnung sehen
+   * will, ohne sie zu öffnen.
+   */
+  recipients: z.array(z.string()).optional(),
+  attachments: z.array(z.string()).optional(),
+  transport: z.string().optional(),
+  mailMessageId: z.number().int().optional(),
 });
 export type InvoiceEventMetadata = z.infer<typeof invoiceEventMetadataSchema>;
