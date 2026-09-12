@@ -170,3 +170,19 @@ export const MAIL_STATUS = {
 } as const;
 export type MailStatus = (typeof MAIL_STATUS)[keyof typeof MAIL_STATUS];
 export const MAIL_STATUS_VALUES = Object.values(MAIL_STATUS);
+
+/**
+ * Wie die Nachricht bei der Mail-Anwendung angekommen ist.
+ *
+ * Der Unterschied ist für den Benutzer sichtbar und gehört deshalb in die
+ * Antwort: Ein `DRAFT` steht fertig im Verfassen-Fenster und muss nur noch
+ * abgeschickt werden. Bei `MESSAGE_FILE` hat das Mailprogramm eine
+ * Nachrichtendatei geöffnet — je nach Programm als Entwurf oder als
+ * eingegangene Nachricht, aus der ein „Weiterleiten" die Anhänge übernimmt.
+ */
+export const MAIL_HANDOFF_METHOD = {
+  DRAFT: 'DRAFT',
+  MESSAGE_FILE: 'MESSAGE_FILE',
+} as const;
+export type MailHandoffMethod = (typeof MAIL_HANDOFF_METHOD)[keyof typeof MAIL_HANDOFF_METHOD];
+export const MAIL_HANDOFF_METHOD_VALUES = Object.values(MAIL_HANDOFF_METHOD);

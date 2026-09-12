@@ -9,6 +9,7 @@ import {
   MAIL_TRANSPORT,
   MAIL_TRANSPORT_VALUES,
   type MailAttachmentKind,
+  type MailHandoffMethod,
   type MailSecurity,
   type MailStatus,
   type MailTemplateKey,
@@ -519,16 +520,29 @@ export interface MailMessageResponse {
 }
 
 /**
+ * Was die Mail-Anwendung mit der Nachricht gemacht hat.
+ *
+ * Die Oberfläche sagt danach zwei verschiedene Sätze, weil zwei verschiedene
+ * Dinge geschehen sind — ein fertiger Entwurf verlangt nichts weiter als
+ * „Senden", eine geöffnete Nachrichtendatei je nach Programm noch ein
+ * „Weiterleiten".
+ */
+export interface MailHandoffResult {
+  method: MailHandoffMethod;
+  /** Name des Mailprogramms, sofern er sich ermitteln ließ. */
+  application: string | null;
+  /** Pfad der Nachrichtendatei — nur bei `MESSAGE_FILE`. */
+  path: string | null;
+}
+
+/**
  * Was aus dem Klick auf „Senden" wurde.
  *
- * `handoffFolder` steht nur beim Weg über die Mail-Anwendung: Dort liegen
- * die Anhänge, die der Benutzer im Entwurf selbst anhängen muss — eine
- * `mailto`-Adresse kann keine Dateien tragen, und das ist keine Lücke
- * dieser Umsetzung, sondern des Formats.
+ * `handoff` steht nur beim Weg über die Mail-Anwendung.
  */
 export interface MailSendResponse {
   message: MailMessageResponse;
-  handoffFolder: string | null;
+  handoff: MailHandoffResult | null;
   /** Der Versandvermerk der Rechnung, sofern er dadurch gesetzt wurde. */
   markedSentAt: string | null;
 }
@@ -538,33 +552,3 @@ export const mailMessageListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
 });
 export type MailMessageListQuery = z.output<typeof mailMessageListQuerySchema>;
-
-/**
- * Die `mailto`-Adresse für den Weg über die lokale Mail-Anwendung.
- *
- * In `shared`, weil sie an zwei Stellen entsteht: Der Server reicht sie an
- * den Gastgeber weiter, und ein Test prüft sie, ohne ein Fenster zu öffnen.
- * `encodeURIComponent` und nicht `URLSearchParams`: Letzteres kodiert
- * Leerzeichen als `+`, und in einem `mailto`-Betreff steht dann ein
- * Pluszeichen statt einer Leerstelle.
- */
-export function buildMailtoUrl(input: {
-  to: readonly string[];
-  cc?: readonly string[];
-  bcc?: readonly string[];
-  subject: string;
-  body: string;
-}): string {
-  const query: string[] = [];
-  const add = (key: string, value: string): void => {
-    if (value !== '') query.push(`${key}=${encodeURIComponent(value)}`);
-  };
-
-  add('cc', (input.cc ?? []).join(','));
-  add('bcc', (input.bcc ?? []).join(','));
-  add('subject', input.subject);
-  add('body', input.body);
-
-  const recipients = input.to.map((address) => encodeURIComponent(address)).join(',');
-  return `mailto:${recipients}${query.length === 0 ? '' : `?${query.join('&')}`}`;
-}

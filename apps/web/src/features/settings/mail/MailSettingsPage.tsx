@@ -224,7 +224,7 @@ export function MailSettingsPage(): JSX.Element {
             htmlFor="mail-transport"
             hint={
               values.transport === MAIL_TRANSPORT.MAIL_APP
-                ? 'AgenturTool öffnet einen Entwurf in deinem Mailprogramm; die Anhänge legt es in einen Ordner, den du dabei siehst. Ob die Nachricht abgeht, weiß dann nur dein Mailprogramm.'
+                ? 'AgenturTool legt den Entwurf samt Anhängen in deinem Mailprogramm an; abgeschickt wird er dort von dir. Bei Apple Mail fragt macOS einmalig um Erlaubnis dafür — ohne sie öffnet AgenturTool stattdessen eine fertige Nachrichtendatei.'
                 : undefined
             }
           >

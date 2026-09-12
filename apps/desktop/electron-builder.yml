@@ -76,6 +76,14 @@ mac:
   # Die Anwendung liest und schreibt nur in ihrem eigenen Datenordner.
   extendInfo:
     NSHumanReadableCopyright: © Tom Wenczel
+    # Der Satz, den macOS zeigt, wenn AgenturTool zum ersten Mal einen
+    # Rechnungsentwurf in Mail anlegen will. Er muss erklären, warum ein
+    # Rechnungsprogramm ein anderes Programm steuert — sonst klickt man auf
+    # „Nicht erlauben", und das ist die teurere Antwort.
+    NSAppleEventsUsageDescription: >-
+      AgenturTool legt den Rechnungsentwurf samt Anhängen direkt in deiner
+      Mail-App an. Ohne diese Erlaubnis öffnet es stattdessen eine
+      Nachrichtendatei.
 
 win:
   executableName: AgenturTool

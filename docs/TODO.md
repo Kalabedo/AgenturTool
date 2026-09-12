@@ -101,6 +101,12 @@ Deutschland und anschließend auf einer breiteren Nutzung in der EU.
   - Der Versandvermerk entsteht nur beim SMTP-Versand von selbst. Über die
     Mail-Anwendung weiß die Anwendung nicht, ob die Nachricht abging — dort
     bietet der Dialog den Vermerk als eigenen Klick an (D45, Abschnitt 27).
+  - Über die Mail-Anwendung entsteht bei Apple Mail ein echter Entwurf
+    (AppleScript), sonst eine `.eml`-Datei mit `X-Unsent`, die Outlook als
+    Entwurf öffnet. Beide tragen die Anhänge in sich.
+  - Offen geblieben: **Outlook für macOS** bekommt die Nachrichtendatei und
+    nicht den AppleScript-Weg. Das neue Outlook für Mac unterstützt die dafür
+    nötigen Apple-Events nicht mehr zuverlässig, und `X-Unsent` genügt dort.
 
 - [ ] **CSV- und DATEV-kompatible Exporte**
   - Rechnungen und Stornos für einen frei wählbaren Zeitraum exportieren.

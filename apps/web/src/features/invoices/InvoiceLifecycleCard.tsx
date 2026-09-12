@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   DOCUMENT_TYPE,
+  INVOICE_STATUS,
   formatDateDe,
   invoiceDisplayName,
   isCancellable,
@@ -25,7 +26,23 @@ import { RebillDialog } from './RebillDialog.js';
  * Als eigene Karte und nicht im Formular, weil es kein Bearbeiten ist: Die
  * Rechnung selbst ist unveränderlich, hier stehen nur die Vermerke daneben
  * und die beiden Wege, die ein neues Dokument erzeugen.
+ *
+ * Die Karte trägt drei Gruppen, und die Reihenfolge ist die des Vorgangs:
+ * Zahlung, Versand, und darunter — abgesetzt — die beiden Wege, die ein
+ * neues Dokument erzeugen. Ohne diese Gliederung stünden sechs Knöpfe
+ * gleichrangig nebeneinander, und der gefährlichste („Stornieren") sähe aus
+ * wie der nächste Arbeitsschritt.
  */
+
+/** Eine beschriftete Gruppe innerhalb der Karte. */
+function Section({ title, children }: { title: string; children: ReactNode }): JSX.Element {
+  return (
+    <section>
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</h3>
+      <div className="mt-2">{children}</div>
+    </section>
+  );
+}
 export function InvoiceLifecycleCard({ invoice }: { invoice: InvoiceResponse }): JSX.Element {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -64,6 +81,7 @@ export function InvoiceLifecycleCard({ invoice }: { invoice: InvoiceResponse }):
   );
 
   const isCancellation = invoice.documentType === DOCUMENT_TYPE.CANCELLATION;
+  const isCancelled = invoice.status === INVOICE_STATUS.CANCELLED;
 
   return (
     <Card title="Vorgang">
@@ -88,65 +106,76 @@ export function InvoiceLifecycleCard({ invoice }: { invoice: InvoiceResponse }):
         )}
 
         {!isCancellation && (
-          <div className="flex flex-wrap items-end gap-3">
-            <Field label="Bezahlt am" htmlFor="paidAt" hint="leer lassen heißt: noch offen">
-              <Input
-                id="paidAt"
-                type="date"
-                value={paidAt}
-                onChange={(event) => setPaidAt(event.target.value)}
-                disabled={invoice.status === 'CANCELLED'}
-              />
-            </Field>
-            <Button
-              variant="secondary"
-              disabled={payment.isPending || paidAt === '' || invoice.status === 'CANCELLED'}
-              onClick={() => payment.mutate(paidAt)}
-            >
-              Zahlung vermerken
-            </Button>
-            {invoice.paidAt !== null && (
+          <Section title="Zahlung">
+            {/* Das Feld trägt seinen Hinweis nicht selbst: `Field` setzt ihn
+                unter den Eingabekasten, und in einer Zeile mit Knöpfen
+                schöbe er diese um seine Höhe nach unten. Hier steht er unter
+                der ganzen Zeile und bleibt über `aria-describedby` trotzdem
+                mit dem Feld verbunden. */}
+            <div className="flex flex-wrap items-end gap-3">
+              <Field label="Bezahlt am" htmlFor="paidAt" className="w-44 shrink-0">
+                <Input
+                  id="paidAt"
+                  type="date"
+                  aria-describedby="paidAt-hint"
+                  value={paidAt}
+                  onChange={(event) => setPaidAt(event.target.value)}
+                  disabled={isCancelled}
+                />
+              </Field>
               <Button
                 variant="secondary"
-                disabled={payment.isPending}
-                onClick={() => {
-                  setPaidAt('');
-                  payment.mutate(null);
-                }}
+                disabled={payment.isPending || paidAt === '' || isCancelled}
+                onClick={() => payment.mutate(paidAt)}
               >
-                Zahlung entfernen
+                Zahlung vermerken
               </Button>
-            )}
-          </div>
+              {invoice.paidAt !== null && (
+                <Button
+                  variant="secondary"
+                  disabled={payment.isPending}
+                  onClick={() => {
+                    setPaidAt('');
+                    payment.mutate(null);
+                  }}
+                >
+                  Zahlung entfernen
+                </Button>
+              )}
+            </div>
+            <p id="paidAt-hint" className="mt-2 text-sm text-slate-500">
+              Leer lassen heißt: noch offen.
+            </p>
+          </Section>
         )}
 
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Der Versand steht vor dem Vermerk: Der übliche Weg ist, die
-              Rechnung von hier aus zu verschicken — das Häkchen daneben ist
-              für die Rechnung, die per Post ging. */}
-          <Button onClick={() => setMailOpen(true)}>Per E-Mail senden</Button>
-
-          {invoice.sentAt === null ? (
-            <Button variant="secondary" disabled={sent.isPending} onClick={() => sent.mutate(null)}>
-              Als versendet markieren
-            </Button>
-          ) : (
-            <>
+        <Section title="Versand">
+          <div className="flex flex-wrap items-center gap-3">
+            <Button onClick={() => setMailOpen(true)}>Per E-Mail senden</Button>
+            {invoice.sentAt !== null && (
               <span className="text-sm text-slate-600">
                 Versendet am {formatDateDe(toIsoDate(invoice.sentAt.slice(0, 10)))}
               </span>
-              <Button
-                variant="secondary"
-                disabled={sent.isPending}
-                onClick={() => sent.mutate(null)}
-              >
-                Versand zurücknehmen
-              </Button>
-            </>
-          )}
-        </div>
+            )}
+          </div>
 
-        <div className="flex flex-wrap items-center gap-3 border-t border-slate-200 pt-4">
+          {/* Der Vermerk von Hand steht bewusst kleiner und darunter: Er ist
+              der Weg für die Rechnung, die per Post ging oder aus einem
+              anderen Programm heraus verschickt wurde — nicht der übliche. */}
+          <p className="mt-3 text-sm text-slate-500">
+            {invoice.sentAt === null ? 'Anders verschickt? ' : 'Versehentlich vermerkt? '}
+            <button
+              type="button"
+              className="underline hover:text-slate-800 disabled:no-underline disabled:opacity-50"
+              disabled={sent.isPending}
+              onClick={() => sent.mutate(null)}
+            >
+              {invoice.sentAt === null ? 'Als versendet markieren' : 'Versand zurücknehmen'}
+            </button>
+          </p>
+        </Section>
+
+        <div className="flex flex-wrap items-center gap-3 border-t border-slate-200 pt-5">
           {!isCancellation && (
             <Button variant="secondary" onClick={() => setRebillOpen(true)}>
               Neue Rechnung auf Basis dieser Rechnung
@@ -155,6 +184,7 @@ export function InvoiceLifecycleCard({ invoice }: { invoice: InvoiceResponse }):
           {isCancellable(invoice) && (
             <Button
               variant="danger"
+              className="ml-auto"
               disabled={cancel.isPending}
               onClick={() => {
                 if (

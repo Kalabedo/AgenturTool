@@ -5,11 +5,12 @@ import {
   INVOICE_EVENT_TYPE,
   INVOICE_STATUS,
   MAIL_ATTACHMENT_LABELS,
+  MAIL_HANDOFF_METHOD,
   MAIL_STATUS,
   MAIL_TRANSPORT,
-  buildMailtoUrl,
   type MailAttachmentKind,
   type MailConnectionCheckResponse,
+  type MailHandoffResult,
   type MailLoggedAttachment,
   type MailMessageListQuery,
   type MailMessageResponse,
@@ -30,11 +31,11 @@ import { MailSettingsService, type ResolvedMailSettings } from './mail-settings.
 /** Ergebnis eines Versands, wie ihn der Controller weitergibt. */
 export interface MailSendResult {
   message: MailMessageResponse;
-  handoffFolder: string | null;
+  handoff: MailHandoffResult | null;
   markedSentAt: string | null;
 }
 
-/** Wie lange die Anhänge für die Mail-Anwendung liegen bleiben. */
+/** Wie lange die Nachrichten für die Mail-Anwendung liegen bleiben. */
 const HANDOFF_RETENTION_DAYS = 7;
 
 /**
@@ -158,16 +159,22 @@ export class MailService {
     });
 
     const markedSentAt = await this.markSent(invoiceId, message);
-    return { message, handoffFolder: null, markedSentAt };
+    return { message, handoff: null, markedSentAt };
   }
 
   /**
    * Der Weg über die Mail-Anwendung.
    *
-   * `mailto` trägt keine Dateien. Die Anhänge landen deshalb in einem
-   * eigenen Ordner, der Ordner wird im Dateimanager geöffnet, und der
-   * Entwurf im Mailprogramm enthält Empfänger, Betreff und Text. Den Rest
-   * macht ein Ziehen mit der Maus.
+   * Zuerst der echte Entwurf: Lässt sich das Mailprogramm fernsteuern,
+   * steht die Nachricht dort fertig im Verfassen-Fenster. Sonst entsteht
+   * die `.eml`-Datei und wird geöffnet. Beide Wege tragen die Anhänge in
+   * sich — der Benutzer sucht nichts zusammen.
+   *
+   * Die Anhänge landen in jedem Fall zuerst auf der Platte: Ein
+   * fernsteuerbares Mailprogramm bekommt Dateipfade gereicht, keine Bytes.
+   *
+   * Der Versandvermerk bleibt auf beiden Wegen aus: Ob die Nachricht
+   * abgeschickt wurde, entscheidet sich in einem fremden Programm (D45).
    */
   private async prepareInMailApp(
     payload: MailSendPayload,
@@ -181,21 +188,31 @@ export class MailService {
       );
     }
 
-    const folder =
-      mail.attachments.length === 0
-        ? null
-        : await this.writeHandoffFolder(payload, mail.attachments);
+    const resolved = await this.settings.resolve();
+    if (resolved === null) throw ApiError.validation('Der Versandweg ist nicht mehr eingerichtet.');
 
-    await this.handoff.openDraft(
-      buildMailtoUrl({
-        to: mail.to,
-        cc: mail.cc,
-        bcc: mail.bcc,
-        subject: mail.subject,
-        body: mail.body,
-      }),
-    );
-    if (folder !== null) await this.handoff.revealFolder(folder);
+    const folder = await this.prepareOutbox(payload);
+    const attachmentPaths = await this.writeAttachments(folder, mail.attachments);
+    const application = this.handoff.applicationName();
+
+    const openedDraft = await this.handoff.openDraft({
+      to: mail.to,
+      cc: mail.cc,
+      bcc: mail.bcc,
+      subject: mail.subject,
+      body: mail.body,
+      attachmentPaths,
+    });
+
+    let handoff: MailHandoffResult;
+    if (openedDraft) {
+      handoff = { method: MAIL_HANDOFF_METHOD.DRAFT, application, path: null };
+    } else {
+      const file = path.join(folder, 'Nachricht.eml');
+      await fsp.writeFile(file, await this.sender.buildMessageFile(resolved, mail));
+      await this.handoff.openMessage(file);
+      handoff = { method: MAIL_HANDOFF_METHOD.MESSAGE_FILE, application, path: file };
+    }
 
     const message = await this.log({
       invoiceId,
@@ -205,23 +222,18 @@ export class MailService {
       error: null,
     });
 
-    // Kein Versandvermerk: Ob der Entwurf abgeschickt wurde, weiß nur der
-    // Benutzer. Die Oberfläche fragt ihn danach.
-    return { message, handoffFolder: folder, markedSentAt: null };
+    return { message, handoff, markedSentAt: null };
   }
 
   /**
-   * Legt die Anhänge für die Mail-Anwendung ab.
+   * Der Ordner für diesen einen Vorgang.
    *
-   * Unter DATA_DIR, aber außerhalb dessen, was das Backup einpackt: Diese
-   * Dateien sind Kopien von Dokumenten, die bereits abgelegt und gesichert
-   * sind. Alte Ordner werden dabei aufgeräumt — sonst wüchse hier eine
-   * Sammlung, die niemand je wieder ansieht.
+   * Unter DATA_DIR, aber außerhalb dessen, was das Backup einpackt: Was hier
+   * liegt, sind Kopien von Dokumenten, die längst abgelegt und gesichert
+   * sind. Ältere Ordner räumt der nächste Versand weg — sonst wüchse hier
+   * eine Sammlung, die niemand je wieder ansieht.
    */
-  private async writeHandoffFolder(
-    payload: MailSendPayload,
-    attachments: readonly PreparedAttachment[],
-  ): Promise<string> {
+  private async prepareOutbox(payload: MailSendPayload): Promise<string> {
     await fsp.mkdir(this.storage.mailOutboxDir, { recursive: true });
     await this.cleanUpHandoffFolders();
 
@@ -230,10 +242,21 @@ export class MailService {
     const folder = path.join(this.storage.mailOutboxDir, `${stamp}-${label}`);
 
     await fsp.mkdir(folder, { recursive: true });
-    for (const attachment of attachments) {
-      await fsp.writeFile(path.join(folder, attachment.filename), attachment.bytes);
-    }
     return folder;
+  }
+
+  private async writeAttachments(
+    folder: string,
+    attachments: readonly PreparedAttachment[],
+  ): Promise<string[]> {
+    const written: string[] = [];
+
+    for (const attachment of attachments) {
+      const file = path.join(folder, attachment.filename);
+      await fsp.writeFile(file, attachment.bytes);
+      written.push(file);
+    }
+    return written;
   }
 
   private async cleanUpHandoffFolders(): Promise<void> {
@@ -242,17 +265,15 @@ export class MailService {
     try {
       const entries = await fsp.readdir(this.storage.mailOutboxDir, { withFileTypes: true });
       for (const entry of entries) {
-        if (!entry.isDirectory()) continue;
-
-        const folder = path.join(this.storage.mailOutboxDir, entry.name);
-        const stats = await fsp.stat(folder);
-        if (stats.mtimeMs < cutoff) await fsp.rm(folder, { recursive: true, force: true });
+        const target = path.join(this.storage.mailOutboxDir, entry.name);
+        const stats = await fsp.stat(target);
+        if (stats.mtimeMs < cutoff) await fsp.rm(target, { recursive: true, force: true });
       }
     } catch (error) {
       // Aufräumen ist Nebensache. Ein Versand darf nicht daran scheitern,
-      // dass ein alter Ordner sich nicht löschen ließ.
+      // dass sich eine alte Nachricht nicht löschen ließ.
       this.logger.warn(
-        `Alte Anhang-Ordner konnten nicht aufgeräumt werden: ${
+        `Alte Nachrichtendateien konnten nicht aufgeräumt werden: ${
           error instanceof Error ? error.message : String(error)
         }`,
       );

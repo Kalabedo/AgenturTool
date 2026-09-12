@@ -61,31 +61,77 @@ export class MailSenderService {
     const transporter = this.transporter(settings);
 
     try {
-      await transporter.sendMail({
-        from:
-          settings.fromName === null
-            ? settings.fromAddress
-            : { name: settings.fromName, address: settings.fromAddress },
-        replyTo: settings.replyTo ?? undefined,
-        to: mail.to,
-        cc: mail.cc.length === 0 ? undefined : mail.cc,
-        bcc: mail.bcc.length === 0 ? undefined : mail.bcc,
-        subject: mail.subject,
-        // Nur Text. Eine HTML-Fassung wäre ein zweiter Inhalt, der mit dem
-        // ersten übereinstimmen müsste — und an einer Rechnung hängt das
-        // Dokument, nicht die Gestaltung der Begleitzeilen.
-        text: mail.body,
-        attachments: mail.attachments.map((attachment) => ({
-          filename: attachment.filename,
-          content: attachment.bytes,
-          contentType: attachment.contentType,
-        })),
-      });
+      await transporter.sendMail(this.envelope(settings, mail));
     } catch (error) {
       throw this.toApiError(error);
     } finally {
       transporter.close();
     }
+  }
+
+  /**
+   * Baut die Nachricht, ohne sie zu verschicken.
+   *
+   * Für den Weg über die Mail-Anwendung: Heraus kommt eine vollständige
+   * MIME-Nachricht mit Empfängern, Betreff, Text und **eingebetteten
+   * Anhängen**, die als `.eml` auf die Platte geht. `streamTransport` ist
+   * der dafür vorgesehene Weg von nodemailer — dieselbe Zusammensetzung wie
+   * beim echten Versand, nur dass am Ende ein Puffer steht statt einer
+   * Verbindung. Die Nachricht zweimal zu bauen wäre die Gelegenheit, dass
+   * die verschickte anders aussieht als die geöffnete.
+   *
+   * `X-Unsent: 1` ist die einzige Abweichung, und sie ist der Zweck der
+   * Sache: Outlook erkennt daran einen Entwurf und öffnet ihn im
+   * Verfassen-Fenster statt im Leseansicht.
+   */
+  async buildMessageFile(settings: ResolvedMailSettings, mail: OutgoingMail): Promise<Buffer> {
+    const transporter = nodemailer.createTransport({
+      streamTransport: true,
+      buffer: true,
+      // Zeilenenden nach RFC 5322. Für eine Datei, die andere Programme
+      // lesen, ist das der sichere Weg.
+      newline: 'windows',
+    });
+
+    try {
+      const info = (await transporter.sendMail({
+        ...this.envelope(settings, mail),
+        headers: { 'X-Unsent': '1' },
+      })) as { message: Buffer };
+
+      return info.message;
+    } catch (error) {
+      throw this.toApiError(error);
+    } finally {
+      transporter.close();
+    }
+  }
+
+  /** Empfänger, Betreff, Text und Anhänge — für beide Wege dieselben. */
+  private envelope(
+    settings: ResolvedMailSettings,
+    mail: OutgoingMail,
+  ): Parameters<Transporter['sendMail']>[0] {
+    return {
+      from:
+        settings.fromName === null
+          ? settings.fromAddress
+          : { name: settings.fromName, address: settings.fromAddress },
+      replyTo: settings.replyTo ?? undefined,
+      to: mail.to,
+      cc: mail.cc.length === 0 ? undefined : mail.cc,
+      bcc: mail.bcc.length === 0 ? undefined : mail.bcc,
+      subject: mail.subject,
+      // Nur Text. Eine HTML-Fassung wäre ein zweiter Inhalt, der mit dem
+      // ersten übereinstimmen müsste — und an einer Rechnung hängt das
+      // Dokument, nicht die Gestaltung der Begleitzeilen.
+      text: mail.body,
+      attachments: mail.attachments.map((attachment) => ({
+        filename: attachment.filename,
+        content: attachment.bytes,
+        contentType: attachment.contentType,
+      })),
+    };
   }
 
   private transporter(settings: ResolvedMailSettings): Transporter {

@@ -5,7 +5,6 @@ import {
   MAIL_TEMPLATE_DEFAULTS,
   MAIL_TEMPLATE_KEY,
   MAIL_TRANSPORT,
-  buildMailtoUrl,
   formatAddressList,
   isEmailAddress,
   mailSendInputSchema,
@@ -21,9 +20,8 @@ import {
  *
  * Geprüft wird, was beim Kunden im Postfach landen würde: dass ein
  * Vertipper im Platzhalter sichtbar bleibt statt eine Lücke zu
- * hinterlassen, dass eine halb ausgefüllte SMTP-Einrichtung nicht als
- * vollständig durchgeht, und dass die `mailto`-Adresse Leerzeichen nicht
- * in Pluszeichen verwandelt.
+ * hinterlassen, und dass eine halb ausgefüllte SMTP-Einrichtung nicht als
+ * vollständig durchgeht.
  */
 
 describe('parseAddressList', () => {
@@ -206,39 +204,5 @@ describe('mailSendInputSchema', () => {
     const result = mailSendInputSchema.safeParse({ ...base, to: 'a@example.de, kaputt' });
     expect(result.success).toBe(false);
     expect(result.error?.issues[0]?.message).toContain('kaputt');
-  });
-});
-
-describe('buildMailtoUrl', () => {
-  it('kodiert Leerzeichen als %20 und nicht als Pluszeichen', () => {
-    const url = buildMailtoUrl({
-      to: ['kunde@example.de'],
-      subject: 'Rechnung 2026-014',
-      body: 'Guten Tag',
-    });
-
-    expect(url).toBe('mailto:kunde%40example.de?subject=Rechnung%202026-014&body=Guten%20Tag');
-  });
-
-  it('nimmt mehrere Empfänger und lässt leere Felder weg', () => {
-    const url = buildMailtoUrl({
-      to: ['a@example.de', 'b@example.de'],
-      cc: [],
-      bcc: ['archiv@example.de'],
-      subject: '',
-      body: 'Text',
-    });
-
-    expect(url).toContain('mailto:a%40example.de,b%40example.de');
-    expect(url).toContain('bcc=archiv%40example.de');
-    expect(url).not.toContain('?cc=');
-    expect(url).not.toContain('&cc=');
-    expect(url).not.toContain('subject=');
-  });
-
-  it('kodiert Umlaute im Betreff', () => {
-    expect(buildMailtoUrl({ to: ['a@b.de'], subject: 'Prüfung', body: '' })).toContain(
-      'subject=Pr%C3%BCfung',
-    );
   });
 });

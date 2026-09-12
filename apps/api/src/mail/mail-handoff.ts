@@ -1,22 +1,57 @@
 /**
  * Der Weg über die Mail-Anwendung dieses Rechners (D45).
  *
- * Die Schnittstelle ist so schmal wie das, was dieser Weg überhaupt kann:
- * einen Entwurf öffnen und einen Ordner zeigen. Mehr gibt `mailto` nicht
- * her — es trägt Empfänger, Betreff und Text, aber keine Dateien. Die
- * Anhänge legt die Anwendung deshalb in einen Ordner und zeigt ihn; anhängen
- * muss sie der Benutzer selbst.
+ * Zwei Wege zum selben Ziel, und die Reihenfolge ist Absicht:
  *
- * Das ist die unbequeme, aber ehrliche Umsetzung. Die bequeme wäre, den
- * Vorgang als „versendet" zu verbuchen und zu hoffen — und genau davon
- * hängt hier ein Zahlungsvermerk ab.
+ * 1. **Ein echter Entwurf.** Wo sich das Mailprogramm fernsteuern lässt —
+ *    auf macOS Apple Mail über AppleScript —, entsteht ein fertiges
+ *    Verfassen-Fenster mit Empfängern, Betreff, Text und Anhängen. Mehr als
+ *    „Senden" bleibt nicht zu tun.
+ * 2. **Eine Nachrichtendatei.** Sonst schreibt die Anwendung die
+ *    vollständige Nachricht als `.eml` und lässt sie öffnen. Outlook erkennt
+ *    an der Kopfzeile `X-Unsent: 1` einen unfertigen Entwurf und öffnet ihn
+ *    zum Verfassen; andere Programme zeigen sie als eingegangene Nachricht,
+ *    aus der ein „Weiterleiten" die Anhänge übernimmt.
+ *
+ * Der erste Entwurf dieser Schnittstelle ging über `mailto`. Das trägt keine
+ * Dateien, also landeten die Anhänge in einem Ordner, der daneben aufging,
+ * und der Benutzer zog sie von Hand hinüber — zwei Fenster für einen
+ * Vorgang, und die Rechnung lag außerhalb der Nachricht. Beide Wege oben
+ * tragen sie darin.
  */
-export interface MailHandoff {
-  /** Öffnet den Standard-Mailclient mit vorbelegtem Entwurf. */
-  openDraft(mailtoUrl: string): Promise<void>;
 
-  /** Zeigt den Ordner mit den Anhängen im Dateimanager. */
-  revealFolder(folderPath: string): Promise<void>;
+/** Die Nachricht, wie ein fernsteuerbares Mailprogramm sie braucht. */
+export interface MailDraft {
+  to: readonly string[];
+  cc: readonly string[];
+  bcc: readonly string[];
+  subject: string;
+  body: string;
+  /** Absolute Pfade der Anhänge; sie liegen bereits auf der Platte. */
+  attachmentPaths: readonly string[];
+}
+
+export interface MailHandoff {
+  /**
+   * Legt einen bearbeitbaren Entwurf im Mailprogramm an.
+   *
+   * `false` heißt „auf diesem Rechner nicht möglich" und ist kein Fehler:
+   * ein anderes Standardprogramm, eine abgelehnte Automatisierung, ein
+   * anderes Betriebssystem. Der Aufrufer geht dann den Weg über die Datei.
+   */
+  openDraft(draft: MailDraft): Promise<boolean>;
+
+  /**
+   * Öffnet die Nachrichtendatei mit dem Mailprogramm des Rechners.
+   *
+   * Lässt sie sich nicht öffnen, ist die Umsetzung dafür zuständig, die
+   * Datei wenigstens im Dateimanager zu zeigen — der Pfad steht danach auch
+   * in der Oberfläche.
+   */
+  openMessage(filePath: string): Promise<void>;
+
+  /** Das Programm, das `mailto` bedient — für die Rückmeldung an den Benutzer. */
+  applicationName(): string | null;
 }
 
 /**

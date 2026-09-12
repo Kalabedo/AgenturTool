@@ -8,6 +8,7 @@ import {
   DISCOUNT_TYPE,
   INVOICE_EVENT_TYPE,
   MAIL_ATTACHMENT_KIND,
+  MAIL_HANDOFF_METHOD,
   MAIL_SECURITY,
   MAIL_STATUS,
   MAIL_TEMPLATE_DEFAULTS,
@@ -30,8 +31,8 @@ import { InvoicesService } from '../src/invoices/invoices.service';
 import { EinvoiceService } from '../src/einvoice/einvoice.service';
 import { TimeEntriesService } from '../src/time-entries/time-entries.service';
 import { MailComposerService } from '../src/mail/mail-composer.service';
-import type { MailHandoff } from '../src/mail/mail-handoff';
-import type { MailSenderService, OutgoingMail } from '../src/mail/mail-sender.service';
+import type { MailDraft, MailHandoff } from '../src/mail/mail-handoff';
+import { MailSenderService, type OutgoingMail } from '../src/mail/mail-sender.service';
 import { MailSettingsService, type ResolvedMailSettings } from '../src/mail/mail-settings.service';
 import { MailTemplatesService } from '../src/mail/mail-templates.service';
 import { MailService } from '../src/mail/mail.service';
@@ -61,35 +62,56 @@ let mail: MailService;
 let finalizer: InvoiceFinalizeService;
 let invoices: InvoicesService;
 
-/** Ein Sender, der nichts verschickt, sich aber merkt, was er bekommen hat. */
-class FakeSender {
+/**
+ * Ein Sender, der nichts verschickt, sich aber merkt, was er bekommen hat.
+ *
+ * Abgeleitet statt nachgebaut: Nur `send` und `verify` gehen ins Netz und
+ * werden ersetzt. `buildMessageFile` bleibt das Original — die Nachricht,
+ * die der Test anschließend aus der `.eml` liest, ist damit genau die, die
+ * im Betrieb entsteht.
+ */
+class FakeSender extends MailSenderService {
   sent: OutgoingMail[] = [];
   failWith: Error | null = null;
   verifyFailWith: Error | null = null;
 
-  send(_settings: ResolvedMailSettings, outgoing: OutgoingMail): Promise<void> {
+  override send(_settings: ResolvedMailSettings, outgoing: OutgoingMail): Promise<void> {
     if (this.failWith !== null) return Promise.reject(this.failWith);
     this.sent.push(outgoing);
     return Promise.resolve();
   }
 
-  verify(): Promise<void> {
+  override verify(): Promise<void> {
     return this.verifyFailWith === null ? Promise.resolve() : Promise.reject(this.verifyFailWith);
   }
 }
 
+/**
+ * Eine Mail-Anwendung, die sich merkt, was sie bekommen hat.
+ *
+ * `canOpenDraft` schaltet zwischen den beiden Wegen um — dem echten Entwurf
+ * und der Nachrichtendatei —, weil genau dieser Unterschied davon abhängt,
+ * welches Programm auf dem Rechner steht.
+ */
 class FakeHandoff implements MailHandoff {
-  openedDrafts: string[] = [];
-  revealedFolders: string[] = [];
+  canOpenDraft = false;
+  drafts: MailDraft[] = [];
+  openedMessages: string[] = [];
 
-  openDraft(mailtoUrl: string): Promise<void> {
-    this.openedDrafts.push(mailtoUrl);
+  openDraft(draft: MailDraft): Promise<boolean> {
+    if (!this.canOpenDraft) return Promise.resolve(false);
+
+    this.drafts.push(draft);
+    return Promise.resolve(true);
+  }
+
+  openMessage(filePath: string): Promise<void> {
+    this.openedMessages.push(filePath);
     return Promise.resolve();
   }
 
-  revealFolder(folderPath: string): Promise<void> {
-    this.revealedFolders.push(folderPath);
-    return Promise.resolve();
+  applicationName(): string | null {
+    return this.canOpenDraft ? 'Mail' : 'Microsoft Outlook';
   }
 }
 
@@ -146,14 +168,7 @@ beforeAll(async () => {
 
   sender = new FakeSender();
   handoff = new FakeHandoff();
-  mail = new MailService(
-    prisma,
-    settings,
-    composer,
-    sender as unknown as MailSenderService,
-    storage,
-    handoff,
-  );
+  mail = new MailService(prisma, settings, composer, sender, storage, handoff);
 });
 
 afterAll(async () => {
@@ -177,8 +192,9 @@ beforeEach(async () => {
   sender.sent = [];
   sender.failWith = null;
   sender.verifyFailWith = null;
-  handoff.openedDrafts = [];
-  handoff.revealedFolders = [];
+  handoff.canOpenDraft = false;
+  handoff.drafts = [];
+  handoff.openedMessages = [];
 
   await prisma.company.create({
     data: {
@@ -554,7 +570,7 @@ describe('Versand über SMTP', () => {
 
     expect(result.message.status).toBe(MAIL_STATUS.SENT);
     expect(result.message.attachments).toHaveLength(2);
-    expect(result.handoffFolder).toBeNull();
+    expect(result.handoff).toBeNull();
     expect(result.markedSentAt).not.toBeNull();
 
     const invoice = await invoices.findById(id);
@@ -676,7 +692,44 @@ describe('Versand über SMTP', () => {
 });
 
 describe('Übergabe an die Mail-Anwendung', () => {
-  it('legt die Anhänge ab, öffnet den Entwurf — und vermerkt keinen Versand', async () => {
+  it('legt einen echten Entwurf an, wo das Mailprogramm es zulässt', async () => {
+    await setUpMailApp();
+    handoff.canOpenDraft = true;
+    const id = await issuedInvoice();
+
+    const result = await mail.send({
+      source: { kind: 'INVOICE', invoiceId: id },
+      to: ['rechnung@soluxion.example'],
+      cc: ['kopie@soluxion.example'],
+      bcc: [],
+      subject: 'Rechnung 2026-001',
+      body: 'Guten Tag Frau Meyer',
+      attachments: [MAIL_ATTACHMENT_KIND.INVOICE_PDF],
+    });
+
+    expect(result.handoff).toMatchObject({
+      method: MAIL_HANDOFF_METHOD.DRAFT,
+      application: 'Mail',
+      // Kein Pfad: Es gibt keine Datei, auf die jemand ausweichen müsste.
+      path: null,
+    });
+
+    const draft = handoff.drafts[0];
+    expect(draft?.to).toEqual(['rechnung@soluxion.example']);
+    expect(draft?.cc).toEqual(['kopie@soluxion.example']);
+    expect(draft?.subject).toBe('Rechnung 2026-001');
+    // Das Mailprogramm bekommt Dateipfade gereicht, keine Bytes — die
+    // Anhänge müssen also wirklich auf der Platte liegen.
+    expect(draft?.attachmentPaths).toHaveLength(1);
+    expect(fs.existsSync(draft?.attachmentPaths[0] ?? '')).toBe(true);
+    expect(draft?.attachmentPaths[0]).toMatch(/Rechnung-2026-001\.pdf$/u);
+
+    // Keine Nachrichtendatei: Der erste Weg hat getragen.
+    expect(handoff.openedMessages).toEqual([]);
+    expect(result.markedSentAt).toBeNull();
+  });
+
+  it('schreibt die vollständige Nachricht samt Anhang und öffnet sie', async () => {
     await setUpMailApp();
     const id = await issuedInvoice();
 
@@ -686,20 +739,29 @@ describe('Übergabe an die Mail-Anwendung', () => {
       cc: [],
       bcc: [],
       subject: 'Rechnung 2026-001',
-      body: 'Guten Tag',
+      body: 'Guten Tag Frau Meyer',
       attachments: [MAIL_ATTACHMENT_KIND.INVOICE_PDF],
     });
 
     expect(result.message.status).toBe(MAIL_STATUS.PREPARED);
-    expect(result.handoffFolder).not.toBeNull();
-    expect(fs.readdirSync(result.handoffFolder ?? '')).toEqual(['Rechnung-2026-001.pdf']);
+    expect(result.handoff).toMatchObject({
+      method: MAIL_HANDOFF_METHOD.MESSAGE_FILE,
+      application: 'Microsoft Outlook',
+    });
+    expect(result.handoff?.path).toMatch(/\.eml$/u);
+    expect(handoff.openedMessages).toEqual([result.handoff?.path]);
 
-    expect(handoff.openedDrafts[0]).toContain('mailto:rechnung%40soluxion.example');
-    expect(handoff.openedDrafts[0]).toContain('subject=Rechnung%202026-001');
-    expect(handoff.revealedFolders).toEqual([result.handoffFolder]);
+    // Der eigentliche Punkt dieses Wegs: Die Rechnung steckt **in** der
+    // Nachricht und liegt nicht in einem Ordner daneben.
+    const eml = fs.readFileSync(result.handoff?.path ?? '', 'utf8');
+    expect(eml).toContain('To: rechnung@soluxion.example');
+    expect(eml).toContain('Rechnung-2026-001.pdf');
+    expect(eml).toContain('Content-Type: application/pdf');
+    // Outlook erkennt daran einen Entwurf statt einer eingegangenen Nachricht.
+    expect(eml).toContain('X-Unsent: 1');
 
-    // Der Kern dieses Wegs: Ob die Nachricht abging, weiß die Anwendung
-    // nicht — und behauptet es deshalb nicht.
+    // Ob die Nachricht abging, weiß die Anwendung nicht — und behauptet es
+    // deshalb nicht.
     expect(result.markedSentAt).toBeNull();
     expect((await invoices.findById(id)).sentAt).toBeNull();
 
@@ -709,16 +771,27 @@ describe('Übergabe an die Mail-Anwendung', () => {
     expect(events).toHaveLength(1);
   });
 
+  it('schreibt auch ohne Anhang eine Nachricht', async () => {
+    await setUpMailApp();
+    const id = await issuedInvoice();
+
+    const result = await mail.send({
+      source: { kind: 'INVOICE', invoiceId: id },
+      to: ['rechnung@soluxion.example'],
+      cc: [],
+      bcc: [],
+      subject: 'Nachfrage',
+      body: 'Guten Tag',
+      attachments: [],
+    });
+
+    expect(result.handoff?.path).not.toBeNull();
+    expect(fs.readFileSync(result.handoff?.path ?? '', 'utf8')).toContain('Subject: Nachfrage');
+  });
+
   it('sagt es, wenn kein Fenster da ist, das etwas öffnen könnte', async () => {
     const storage = new StorageConfig({ get: () => dataDir } as never);
-    const headless = new MailService(
-      prisma,
-      settings,
-      composer,
-      sender as unknown as MailSenderService,
-      storage,
-      null,
-    );
+    const headless = new MailService(prisma, settings, composer, sender, storage, null);
 
     await setUpMailApp();
     const id = await issuedInvoice();

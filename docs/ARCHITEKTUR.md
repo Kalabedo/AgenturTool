@@ -11,51 +11,51 @@ sie hier korrigiert und nicht nur im Code.
 
 ### Getroffene Entscheidungen
 
-| ID  | Thema                    | Gewählt                                                                                                                                                                                                                                |
-| --- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | Betriebsmodell           | **Desktop-Anwendung** (Electron; Server im Hauptprozess, Daten in `userData`, Auth-Modul vorhanden aber deaktiviert) — ersetzt das ursprüngliche Docker-Image (Abschnitt 16a)                                                          |
-| D2  | Datenbank                | **SQLite** (portabel gehalten für späteren Postgres-Wechsel)                                                                                                                                                                           |
-| D3  | DB-Zugriff               | **Prisma**                                                                                                                                                                                                                             |
-| D4  | Backend                  | **NestJS**                                                                                                                                                                                                                             |
-| D5  | Rechnungsnummer          | **Erst beim Finalisieren** vergeben                                                                                                                                                                                                    |
-| D6  | Nach Finalisierung       | **Gesperrt + Storno**, plus eng begrenztes „Finalisierung zurücknehmen"                                                                                                                                                                |
-| D7  | Zahlungen                | **Nur `paidAt`** (Teilzahlungen später)                                                                                                                                                                                                |
-| D8  | Historische Daten        | **JSON-Snapshots auf der Rechnung**                                                                                                                                                                                                    |
-| D9  | Entwurfsdaten            | **Kunde kopiert** (editierbar + Refresh), **eigene Firmendaten live** bis zum Finalisieren                                                                                                                                             |
-| D10 | Storno-Nummern           | **Dieselbe Sequenz** wie Rechnungen                                                                                                                                                                                                    |
-| D11 | Rabatt                   | **Je Position**, umschaltbar Prozent ⇄ Betrag; kein Gesamtrabatt                                                                                                                                                                       |
-| D12 | Rundung                  | **Steuer je Steuersatzgruppe** auf Summenebene                                                                                                                                                                                         |
-| D13 | PDF-Ablage               | **Dateisystem** + Metadaten/Hash in der DB                                                                                                                                                                                             |
-| D14 | Vorschau                 | **React-Template im iframe** (eine Implementierung, zwei Konsumenten)                                                                                                                                                                  |
-| D15 | Template-Optionen V1     | **Mittel**: Logo/-größe, Akzentfarbe, Schrift (2–3), Fußzeile, Standardtexte                                                                                                                                                           |
-| D16 | Preiseingabe             | **Nur netto**                                                                                                                                                                                                                          |
-| D17 | Auth in V1               | **Vorhanden, per `AUTH_ENABLED` deaktiviert** (folgt aus D1)                                                                                                                                                                           |
-| D18 | ~~Späterer Zugriff~~     | ~~Tailscale + aktiver Login~~ — gegenstandslos mit D1 (Abschnitt 16)                                                                                                                                                                   |
-| D19 | Backup                   | Button in der App **und** Skript für Cron; Offsite optional                                                                                                                                                                            |
-| D20 | Tooling                  | pnpm, kein Turborepo, Vitest, ESLint + Prettier                                                                                                                                                                                        |
-| D21 | Kalenderdaten            | **ISO-String `"YYYY-MM-DD"`**; echte Zeitstempel bleiben `DateTime`                                                                                                                                                                    |
-| D22 | Kundennummer             | **Freies Feld, optional, eindeutig wenn gesetzt**                                                                                                                                                                                      |
-| D23 | Primärschlüssel          | `Int @id @default(autoincrement())`                                                                                                                                                                                                    |
-| D24 | Build der Pakete         | `tsup` → ESM + CJS + `.d.ts` (NestJS läuft CJS, Vite ESM)                                                                                                                                                                              |
-| D29 | Schrift im Dokument      | **Open Sans, als Base64 im Paket eingebettet** — kein Netzwerkzugriff beim PDF-Rendern                                                                                                                                                 |
-| D30 | Vorschau-Einbindung      | **iframe + React-Portal** (nicht `srcdoc`): dieselbe Komponente wie im PDF, inkrementell aktualisiert                                                                                                                                  |
-| D31 | Seitenränder             | **`@page`-Ränder im Druck**, Padding nur am Bildschirm — Padding wirkt sonst nur auf der ersten Seite                                                                                                                                  |
-| D32 | ~~Puppeteer-Paket~~      | ~~`puppeteer-core` mit gefundenem Chromium~~ — überholt durch D34                                                                                                                                                                      |
-| D33 | Backup-Format            | **ZIP** statt tar.gz — mit Bordmitteln auf Windows, macOS und iOS zu öffnen (Abschnitt 17)                                                                                                                                             |
-| D34 | PDF-Renderer             | **Electrons `printToPDF`** statt eines ferngesteuerten Browsers — die Anwendung bringt ihr Chromium mit (Abschnitt 13a)                                                                                                                |
-| D35 | asar-Archiv              | **Keins.** Prisma startet und lädt seine Engines über selbst gebildete Pfade, an Electrons asar-Umleitung vorbei (Abschnitt 16a)                                                                                                       |
-| D36 | Netzverkehr des Fensters | **Alles außer der Rückschleife wird abgewiesen** — ein `webRequest`-Filter, wie ihn der PDF-Renderer schon hat (Abschnitt 16)                                                                                                          |
-| D37 | Steuerberater-Export     | **Ehrliches Übergabe-ZIP** aus Snapshots, CSV und Originalbelegen; kein vorgeblicher DATEV-Stapel ohne Konten-/Kanzleikonfiguration (Abschnitt 26)                                                                                     |
-| D38 | Verkaufskanal            | **Eigene Website zuerst**; Microsoft Store und Mac App Store bleiben optionale spätere Zusatzkanäle                                                                                                                                    |
-| D39 | Lizenzmodell             | **Einmalkauf mit dauerhaftem Nutzungsrecht**; zwölf Monate Updates inklusive, danach optional bezahlbare Verlängerung des Updatezeitraums                                                                                              |
-| D40 | Offline-Nutzung          | **Keine dauerhafte Aktivierungspflicht.** Nach einmaliger Aktivierung beziehungsweise Import einer signierten Lizenzdatei funktioniert die berechtigte Version dauerhaft offline                                                       |
-| D41 | Anwendungsupdates        | **Eigener, signierter Updatekanal** über eine fest erlaubte HTTPS-Domain; Prüfung im Electron-Hauptprozess, Installation nur nach Zustimmung und lokalem Backup                                                                        |
-| D42 | App-Identität            | **Stabil ab öffentlichem Release:** `AgenturTool`, App-ID `de.agenturtool.app`, bestehende Datenpfade und dieselben Herausgeber-/Signaturidentitäten                                                                                   |
-| D43 | Externe Verbindungen     | **Nach Zweck getrennt und minimal erlaubt:** Updates, Aktivierung und bewusst ausgelöster E-Mail-Versand; keine Telemetrie und keine Kunden- oder Rechnungsdaten beim Updatecheck                                                      |
-| D44 | Preisvalidierung         | **Vor Ausbau des Vertriebs und weiterer großer Module** mit Solo-Agenturen testen; Preis zunächst Hypothese, kein allein aus Entwicklungskosten abgeleiteter Beschluss                                                                 |
-| D45 | E-Mail-Versandwege       | **Zwei Wege mit verschiedenen Zusagen:** SMTP verschickt selbst und setzt den Versandvermerk; die lokale Mail-Anwendung bekommt nur einen Entwurf, und der Vermerk bleibt beim Benutzer. Vorbelegung ist „kein Versand" (Abschnitt 27) |
-| D46 | SMTP-Passwort            | **Verschlüsselt in der Datenbank, Schlüssel außerhalb:** Schlüsselbund des Betriebssystems, ersatzweise eine Schlüsseldatei unter DATA_DIR. Beide liegen nicht im Backup — ein anderswo eingespieltes Backup verlangt eine Neueingabe  |
-| D47 | E-Mail-Vorlagen          | **Drei feste Vorlagen mit Platzhaltern**, bearbeitbar und zurücksetzbar; das Einsetzen liegt in `shared` und läuft für Vorschau und Versand durch dieselbe Funktion                                                                    |
+| ID  | Thema                    | Gewählt                                                                                                                                                                                                                                                                                                   |
+| --- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Betriebsmodell           | **Desktop-Anwendung** (Electron; Server im Hauptprozess, Daten in `userData`, Auth-Modul vorhanden aber deaktiviert) — ersetzt das ursprüngliche Docker-Image (Abschnitt 16a)                                                                                                                             |
+| D2  | Datenbank                | **SQLite** (portabel gehalten für späteren Postgres-Wechsel)                                                                                                                                                                                                                                              |
+| D3  | DB-Zugriff               | **Prisma**                                                                                                                                                                                                                                                                                                |
+| D4  | Backend                  | **NestJS**                                                                                                                                                                                                                                                                                                |
+| D5  | Rechnungsnummer          | **Erst beim Finalisieren** vergeben                                                                                                                                                                                                                                                                       |
+| D6  | Nach Finalisierung       | **Gesperrt + Storno**, plus eng begrenztes „Finalisierung zurücknehmen"                                                                                                                                                                                                                                   |
+| D7  | Zahlungen                | **Nur `paidAt`** (Teilzahlungen später)                                                                                                                                                                                                                                                                   |
+| D8  | Historische Daten        | **JSON-Snapshots auf der Rechnung**                                                                                                                                                                                                                                                                       |
+| D9  | Entwurfsdaten            | **Kunde kopiert** (editierbar + Refresh), **eigene Firmendaten live** bis zum Finalisieren                                                                                                                                                                                                                |
+| D10 | Storno-Nummern           | **Dieselbe Sequenz** wie Rechnungen                                                                                                                                                                                                                                                                       |
+| D11 | Rabatt                   | **Je Position**, umschaltbar Prozent ⇄ Betrag; kein Gesamtrabatt                                                                                                                                                                                                                                          |
+| D12 | Rundung                  | **Steuer je Steuersatzgruppe** auf Summenebene                                                                                                                                                                                                                                                            |
+| D13 | PDF-Ablage               | **Dateisystem** + Metadaten/Hash in der DB                                                                                                                                                                                                                                                                |
+| D14 | Vorschau                 | **React-Template im iframe** (eine Implementierung, zwei Konsumenten)                                                                                                                                                                                                                                     |
+| D15 | Template-Optionen V1     | **Mittel**: Logo/-größe, Akzentfarbe, Schrift (2–3), Fußzeile, Standardtexte                                                                                                                                                                                                                              |
+| D16 | Preiseingabe             | **Nur netto**                                                                                                                                                                                                                                                                                             |
+| D17 | Auth in V1               | **Vorhanden, per `AUTH_ENABLED` deaktiviert** (folgt aus D1)                                                                                                                                                                                                                                              |
+| D18 | ~~Späterer Zugriff~~     | ~~Tailscale + aktiver Login~~ — gegenstandslos mit D1 (Abschnitt 16)                                                                                                                                                                                                                                      |
+| D19 | Backup                   | Button in der App **und** Skript für Cron; Offsite optional                                                                                                                                                                                                                                               |
+| D20 | Tooling                  | pnpm, kein Turborepo, Vitest, ESLint + Prettier                                                                                                                                                                                                                                                           |
+| D21 | Kalenderdaten            | **ISO-String `"YYYY-MM-DD"`**; echte Zeitstempel bleiben `DateTime`                                                                                                                                                                                                                                       |
+| D22 | Kundennummer             | **Freies Feld, optional, eindeutig wenn gesetzt**                                                                                                                                                                                                                                                         |
+| D23 | Primärschlüssel          | `Int @id @default(autoincrement())`                                                                                                                                                                                                                                                                       |
+| D24 | Build der Pakete         | `tsup` → ESM + CJS + `.d.ts` (NestJS läuft CJS, Vite ESM)                                                                                                                                                                                                                                                 |
+| D29 | Schrift im Dokument      | **Open Sans, als Base64 im Paket eingebettet** — kein Netzwerkzugriff beim PDF-Rendern                                                                                                                                                                                                                    |
+| D30 | Vorschau-Einbindung      | **iframe + React-Portal** (nicht `srcdoc`): dieselbe Komponente wie im PDF, inkrementell aktualisiert                                                                                                                                                                                                     |
+| D31 | Seitenränder             | **`@page`-Ränder im Druck**, Padding nur am Bildschirm — Padding wirkt sonst nur auf der ersten Seite                                                                                                                                                                                                     |
+| D32 | ~~Puppeteer-Paket~~      | ~~`puppeteer-core` mit gefundenem Chromium~~ — überholt durch D34                                                                                                                                                                                                                                         |
+| D33 | Backup-Format            | **ZIP** statt tar.gz — mit Bordmitteln auf Windows, macOS und iOS zu öffnen (Abschnitt 17)                                                                                                                                                                                                                |
+| D34 | PDF-Renderer             | **Electrons `printToPDF`** statt eines ferngesteuerten Browsers — die Anwendung bringt ihr Chromium mit (Abschnitt 13a)                                                                                                                                                                                   |
+| D35 | asar-Archiv              | **Keins.** Prisma startet und lädt seine Engines über selbst gebildete Pfade, an Electrons asar-Umleitung vorbei (Abschnitt 16a)                                                                                                                                                                          |
+| D36 | Netzverkehr des Fensters | **Alles außer der Rückschleife wird abgewiesen** — ein `webRequest`-Filter, wie ihn der PDF-Renderer schon hat (Abschnitt 16)                                                                                                                                                                             |
+| D37 | Steuerberater-Export     | **Ehrliches Übergabe-ZIP** aus Snapshots, CSV und Originalbelegen; kein vorgeblicher DATEV-Stapel ohne Konten-/Kanzleikonfiguration (Abschnitt 26)                                                                                                                                                        |
+| D38 | Verkaufskanal            | **Eigene Website zuerst**; Microsoft Store und Mac App Store bleiben optionale spätere Zusatzkanäle                                                                                                                                                                                                       |
+| D39 | Lizenzmodell             | **Einmalkauf mit dauerhaftem Nutzungsrecht**; zwölf Monate Updates inklusive, danach optional bezahlbare Verlängerung des Updatezeitraums                                                                                                                                                                 |
+| D40 | Offline-Nutzung          | **Keine dauerhafte Aktivierungspflicht.** Nach einmaliger Aktivierung beziehungsweise Import einer signierten Lizenzdatei funktioniert die berechtigte Version dauerhaft offline                                                                                                                          |
+| D41 | Anwendungsupdates        | **Eigener, signierter Updatekanal** über eine fest erlaubte HTTPS-Domain; Prüfung im Electron-Hauptprozess, Installation nur nach Zustimmung und lokalem Backup                                                                                                                                           |
+| D42 | App-Identität            | **Stabil ab öffentlichem Release:** `AgenturTool`, App-ID `de.agenturtool.app`, bestehende Datenpfade und dieselben Herausgeber-/Signaturidentitäten                                                                                                                                                      |
+| D43 | Externe Verbindungen     | **Nach Zweck getrennt und minimal erlaubt:** Updates, Aktivierung und bewusst ausgelöster E-Mail-Versand; keine Telemetrie und keine Kunden- oder Rechnungsdaten beim Updatecheck                                                                                                                         |
+| D44 | Preisvalidierung         | **Vor Ausbau des Vertriebs und weiterer großer Module** mit Solo-Agenturen testen; Preis zunächst Hypothese, kein allein aus Entwicklungskosten abgeleiteter Beschluss                                                                                                                                    |
+| D45 | E-Mail-Versandwege       | **Zwei Wege mit verschiedenen Zusagen:** SMTP verschickt selbst und setzt den Versandvermerk; die lokale Mail-Anwendung bekommt einen fertigen Entwurf samt Anhängen (Apple Mail über AppleScript, sonst als `.eml`), und der Vermerk bleibt beim Benutzer. Vorbelegung ist „kein Versand" (Abschnitt 27) |
+| D46 | SMTP-Passwort            | **Verschlüsselt in der Datenbank, Schlüssel außerhalb:** Schlüsselbund des Betriebssystems, ersatzweise eine Schlüsseldatei unter DATA_DIR. Beide liegen nicht im Backup — ein anderswo eingespieltes Backup verlangt eine Neueingabe                                                                     |
+| D47 | E-Mail-Vorlagen          | **Drei feste Vorlagen mit Platzhaltern**, bearbeitbar und zurücksetzbar; das Einsetzen liegt in `shared` und läuft für Vorschau und Versand durch dieselbe Funktion                                                                                                                                       |
 
 Zu D21: Rechnungs-, Leistungs- und Fälligkeitsdatum sind Kalendertage, keine
 Zeitpunkte. Als `DateTime` müsste an jeder Grenze zwischen Browser, API und
@@ -1920,14 +1920,62 @@ Netz zu greifen.
 Der Unterschied ist nicht kosmetisch, denn an ihm hängt `sentAt` und damit der
 Lauf des Zahlungsziels. Über SMTP setzt die Anwendung den Versandvermerk
 selbst; über die Mail-Anwendung setzt sie ihn **nicht** und bietet stattdessen
-den Knopf dafür an. `mailto` kann keine Dateien tragen — eine Grenze des
-Formats, nicht der Umsetzung —, also schreibt die Anwendung die Anhänge in
-einen Ordner unter `data/mail-anhaenge/` und öffnet ihn; angehängt werden sie
-von Hand. Der bequeme Weg wäre gewesen, den Vorgang trotzdem als „versendet"
-zu verbuchen. Das wäre eine Behauptung über etwas, das in einem fremden
-Programm geschieht.
+den Knopf dafür an. Der bequeme Weg wäre gewesen, den Vorgang trotzdem als
+„versendet" zu verbuchen. Das wäre eine Behauptung über etwas, das in einem
+fremden Programm geschieht.
 
-Der Ordner ist bewusst **nicht** Teil des Backups: Er enthält Kopien von
+### Die Übergabe an die Mail-Anwendung
+
+Der erste Entwurf ging über `mailto`. Das trägt keine Dateien, also landeten
+die Anhänge in einem Ordner, der daneben aufging, und der Benutzer zog sie von
+Hand in den Entwurf — zwei Fenster für einen Vorgang, und die Rechnung lag
+außerhalb der Nachricht. Stattdessen gibt es jetzt zwei Wege, in dieser
+Reihenfolge:
+
+1. **Ein echter Entwurf.** Auf macOS mit Apple Mail als Standardprogramm legt
+   ein AppleScript ein fertiges Verfassen-Fenster an: Empfänger, Betreff, Text
+   und Anhänge stehen darin, es bleibt nur „Senden".
+2. **Eine Nachrichtendatei.** Sonst schreibt die Anwendung die vollständige
+   Nachricht als `.eml` und lässt sie öffnen. Outlook erkennt an der Kopfzeile
+   `X-Unsent: 1` einen unfertigen Entwurf und öffnet ihn zum Verfassen; andere
+   Programme zeigen sie als eingegangene Nachricht, aus der ein „Weiterleiten"
+   die Anhänge übernimmt.
+
+Gebaut wird die Datei von derselben Zusammensetzung wie der echte Versand
+(`MailSenderService.envelope`), nur endet sie in einem Puffer statt in einer
+Verbindung — zwei Bauwege wären die Gelegenheit, dass die verschickte
+Nachricht anders aussieht als die geöffnete.
+
+Drei Festlegungen zum AppleScript-Weg:
+
+- **Nur Apple Mail, und nur als Standardprogramm.** Geprüft wird über
+  `app.getApplicationNameForProtocol('mailto:')`. Ein Entwurf in einem
+  Programm, das der Benutzer gar nicht benutzt, wäre schlechter als die
+  Nachrichtendatei. Outlook braucht den Weg ohnehin nicht — für das genügt
+  `X-Unsent`.
+- **Die Werte gehen als Argumente hinein, nie in den Skripttext.** Betreff und
+  Nachricht schreibt der Benutzer; ein Anführungszeichen darin zerrisse einen
+  zusammengebauten Quelltext — im besten Fall mit einem Syntaxfehler, im
+  schlechteren mit einer Anweisung, die niemand vorgesehen hat. Über
+  `on run argv` ist jeder Text nur ein Text. Listen reisen als eine
+  Zeichenkette mit Zeilenumbrüchen, damit die Argumentpositionen fest bleiben.
+- **Ein Scheitern ist kein Fehlerfall.** macOS fragt beim ersten Mal um
+  Erlaubnis (`NSAppleEventsUsageDescription`, Entitlement
+  `com.apple.security.automation.apple-events`). Wird sie verweigert, meldet
+  osascript `-1743`, und der Versand geht über die Nachrichtendatei weiter.
+  Dasselbe gilt für ein Zeitlimit, ein nicht ansprechbares Mail und ein
+  geändertes Skript-Vokabular.
+
+Geprüft wurde der Weg gegen Apple Mail auf macOS 26: Der Entwurf geht auf,
+Empfänger, Betreff mit Anführungszeichen und Umlauten, Text und beide Anhänge
+stehen darin. Automatisiert lässt sich das nicht nachhalten — es braucht ein
+angemeldetes Mailprogramm und eine erteilte Automatisierungsfreigabe. Was die
+Testsuite prüft, ist die Grenze davor: dass der Dienst den Entwurf mit den
+richtigen Dateipfaden anbietet und bei einer Absage auf die Nachrichtendatei
+ausweicht.
+
+Was unter `data/mail-anhaenge/` entsteht — die Anhänge und gegebenenfalls die
+`.eml` —, ist bewusst **nicht** Teil des Backups: Es sind Kopien von
 Dokumenten, die längst abgelegt und gesichert sind. Was älter als sieben Tage
 ist, räumt der nächste Versand weg.
 
