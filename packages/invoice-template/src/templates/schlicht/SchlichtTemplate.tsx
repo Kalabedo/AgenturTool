@@ -7,22 +7,17 @@ import {
   TotalsBlock,
   documentParts,
 } from '../../design/document.jsx';
+import type { PageGeometry } from '../../design/page.js';
 import type { InvoiceRenderModel } from '../../types.js';
 
 /**
- * Das Template „classic".
+ * Das Design „schlicht".
  *
- * Reines Darstellen: keine Berechnung, kein Datenzugriff, keine Zustände.
- * Genau deshalb kann dieselbe Komponente im iframe der Live-Vorschau laufen
- * und im Backend durch renderToStaticMarkup für das PDF — und genau deshalb
- * zeigt die Vorschau verlässlich das, was später auf dem Papier steht.
- *
- * Der Kopf steht hier, die Bausteine darunter kommen aus `design/document`:
- * Was eine Rechnung an Angaben trägt, ist bei allen vier Designs dasselbe.
- * Eigen ist classic die Anordnung — Absender links, Zahlungsdetails rechts,
- * darunter eine feine Linie.
+ * Wie „classic" im Aufbau, aber ohne Linien und mit deutlich mehr Luft.
+ * Die Zahlungsdetails stehen nicht im Kopf, sondern am Fuß bei den
+ * Hinweisen — der Kopf soll nur Absender und Empfänger tragen.
  */
-export function ClassicTemplate({ model }: { model: InvoiceRenderModel }): JSX.Element {
+export function SchlichtTemplate({ model }: { model: InvoiceRenderModel }): JSX.Element {
   const { seller, template } = model;
   const { sellerLines, paymentLines, title } = documentParts(model);
 
@@ -46,7 +41,7 @@ export function ClassicTemplate({ model }: { model: InvoiceRenderModel }): JSX.E
 
           {template.showPaymentBlock && paymentLines.length > 0 && (
             <div className="header__payment">
-              <p className="payment__title">Zahlungsdetails:</p>
+              <p className="payment__title">Zahlungsdetails</p>
               <ul className="payment__lines">
                 {paymentLines.map((line) => (
                   <li key={line}>{line}</li>
@@ -55,7 +50,6 @@ export function ClassicTemplate({ model }: { model: InvoiceRenderModel }): JSX.E
             </div>
           )}
         </header>
-        <hr className="header__rule" />
 
         <section className="parties">
           <RecipientBlock model={model} />
@@ -70,4 +64,27 @@ export function ClassicTemplate({ model }: { model: InvoiceRenderModel }): JSX.E
       </div>
     </div>
   );
+}
+
+/**
+ * Die Fußzeile von „schlicht": nur die Seitenzahl, mittig.
+ *
+ * Die gemeinsame Fußzeile stellt links das Dokumentkennzeichen daneben.
+ * Das ist nützlich, passt aber nicht zu einem Design, dessen ganzer Gedanke
+ * darin besteht, nur das Nötige zu zeigen — die Rechnungsnummer steht schon
+ * oben auf jeder Seite, an der sie jemand sucht.
+ *
+ * Wie die gemeinsame gilt: Chromium rendert dieses Fragment in einem
+ * eigenen Dokument ohne Stylesheet und ohne die eingebettete Schrift.
+ * Deshalb alles inline und eine generische Familie.
+ */
+export function schlichtFooter(model: InvoiceRenderModel, page: PageGeometry): string {
+  return [
+    '<div style="width:100%;box-sizing:border-box;',
+    `padding:0 ${page.marginSideMm + page.edgeGapMm}mm 0 ${page.marginSideMm}mm;`,
+    `font-family:Helvetica,Arial,sans-serif;font-size:7.5pt;color:${model.template.inkSoftColor};`,
+    'text-align:center">',
+    '<span class="pageNumber"></span>',
+    '</div>',
+  ].join('');
 }

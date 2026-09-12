@@ -46,6 +46,7 @@ let documents: InvoiceDocumentsService;
 let finalizer: InvoiceFinalizeService;
 let numbers: InvoiceNumbersService;
 let invoices: InvoicesService;
+let templateSettings: TemplateSettingsService;
 let dataDir: string;
 
 beforeAll(async () => {
@@ -56,7 +57,7 @@ beforeAll(async () => {
   const storage = new StorageConfig({ get: () => dataDir } as never);
   const files = new FilesService(prisma, storage);
   const company = new CompanyService(prisma, files);
-  const templateSettings = new TemplateSettingsService(prisma);
+  templateSettings = new TemplateSettingsService(prisma);
   const taxProfiles = new TaxProfilesService(prisma);
 
   pdfService = new StubPdfRenderer();
@@ -251,6 +252,88 @@ describe('Finalisieren', () => {
     expect(before.sellerSnapshot).toContain('DE12202208000052019114');
     expect(before.sellerSnapshot).not.toContain('DE00000000000000000000');
     expect(response.status).toBe(INVOICE_STATUS.ISSUED);
+  }, 60_000);
+
+  it('friert das Design ein: ein späterer Designwechsel ändert die Rechnung nicht', async () => {
+    /*
+     * Der Vertrag, für den es im Designer Regler und kein freies CSS gibt.
+     *
+     * Der Snapshot trägt nur einen `templateKey` — das CSS selbst wird nicht
+     * eingefroren. Reproduzierbar bleibt eine alte Rechnung deshalb nur,
+     * solange jeder Regler ein Wert im Snapshot ist, den der Template-Code
+     * liest. Liefe hier je etwas an den Einstellungen vorbei, sähe eine
+     * ausgestellte Rechnung nach einem Designwechsel anders aus als das
+     * Exemplar beim Kunden.
+     */
+    const id = await createDraft();
+    await finalizer.finalize(id);
+
+    await templateSettings.update({
+      templateKey: 'schlicht',
+      accentColor: '#b91c1c',
+      fontFamily: 'Source Serif 4',
+      logoWidthMm: 70,
+      inkColor: '#111111',
+      inkSoftColor: '#777777',
+      ruleColor: '#cccccc',
+      bandColor: '#eeeeee',
+      density: 'luftig',
+      showLogo: false,
+      showPaymentBlock: false,
+      showFooterRule: false,
+      footerText: null,
+      paymentNote: null,
+      closingNote: null,
+    });
+
+    const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id } });
+    const snapshot = JSON.parse(invoice.templateSnapshot ?? '{}') as Record<string, unknown>;
+
+    expect(snapshot).toMatchObject({
+      templateKey: 'classic',
+      accentColor: '#1e293b',
+      fontFamily: 'Open Sans',
+      logoWidthMm: 40,
+      density: 'normal',
+      showLogo: true,
+      showPaymentBlock: true,
+      showFooterRule: true,
+    });
+  }, 60_000);
+
+  it('nimmt beim Ausstellen das eingestellte Design mit', async () => {
+    // Die Gegenprobe: Was vor dem Ausstellen eingestellt ist, landet im
+    // Snapshot — sonst wäre der Test darüber auch dann grün, wenn die
+    // Einstellungen gar nicht erst gelesen würden.
+    await templateSettings.update({
+      templateKey: 'kompakt',
+      accentColor: '#1e293b',
+      fontFamily: 'Open Sans',
+      logoWidthMm: 40,
+      inkColor: '#1f2328',
+      inkSoftColor: '#4b5563',
+      ruleColor: '#e3e6ea',
+      bandColor: '#f4f5f7',
+      density: 'kompakt',
+      showLogo: false,
+      showPaymentBlock: true,
+      showFooterRule: true,
+      footerText: null,
+      paymentNote: null,
+      closingNote: null,
+    });
+
+    const id = await createDraft();
+    await finalizer.finalize(id);
+
+    const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id } });
+    const snapshot = JSON.parse(invoice.templateSnapshot ?? '{}') as Record<string, unknown>;
+
+    expect(snapshot).toMatchObject({
+      templateKey: 'kompakt',
+      density: 'kompakt',
+      showLogo: false,
+    });
   }, 60_000);
 
   it('verbraucht keine Nummer, wenn die Rechnung unvollständig ist', async () => {

@@ -10,19 +10,13 @@ import {
 import type { InvoiceRenderModel } from '../../types.js';
 
 /**
- * Das Template „classic".
+ * Das Design „kompakt".
  *
- * Reines Darstellen: keine Berechnung, kein Datenzugriff, keine Zustände.
- * Genau deshalb kann dieselbe Komponente im iframe der Live-Vorschau laufen
- * und im Backend durch renderToStaticMarkup für das PDF — und genau deshalb
- * zeigt die Vorschau verlässlich das, was später auf dem Papier steht.
- *
- * Der Kopf steht hier, die Bausteine darunter kommen aus `design/document`:
- * Was eine Rechnung an Angaben trägt, ist bei allen vier Designs dasselbe.
- * Eigen ist classic die Anordnung — Absender links, Zahlungsdetails rechts,
- * darunter eine feine Linie.
+ * Im Aufbau wie „classic", nur überall enger. Der Unterschied liegt fast
+ * vollständig im Stylesheet — genau dafür sind die gemeinsamen Bausteine
+ * da.
  */
-export function ClassicTemplate({ model }: { model: InvoiceRenderModel }): JSX.Element {
+export function KompaktTemplate({ model }: { model: InvoiceRenderModel }): JSX.Element {
   const { seller, template } = model;
   const { sellerLines, paymentLines, title } = documentParts(model);
 

@@ -1,5 +1,11 @@
-import { ClassicTemplate } from './templates/classic/ClassicTemplate.js';
+import { ClassicTemplate } from './templates/classic/ClassicTemplate.jsx';
 import { CLASSIC_CSS, PAGE as CLASSIC_PAGE } from './templates/classic/styles.js';
+import { ModernTemplate } from './templates/modern/ModernTemplate.jsx';
+import { MODERN_CSS, MODERN_PAGE } from './templates/modern/styles.js';
+import { KompaktTemplate } from './templates/kompakt/KompaktTemplate.jsx';
+import { KOMPAKT_CSS, KOMPAKT_PAGE } from './templates/kompakt/styles.js';
+import { SchlichtTemplate, schlichtFooter } from './templates/schlicht/SchlichtTemplate.jsx';
+import { SCHLICHT_CSS, SCHLICHT_PAGE } from './templates/schlicht/styles.js';
 import type { TemplateDefinition } from './types.js';
 
 /**
@@ -60,4 +66,51 @@ registerTemplate({
   },
   css: CLASSIC_CSS,
   render: (model) => ClassicTemplate({ model }),
+});
+
+registerTemplate({
+  key: 'modern',
+  label: 'Modern',
+  description: 'Farbband im Kopf, Logo rechts, kräftige Akzente.',
+  page: MODERN_PAGE,
+  capabilities: {
+    colors: ['accent', 'ink', 'inkSoft', 'rule', 'band'],
+    blocks: ['logo', 'paymentBlock', 'footerRule'],
+    density: true,
+    logoWidth: true,
+  },
+  css: MODERN_CSS,
+  render: (model) => ModernTemplate({ model }),
+});
+
+registerTemplate({
+  key: 'kompakt',
+  label: 'Kompakt',
+  description: 'Enger gesetzt — für Rechnungen mit vielen Positionen.',
+  page: KOMPAKT_PAGE,
+  capabilities: {
+    colors: ['accent', 'ink', 'inkSoft', 'rule', 'band'],
+    blocks: ['logo', 'paymentBlock', 'footerRule'],
+    density: true,
+    logoWidth: true,
+  },
+  css: KOMPAKT_CSS,
+  render: (model) => KompaktTemplate({ model }),
+});
+
+registerTemplate({
+  key: 'schlicht',
+  label: 'Schlicht',
+  description: 'Ohne Linien, viel Weißraum, Serifenschrift.',
+  page: SCHLICHT_PAGE,
+  capabilities: {
+    // Ohne Linien und Flächen gäbe es für die beiden Regler nichts zu färben.
+    colors: ['accent', 'ink', 'inkSoft'],
+    blocks: ['logo', 'paymentBlock'],
+    density: true,
+    logoWidth: true,
+  },
+  css: SCHLICHT_CSS,
+  render: (model) => SchlichtTemplate({ model }),
+  footer: schlichtFooter,
 });
