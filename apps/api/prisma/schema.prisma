@@ -222,6 +222,19 @@ model TemplateSettings {
   fontFamily  String @default("Open Sans")
   logoWidthMm Float  @default(40)
 
+  /// Die weiteren Farben des Dokuments. Vorgaben wie bisher im CSS von „classic".
+  inkColor     String @default("#1f2328")
+  inkSoftColor String @default("#4b5563")
+  ruleColor    String @default("#e3e6ea")
+  bandColor    String @default("#f4f5f7")
+
+  /// kompakt | normal | luftig — geprüft per Zod, nicht per CHECK.
+  density String @default("normal")
+
+  showLogo         Boolean @default(true)
+  showPaymentBlock Boolean @default(true)
+  showFooterRule   Boolean @default(true)
+
   footerText  String?
   paymentNote String?
   closingNote String?

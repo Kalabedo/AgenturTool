@@ -5,6 +5,7 @@ import {
   formatDateDe,
   formatQuantity,
 } from '@agentur-tool/shared';
+import { templateStyleVars } from '../../design/variables.js';
 import type { InvoiceRenderItem, InvoiceRenderModel } from '../../types.js';
 
 /**
@@ -112,20 +113,13 @@ export function ClassicTemplate({ model }: { model: InvoiceRenderModel }): JSX.E
   const columnCount = 4 + (showDiscountColumn ? 1 : 0) + (showTaxColumn ? 1 : 0);
 
   return (
-    <div
-      className="invoice-root"
-      style={
-        {
-          '--accent': template.accentColor,
-          '--font-family': `'${template.fontFamily}'`,
-          '--logo-width': `${template.logoWidthMm}mm`,
-        } as React.CSSProperties
-      }
-    >
+    <div className="invoice-root" style={templateStyleVars(template) as React.CSSProperties}>
       <div className="page">
         <header className="header">
           <div className="header__identity">
-            {model.logoSrc !== null && <img className="header__logo" src={model.logoSrc} alt="" />}
+            {template.showLogo && model.logoSrc !== null && (
+              <img className="header__logo" src={model.logoSrc} alt="" />
+            )}
             <div>
               <p className="header__name">{seller.companyName}</p>
               <ul className="header__lines">
@@ -136,7 +130,7 @@ export function ClassicTemplate({ model }: { model: InvoiceRenderModel }): JSX.E
             </div>
           </div>
 
-          {paymentLines.length > 0 && (
+          {template.showPaymentBlock && paymentLines.length > 0 && (
             <div className="header__payment">
               <p className="payment__title">Zahlungsdetails:</p>
               <ul className="payment__lines">
@@ -302,7 +296,11 @@ export function ClassicTemplate({ model }: { model: InvoiceRenderModel }): JSX.E
         )}
 
         {template.footerText !== null && template.footerText.trim() !== '' && (
-          <footer className="doc-footer">{template.footerText}</footer>
+          <footer
+            className={template.showFooterRule ? 'doc-footer doc-footer--ruled' : 'doc-footer'}
+          >
+            {template.footerText}
+          </footer>
         )}
       </div>
     </div>

@@ -173,6 +173,37 @@ export const templateSnapshotSchema = upgraded(
     footerText: z.string().nullable(),
     paymentNote: z.string().nullable(),
     closingNote: z.string().nullable(),
+
+    /*
+     * Die Regler des Designers, nachgereicht innerhalb von Version 2.
+     *
+     * `.default()` statt einer neuen Snapshot-Version, und das ist der
+     * entscheidende Punkt: `versioned` teilen sich seller, buyer, tax,
+     * template und totals. Eine Erhöhung auf 3 ließe jede bereits
+     * geschriebene Zeile am Schema scheitern, bis für alle fünf ein
+     * zweiter Aufstiegspfad existiert — eine Wanderung durch das ganze
+     * Projekt für ein Template-Detail.
+     *
+     * `.default()` greift bei `undefined` unabhängig von der Version. Eine
+     * Rechnung von gestern hat diese Felder nicht und bekommt hier genau
+     * die Werte, die „classic" bis dahin fest im CSS stehen hatte. Sie
+     * rendert deshalb unverändert.
+     *
+     * Die Typen sind absichtlich weiter als im Eingabeschema: Dort ist die
+     * Schrift eine feste Auswahl, hier ein String. Ein Snapshot ist ein
+     * Dokument und darf nicht dadurch unlesbar werden, dass jemand später
+     * eine Schrift umbenennt oder ein Design entfernt. Unbekannte Werte
+     * fallen beim Rendern zurück — so wie `resolveTemplate` es mit einem
+     * verschwundenen Design tut.
+     */
+    inkColor: z.string().default('#1f2328'),
+    inkSoftColor: z.string().default('#4b5563'),
+    ruleColor: z.string().default('#e3e6ea'),
+    bandColor: z.string().default('#f4f5f7'),
+    density: z.string().default('normal'),
+    showLogo: z.boolean().default(true),
+    showPaymentBlock: z.boolean().default(true),
+    showFooterRule: z.boolean().default(true),
   }),
 );
 export type TemplateSnapshot = z.infer<typeof templateSnapshotSchema>;

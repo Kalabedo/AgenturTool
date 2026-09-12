@@ -85,6 +85,14 @@ export const DEFAULT_TEMPLATE: TemplateSnapshot = {
   footerText: null,
   paymentNote: null,
   closingNote: null,
+  inkColor: '#1f2328',
+  inkSoftColor: '#4b5563',
+  ruleColor: '#e3e6ea',
+  bandColor: '#f4f5f7',
+  density: 'normal',
+  showLogo: true,
+  showPaymentBlock: true,
+  showFooterRule: true,
 };
 
 export const REFERENCE_INVOICE: RenderModelSource = {

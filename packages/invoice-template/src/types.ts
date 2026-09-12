@@ -1,3 +1,4 @@
+import type { PageGeometry } from './design/page.js';
 import type {
   BuyerData,
   DiscountType,
@@ -61,6 +62,30 @@ export interface InvoiceRenderItem {
   netCents: number;
 }
 
+/** Farbregler, die ein Design benutzen kann. */
+export type TemplateColorKnob = 'accent' | 'ink' | 'inkSoft' | 'rule' | 'band';
+
+/** Blockschalter, die ein Design beachten kann. */
+export type TemplateBlockKnob = 'logo' | 'paymentBlock' | 'footerRule';
+
+/**
+ * Welche Regler ein Design tatsächlich benutzt.
+ *
+ * Der Designer blendet danach aus, was nichts bewirkt: „schlicht" kennt
+ * weder Linien noch Flächen, also hätten ein Linien- und ein Flächenregler
+ * dort nur den Anschein einer Wirkung.
+ *
+ * Wichtig: Die Angabe steuert allein die Oberfläche, nie den Snapshot. Alle
+ * Werte werden immer gespeichert — sonst verlöre ein Wechsel des Designs
+ * und zurück die eingestellte Flächenfarbe.
+ */
+export interface TemplateCapabilities {
+  colors: readonly TemplateColorKnob[];
+  blocks: readonly TemplateBlockKnob[];
+  density: boolean;
+  logoWidth: boolean;
+}
+
 /**
  * Ein registriertes Template: Komponente plus zugehöriges CSS.
  *
@@ -71,6 +96,25 @@ export interface InvoiceRenderItem {
 export interface TemplateDefinition {
   key: string;
   label: string;
+  /** Ein Satz für die Auswahl im Designer: wofür dieses Design gedacht ist. */
+  description: string;
+  /**
+   * Die Seitengeometrie dieses Designs.
+   *
+   * Quelle für `@page` **und** für die Fußzeile, die Chromium auf jede Seite
+   * setzt. Beide müssen dieselben Ränder benutzen, sonst fluchtet die
+   * Seitenzahl nicht mit dem Text darüber.
+   */
+  page: PageGeometry;
+  capabilities: TemplateCapabilities;
   css: string;
   render: (model: InvoiceRenderModel) => JSX.Element;
+  /**
+   * Eine eigene Fußzeile, falls die gemeinsame nicht passt.
+   *
+   * „schlicht" verzichtet auf das Dokumentkennzeichen links und setzt nur
+   * die Seitenzahl. Ohne diesen Haken müsste die gemeinsame Fußzeile alle
+   * Sonderfälle aller Designs kennen.
+   */
+  footer?: (model: InvoiceRenderModel, page: PageGeometry) => string;
 }

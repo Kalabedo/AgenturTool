@@ -1,4 +1,5 @@
-import { EMBEDDED_FONT_CSS } from '../../fonts.generated.js';
+import { pageCss, type PageGeometry } from '../../design/page.js';
+import { RESET_CSS } from '../../design/reset.js';
 
 /**
  * Das Stylesheet des Templates „classic".
@@ -8,51 +9,26 @@ import { EMBEDDED_FONT_CSS } from '../../fonts.generated.js';
  * und im HTML-Dokument, das gedruckt wird. Ein Bundler-Import wäre in
  * beiden Fällen im Weg, im Backend gäbe es ihn gar nicht.
  *
+ * Die Schrift steht nicht mehr hier: Sie hängt an der Einstellung und wird
+ * vom Dokument-Zusammensetzer vorangestellt (`embeddedFontCss`), damit nur
+ * die gewählte Familie im PDF landet und nicht jede mitgelieferte.
+ *
  * Maßangaben durchgehend in Millimetern und Punkten, nicht in Pixeln: Das
  * Ziel ist ein Blatt Papier, kein Bildschirm.
  */
 
 /** Seitenmaße an einer Stelle, damit sie nicht auseinanderlaufen. */
-export const PAGE = {
+export const PAGE: PageGeometry = {
   widthMm: 210,
   heightMm: 297,
-  marginMm: 12,
+  marginTopMm: 12,
+  marginSideMm: 12,
   /** Platz am Fuß für die Seitenzahl, die Chromium beisteuert. */
   footerMm: 16,
-  /**
-   * Der Streifen am rechten Rand, den der Inhalt frei lässt.
-   *
-   * Chromium beschneidet die gedruckte Seite auf einen Kasten, der eine
-   * Winzigkeit schmaler ist als der, an dem es vorher ausrichtet — gemessen
-   * 0,7 pt. Buchstaben, die bündig am rechten Rand stehen, verlieren dadurch
-   * eine Scheibe: Die „6" der Datumsangaben und die „4" der IBAN standen im
-   * PDF mit senkrecht abgeschnittener Rundung.
-   *
-   * 0,75 mm sind rund das Dreifache des gemessenen Fehlers — genug Luft
-   * dafür, dass eine andere Chromium-Fassung anders rundet, und zu wenig,
-   * als dass der Unterschied zum linken Rand auffiele.
-   *
-   * Der Abstand gehört zur Seitengeometrie und nicht etwa nur zum Druck:
-   * Bildschirm und Druck müssen denselben Textbereich haben, sonst bricht
-   * die Vorschau anders um als das PDF.
-   */
   edgeGapMm: 0.75,
-} as const;
+};
 
-export const CLASSIC_CSS = `${EMBEDDED_FONT_CSS}
-
-/*
- * Die Seitenränder kommen im Druck von @page, nicht vom Padding der Seite.
- * Ein Padding wirkt nur auf der ersten Seite — auf Folgeseiten klebte die
- * Tabelle sonst am oberen Blattrand. Der Renderer muss dafür mit
- * "preferCSSPageSize: true" und ohne eigene margin-Angabe aufgerufen werden,
- * sonst überschreibt es diese Werte (Schritt 8).
- */
-@page {
-  size: A4;
-  margin: ${PAGE.marginMm}mm ${PAGE.marginMm}mm ${PAGE.footerMm}mm;
-}
-
+export const CLASSIC_CSS = `${pageCss(PAGE)}
 :root {
   --accent: #1e293b;
   --ink: #1f2328;
@@ -60,50 +36,14 @@ export const CLASSIC_CSS = `${EMBEDDED_FONT_CSS}
   --rule: #e3e6ea;
   --band: #f4f5f7;
   --logo-width: 40mm;
+  /* Ohne diese Zeile wäre die font-family-Regel ungültig, sobald der
+     Snapshot keine Schrift nennt — die Variable hätte dann keinen Wert. */
+  --font-family: 'Open Sans';
+  --density: 1;
 }
-
-.invoice-root *,
-.invoice-root *::before,
-.invoice-root *::after {
-  box-sizing: border-box;
-}
-
+${RESET_CSS}
 .invoice-root {
-  margin: 0;
-  padding: 0;
-  color: var(--ink);
-  font-family: var(--font-family), 'Open Sans', 'Helvetica Neue', Arial, sans-serif;
   font-size: 9.75pt;
-  line-height: 1.55;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: geometricPrecision;
-}
-
-/*
- * Am Bildschirm ist die Seite ein sichtbares Blatt mit eigenen Rändern.
- * Bewusst kein Flex-Container: Ein Flex-Layout, das über mehrere Druckseiten
- * läuft, bricht in Chromium unzuverlässig um.
- */
-.page {
-  width: ${PAGE.widthMm}mm;
-  min-height: ${PAGE.heightMm}mm;
-  padding: ${PAGE.marginMm}mm ${PAGE.marginMm + PAGE.edgeGapMm}mm ${PAGE.footerMm}mm
-    ${PAGE.marginMm}mm;
-  background: #ffffff;
-}
-
-/*
- * Im Druck kommen die Ränder von @page — bis auf den rechten Spielraum
- * (PAGE.edgeGapMm), der hier stehen bleibt: Er gehört in den Textbereich und
- * nicht in den Seitenrand, sonst wanderte der rechtsbündige Text einfach mit
- * dem Rand nach links und stünde wieder bündig am Beschnitt.
- */
-@media print {
-  .page {
-    width: auto;
-    min-height: 0;
-    padding: 0 ${PAGE.edgeGapMm}mm 0 0;
-  }
 }
 
 /* ---------- Kopf ---------- */
@@ -261,7 +201,7 @@ export const CLASSIC_CSS = `${EMBEDDED_FONT_CSS}
 }
 
 .items th {
-  padding: 2.4mm 2mm;
+  padding: calc(2.4mm * var(--density)) 2mm;
   background: var(--band);
   font-weight: 700;
   text-align: right;
@@ -269,7 +209,7 @@ export const CLASSIC_CSS = `${EMBEDDED_FONT_CSS}
 }
 
 .items td {
-  padding: 3mm 2mm;
+  padding: calc(3mm * var(--density)) 2mm;
   border-bottom: 1px solid var(--rule);
   text-align: right;
   vertical-align: top;
@@ -315,7 +255,7 @@ export const CLASSIC_CSS = `${EMBEDDED_FONT_CSS}
 .totals {
   display: flex;
   justify-content: flex-end;
-  margin-top: 6mm;
+  margin-top: calc(6mm * var(--density));
   break-inside: avoid;
   page-break-inside: avoid;
 }
@@ -326,7 +266,7 @@ export const CLASSIC_CSS = `${EMBEDDED_FONT_CSS}
 }
 
 .totals__table td {
-  padding: 2mm 2mm;
+  padding: calc(2mm * var(--density)) 2mm;
 }
 
 .totals__table td:last-child {
@@ -347,7 +287,7 @@ export const CLASSIC_CSS = `${EMBEDDED_FONT_CSS}
 /* ---------- Hinweise ---------- */
 
 .notes {
-  margin-top: 12mm;
+  margin-top: calc(12mm * var(--density));
   break-inside: avoid;
   page-break-inside: avoid;
 }
@@ -375,13 +315,17 @@ export const CLASSIC_CSS = `${EMBEDDED_FONT_CSS}
  * sie ist Sache des Druckrahmens, nicht des Dokuments.
  */
 .doc-footer {
-  margin-top: 12mm;
+  margin-top: calc(12mm * var(--density));
   padding-top: 4mm;
-  border-top: 1px solid var(--rule);
   color: var(--ink-soft);
   text-align: center;
   white-space: pre-wrap;
   break-inside: avoid;
   page-break-inside: avoid;
+}
+
+/* Die Linie über dem Fußtext ist abschaltbar (Regler „Fußlinie"). */
+.doc-footer--ruled {
+  border-top: 1px solid var(--rule);
 }
 `;

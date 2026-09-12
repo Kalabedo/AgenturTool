@@ -102,6 +102,14 @@ export function templateSnapshotFromSettings(settings: TemplateSettingsResponse)
     footerText: emptyToNull(settings.footerText),
     paymentNote: emptyToNull(settings.paymentNote),
     closingNote: emptyToNull(settings.closingNote),
+    inkColor: settings.inkColor,
+    inkSoftColor: settings.inkSoftColor,
+    ruleColor: settings.ruleColor,
+    bandColor: settings.bandColor,
+    density: settings.density,
+    showLogo: settings.showLogo,
+    showPaymentBlock: settings.showPaymentBlock,
+    showFooterRule: settings.showFooterRule,
   };
 }
 

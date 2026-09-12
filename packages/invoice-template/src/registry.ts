@@ -1,5 +1,5 @@
 import { ClassicTemplate } from './templates/classic/ClassicTemplate.js';
-import { CLASSIC_CSS } from './templates/classic/styles.js';
+import { CLASSIC_CSS, PAGE as CLASSIC_PAGE } from './templates/classic/styles.js';
 import type { TemplateDefinition } from './types.js';
 
 /**
@@ -42,9 +42,22 @@ export function resolveTemplate(key: string): TemplateDefinition {
   return found;
 }
 
+/*
+ * Alle mitgelieferten Designs an einer Stelle. Die Registrierung ist ein
+ * Nebeneffekt des Imports dieser Datei — ein Design, das hier fehlt, wird
+ * lautlos durch „classic" ersetzt, statt einen Fehler zu erzeugen.
+ */
 registerTemplate({
   key: DEFAULT_TEMPLATE_KEY,
   label: 'Klassisch',
+  description: 'Ruhig und geschäftsmäßig, mit feinen Linien und einem grauen Tabellenkopf.',
+  page: CLASSIC_PAGE,
+  capabilities: {
+    colors: ['accent', 'ink', 'inkSoft', 'rule', 'band'],
+    blocks: ['logo', 'paymentBlock', 'footerRule'],
+    density: true,
+    logoWidth: true,
+  },
   css: CLASSIC_CSS,
   render: (model) => ClassicTemplate({ model }),
 });

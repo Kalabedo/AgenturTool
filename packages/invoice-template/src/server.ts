@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
+import { embeddedFontCss } from './fonts.js';
 import { resolveTemplate } from './registry.js';
-import { PAGE } from './templates/classic/styles.js';
+import type { PageGeometry } from './design/page.js';
 import type { InvoiceRenderModel } from './types.js';
 
 /**
@@ -50,7 +51,7 @@ export function renderInvoiceDocument(
     '<head>',
     '<meta charset="utf-8">',
     `<title>${escapeHtml(title)}</title>`,
-    `<style>${template.css}${options.extraCss ?? ''}</style>`,
+    `<style>${embeddedFontCss(model.template.fontFamily)}${template.css}${options.extraCss ?? ''}</style>`,
     '</head>',
     '<body style="margin:0">',
     body,
@@ -62,29 +63,41 @@ export function renderInvoiceDocument(
 /**
  * Die Fußzeile, die Chromium auf jede Seite setzt.
  *
- * Sie entsteht hier und nicht im Backend, weil sie zwei Dinge aus dem
- * Template kennen muss: den Seitenrand (`PAGE.marginMm`, rechts zuzüglich
- * `PAGE.edgeGapMm`), damit sie mit dem Textblock darüber fluchtet, und die
- * Höhe des Fußbereichs, für den `@page` den Platz freihält.
+ * Sie entsteht hier und nicht im Backend, weil sie die Seitenränder des
+ * jeweiligen Designs kennen muss (`page.marginSideMm`, rechts zuzüglich
+ * `page.edgeGapMm`), damit sie mit dem Textblock darüber fluchtet.
  *
  * Chromium rendert dieses Fragment in einem eigenen Dokument — ohne das
  * Stylesheet der Seite und ohne die eingebettete Schrift. Deshalb steht das
- * CSS inline, deshalb eine generische Schriftfamilie, und deshalb eine feste
- * Größe: Ohne `font-size` erbt das Fragment 0 und bleibt unsichtbar.
+ * CSS inline, deshalb eine generische Schriftfamilie, deshalb die Farbe als
+ * Literal statt als Variable, und deshalb eine feste Größe: Ohne
+ * `font-size` erbt das Fragment 0 und bleibt unsichtbar.
  *
  * `pageNumber` und `totalPages` sind Klassennamen, die Chromium beim Druck
  * selbst füllt.
  */
-export function renderInvoiceFooterTemplate(model: InvoiceRenderModel): string {
+export function defaultFooterTemplate(model: InvoiceRenderModel, page: PageGeometry): string {
   const label = model.number === null ? 'Entwurf' : `Rechnung ${model.number}`;
 
   return [
     '<div style="width:100%;box-sizing:border-box;',
-    `padding:0 ${PAGE.marginMm + PAGE.edgeGapMm}mm 0 ${PAGE.marginMm}mm;`,
-    'font-family:Helvetica,Arial,sans-serif;font-size:7.5pt;color:#6b7280;',
+    `padding:0 ${page.marginSideMm + page.edgeGapMm}mm 0 ${page.marginSideMm}mm;`,
+    `font-family:Helvetica,Arial,sans-serif;font-size:7.5pt;color:${model.template.inkSoftColor};`,
     'display:flex;justify-content:space-between;align-items:center">',
     `<span>${escapeHtml(label)}</span>`,
     '<span>Seite <span class="pageNumber"></span> von <span class="totalPages"></span></span>',
     '</div>',
   ].join('');
+}
+
+/**
+ * Die Fußzeile des Designs, das diese Rechnung trägt.
+ *
+ * Die Signatur bleibt unverändert (`invoice-pdf.service.ts` ruft sie so
+ * auf); welches Design gemeint ist, steht im Snapshot der Rechnung.
+ */
+export function renderInvoiceFooterTemplate(model: InvoiceRenderModel): string {
+  const template = resolveTemplate(model.template.templateKey);
+
+  return (template.footer ?? defaultFooterTemplate)(model, template.page);
 }

@@ -203,3 +203,62 @@ describe('Snapshot-Schemas', () => {
     });
   });
 });
+
+describe('Nachgereichte Design-Felder im templateSnapshot', () => {
+  /** Ein Snapshot, wie ihn die Fassung vor dem Rechnungsdesigner geschrieben hat. */
+  const beforeDesigner = {
+    snapshotVersion: CURRENT_SNAPSHOT_VERSION,
+    templateKey: 'classic',
+    accentColor: '#1e293b',
+    fontFamily: 'Open Sans',
+    logoWidthMm: 40,
+    footerText: null,
+    paymentNote: null,
+    closingNote: null,
+  };
+
+  it('liest eine Rechnung von vorher unverändert', () => {
+    // Der eigentliche Vertrag: Die Regler kamen innerhalb von Version 2
+    // dazu, per .default(). Eine bereits ausgestellte Rechnung darf davon
+    // nichts merken — sie bekommt genau die Werte, die „classic" bis dahin
+    // fest im CSS stehen hatte, und rendert deshalb gleich.
+    const parsed = templateSnapshotSchema.parse(beforeDesigner);
+
+    expect(parsed).toMatchObject({
+      inkColor: '#1f2328',
+      inkSoftColor: '#4b5563',
+      ruleColor: '#e3e6ea',
+      bandColor: '#f4f5f7',
+      density: 'normal',
+      showLogo: true,
+      showPaymentBlock: true,
+      showFooterRule: true,
+    });
+  });
+
+  it('füllt die Felder auch bei einem Snapshot der Version 1', () => {
+    // `upgraded()` hebt auf Version 2, `.default()` füllt danach — beides
+    // muss zusammen greifen, sonst scheiterte die älteste Rechnung.
+    const parsed = templateSnapshotSchema.parse({
+      ...beforeDesigner,
+      snapshotVersion: LEGACY_SNAPSHOT_VERSION,
+    });
+
+    expect(parsed.snapshotVersion).toBe(CURRENT_SNAPSHOT_VERSION);
+    expect(parsed.density).toBe('normal');
+    expect(parsed.showLogo).toBe(true);
+  });
+
+  it('nimmt auch ein Design, das es nicht mehr gibt', () => {
+    // Ein Snapshot ist ein Dokument. Er darf nicht dadurch unlesbar werden,
+    // dass eine spätere Fassung ein Design entfernt oder eine Schrift
+    // umbenennt — deshalb sind die Felder hier String und nicht Enum.
+    const parsed = templateSnapshotSchema.parse({
+      ...beforeDesigner,
+      templateKey: 'abgeschafft',
+      fontFamily: 'Irgendeine Schrift',
+    });
+
+    expect(parsed.templateKey).toBe('abgeschafft');
+  });
+});
