@@ -23,6 +23,7 @@ import { Badge } from '../../components/ui/Badge.js';
 import { Button } from '../../components/ui/Button.js';
 import { Card } from '../../components/ui/Card.js';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog.js';
+import { Dialog } from '../../components/ui/Dialog.js';
 import { Field } from '../../components/ui/Field.js';
 import { FormActions } from '../../components/ui/FormActions.js';
 import { PageHeader } from '../../components/ui/PageHeader.js';
@@ -50,7 +51,7 @@ export function InvoiceEditorPage(): JSX.Element {
   const toast = useToast();
   const [saved, setSaved] = useState(false);
   const [deleted, setDeleted] = useState(false);
-  const [showPreview, setShowPreview] = useState(true);
+  const [previewOpen, setPreviewOpen] = useState(false);
   /** Welche Rückfrage gerade offen steht — es ist immer höchstens eine. */
   const [confirming, setConfirming] = useState<'finalize' | 'unfinalize' | 'delete' | null>(null);
 
@@ -349,26 +350,17 @@ export function InvoiceEditorPage(): JSX.Element {
   };
 
   return (
-    <div
-      className={
-        showPreview
-          ? 'grid items-start gap-6 2xl:grid-cols-[minmax(0,1fr)_36rem]'
-          : // Ohne Vorschau bleibt das Formular auf Lesebreite, statt sich
-            // über die volle Fensterbreite zu ziehen — mittig, weil die
-            // Seite selbst schon auf 104rem aufgezogen ist und der Inhalt
-            // sonst am linken Rand kleben würde.
-            'mx-auto grid w-full max-w-5xl items-start gap-6'
-      }
-    >
+    // Das Formular bleibt auf Lesebreite, statt sich über die volle
+    // Fensterbreite zu ziehen — mittig, weil die Seite selbst schon auf
+    // 104rem aufgezogen ist und der Inhalt sonst am linken Rand klebte.
+    // Die Vorschau steht im Dialog und braucht hier keine eigene Spalte mehr.
+    <div className="mx-auto grid w-full max-w-5xl items-start gap-6">
       <form
         onSubmit={form.handleSubmit((values) => {
           setSaved(false);
           save.mutate(values);
         })}
-        // Erst ab 2xl steht die Vorschau daneben. Darunter bekäme das
-        // Formular sonst die volle Breite des breiten Layouts — ein
-        // Eingabefeld über 1400 Pixel ist nicht großzügig, sondern unlesbar.
-        className="mx-auto w-full min-w-0 max-w-5xl space-y-6 2xl:mx-0 2xl:max-w-none"
+        className="mx-auto w-full min-w-0 max-w-5xl space-y-6"
         noValidate
       >
         <PageHeader
@@ -377,14 +369,8 @@ export function InvoiceEditorPage(): JSX.Element {
           badges={<Badge>{INVOICE_STATUS_LABELS[data.status]}</Badge>}
           description="Entwürfe bekommen erst beim Finalisieren eine Rechnungsnummer — so entstehen keine Lücken, wenn ein Entwurf verworfen wird."
           actions={
-            <Button
-              variant="secondary"
-              onClick={() => setShowPreview((open) => !open)}
-              aria-pressed={showPreview}
-            >
-              {/* Beide Beschriftungen sind gleich lang gehalten, damit der
-                  Knopf beim Umschalten nicht seine Breite ändert. */}
-              {showPreview ? 'Vorschau ausblenden' : 'Vorschau einblenden'}
+            <Button variant="secondary" onClick={() => setPreviewOpen(true)}>
+              Vorschau anzeigen
             </Button>
           }
         />
@@ -780,26 +766,31 @@ export function InvoiceEditorPage(): JSX.Element {
         </div>
       </form>
 
-      {showPreview && (
-        /*
-         * Auf breiten Bildschirmen bleibt die Vorschau beim Scrollen stehen;
-         * darunter rutscht sie unter das Formular. `max-h`/`overflow-y`
-         * verhindern, dass eine mehrseitige Rechnung die Spalte länger macht
-         * als das Fenster — dann käme man an das Ende des Formulars nicht
-         * mehr heran.
-         */
-        <aside className="mx-auto w-full min-w-0 max-w-5xl 2xl:mx-0 2xl:sticky 2xl:top-6 2xl:max-h-[calc(100vh-3rem)] 2xl:overflow-y-auto">
-          <h2 className="mb-2 text-base font-semibold text-slate-900">Vorschau</h2>
-          <p className="mb-3 text-xs text-slate-500">
-            Zeigt dasselbe Template, das später das PDF erzeugt. Der Seitenumbruch entsteht erst
-            beim Export.
-          </p>
+      {/*
+        Die Vorschau steht im Dialog und nicht mehr als Spalte daneben: Sie ist
+        ein Blick auf das fertige Dokument und nichts, was man beim Ausfüllen
+        nebenher braucht. Erst montiert, wenn sie offen ist — sonst liefen das
+        iframe und seine Beobachter die ganze Zeit unsichtbar mit.
+      */}
+      {previewOpen && (
+        <Dialog
+          open
+          size="wide"
+          title="Vorschau"
+          description="Zeigt dasselbe Template, das später das PDF erzeugt. Der Seitenumbruch entsteht erst beim Export."
+          onClose={() => setPreviewOpen(false)}
+          footer={
+            <Button variant="secondary" onClick={() => setPreviewOpen(false)}>
+              Schließen
+            </Button>
+          }
+        >
           <InvoicePreview
             invoice={data}
             values={previewValues}
             taxProfiles={taxProfiles.data ?? []}
           />
-        </aside>
+        </Dialog>
       )}
 
       <ConfirmDialog

@@ -8,6 +8,14 @@ interface DialogProps {
   children: ReactNode;
   /** Die Schaltflächen am Fuß — rechtsbündig, Hauptaktion zuletzt. */
   footer: ReactNode;
+  /**
+   * Wie breit der Dialog höchstens wird.
+   *
+   * `normal` ist auf Formularbreite ausgelegt. `wide` ist für Inhalte
+   * gedacht, die sich nicht kürzen lassen — die Dokumentvorschau etwa
+   * zeigt ein A4-Blatt und schrumpft sonst auf Briefmarkengröße.
+   */
+  size?: 'normal' | 'wide';
 }
 
 /**
@@ -30,6 +38,7 @@ export function Dialog({
   description,
   children,
   footer,
+  size = 'normal',
 }: DialogProps): JSX.Element {
   const ref = useRef<HTMLDialogElement>(null);
   // Erzeugt statt fest verdrahtet: Zwei Dialoge auf einer Seite teilten sich
@@ -59,14 +68,20 @@ export function Dialog({
       }}
       onClose={onClose}
       className={[
-        'm-auto w-[min(40rem,calc(100vw-2rem))] rounded-lg border border-slate-200 bg-white p-0',
+        'm-auto rounded-lg border border-slate-200 bg-white p-0',
+        size === 'wide' ? 'w-[min(64rem,calc(100vw-2rem))]' : 'w-[min(40rem,calc(100vw-2rem))]',
         'text-slate-900 shadow-xl backdrop:bg-slate-900/40',
       ].join(' ')}
     >
       {/* Der Inhalt scrollt in sich selbst, damit eine lange Feldliste den
           Dialog nicht über den Bildschirmrand hinauswachsen lässt und die
           Schaltflächen am Fuß immer erreichbar bleiben. */}
-      <div className="flex max-h-[min(44rem,calc(100vh-4rem))] flex-col">
+      <div
+        className={[
+          'flex flex-col',
+          size === 'wide' ? 'max-h-[calc(100vh-4rem)]' : 'max-h-[min(44rem,calc(100vh-4rem))]',
+        ].join(' ')}
+      >
         <header className="border-b border-slate-200 px-6 py-4">
           <h2 id={titleId} className="text-base font-semibold text-slate-900">
             {title}
