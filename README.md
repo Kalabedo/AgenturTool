@@ -251,9 +251,18 @@ mit seinem Grund daneben, statt aus der Liste zu verschwinden.
 
 Der Unterschied zwischen den beiden Wegen ist kein Detail: Über SMTP weiß die
 Anwendung, dass der Mailserver die Nachricht angenommen hat, und setzt den
-Versandvermerk. Über die Mail-Anwendung weiß sie nur, dass ein Entwurf offen
-ist — `mailto` trägt keine Anhänge, die liegen im geöffneten Ordner und
-wandern von Hand hinein. Den Versandvermerk setzt dort ein eigener Klick.
+Versandvermerk. Über die Mail-Anwendung weiß sie nur, dass ein Fenster
+aufgegangen ist — den Versandvermerk setzt dort ein eigener Klick.
+
+Auf diesem Weg versucht AgenturTool zuerst einen **echten Entwurf**: Bei
+Apple Mail entsteht ein fertiges Verfassen-Fenster mit Empfängern, Betreff,
+Text und Anhängen — es bleibt nur „Senden". macOS fragt dafür einmalig um
+Erlaubnis; wer sie verweigert, landet automatisch auf dem zweiten Weg.
+
+Der zweite Weg ist eine vollständige Nachricht als `.eml`-Datei, die
+AgenturTool öffnet. Auch darin stecken die Anhänge. Outlook erkennt sie als
+Entwurf und öffnet das Verfassen-Fenster; andere Programme zeigen sie als
+eingegangene Nachricht, aus der ein „Weiterleiten" die Anhänge übernimmt.
 
 Jede Nachricht steht anschließend im Versandprotokoll, **auch die
 fehlgeschlagene**: Ein Versuch, von dem nichts übrig bleibt, ist genau der,

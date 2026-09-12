@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
   MAIL_ATTACHMENT_LABELS,
+  MAIL_HANDOFF_METHOD,
   MAIL_STATUS,
   MAIL_TRANSPORT,
   formatAddressList,
@@ -140,25 +141,48 @@ function Result({
     );
   }
 
+  const attachmentCount = result.message.attachments.length;
+  const withAttachments =
+    attachmentCount === 0
+      ? ''
+      : attachmentCount === 1
+        ? ' — samt Anhang'
+        : ` — samt ${String(attachmentCount)} Anhängen`;
+  const application = result.handoff?.application ?? 'deiner Mail-Anwendung';
+
   return (
     <div className="space-y-4">
       <div className="rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-        <p className="font-medium text-slate-900">Der Entwurf ist in deiner Mail-Anwendung.</p>
-        {result.handoffFolder !== null && (
+        {result.handoff?.method === MAIL_HANDOFF_METHOD.DRAFT ? (
+          <p className="font-medium text-slate-900">
+            Der Entwurf steht in {application}
+            {withAttachments}. Dort nur noch abschicken.
+          </p>
+        ) : (
           <>
-            <p className="mt-1">
-              Die Anhänge liegen in einem Ordner, der gerade aufgegangen ist — zieh sie in den
-              Entwurf:
+            <p className="font-medium text-slate-900">
+              Die fertige Nachricht ist in {application} geöffnet{withAttachments}.
             </p>
-            <p className="mt-1 break-all font-mono text-xs text-slate-500">
-              {result.handoffFolder}
+            <p className="mt-2">
+              Zeigt dein Mailprogramm sie als eingegangene Nachricht statt als Entwurf, genügt
+              „Weiterleiten" — die Anhänge bleiben dabei erhalten.
             </p>
           </>
         )}
+
         <p className="mt-2">
           Ob die Nachricht abgeschickt wurde, weiß nur deine Mail-Anwendung. Deshalb steht die
           Rechnung noch nicht als versendet.
         </p>
+
+        {result.handoff?.path != null && (
+          <details className="mt-2">
+            <summary className="cursor-pointer text-slate-500">
+              Nichts aufgegangen? Hier liegt die Nachricht
+            </summary>
+            <p className="mt-1 break-all font-mono text-xs text-slate-500">{result.handoff.path}</p>
+          </details>
+        )}
       </div>
 
       {invoiceId !== null &&
@@ -407,8 +431,8 @@ export function SendMailDialog({
 
           {draft.data.transport === MAIL_TRANSPORT.MAIL_APP && (
             <p className="text-sm text-slate-500">
-              Der Entwurf geht an deine Mail-Anwendung. Die Anhänge legt AgenturTool in einen
-              Ordner, der sich dabei öffnet — anhängen musst du sie dort selbst.
+              Die Nachricht öffnet sich in deiner Mail-Anwendung — Anhänge inbegriffen. Abgeschickt
+              wird sie dort von dir.
             </p>
           )}
         </div>
