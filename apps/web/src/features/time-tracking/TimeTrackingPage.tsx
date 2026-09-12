@@ -24,6 +24,7 @@ import { Button, buttonClassName } from '../../components/ui/Button.js';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog.js';
 import { EmptyState } from '../../components/ui/EmptyState.js';
 import { PageHeader } from '../../components/ui/PageHeader.js';
+import { useToast } from '../../components/ui/Toast.js';
 import { tabClassName } from '../../components/ui/tabs.js';
 import { ErrorNotice } from '../../components/ui/ErrorNotice.js';
 import { LoadingNote } from '../../components/ui/LoadingNote.js';
@@ -39,11 +40,6 @@ import {
 } from './TimeEntryForm.js';
 
 type Tab = 'open' | 'billed';
-
-/** Was nach dem Abrechnen kurz stehen bleibt — samt der Ids fürs Rückgängigmachen. */
-interface BillingNotice extends TimeEntryBillingResult {
-  undone: boolean;
-}
 
 /** Liest die Kopfzeile, die das Abrechnen neben dem PDF mitschickt. */
 function billingResultFrom(file: DownloadedFile): TimeEntryBillingResult | null {
@@ -80,12 +76,12 @@ export function TimeTrackingPage(): JSX.Element {
   useDocumentTitle('Zeiterfassung');
 
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [tab, setTab] = useState<Tab>('open');
   const [activeCustomerId, setActiveCustomerId] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [savedCount, setSavedCount] = useState(0);
   const [values, setValues] = useState<TimeEntryFormValues>(() => emptyTimeEntryValues(todayIso()));
-  const [notice, setNotice] = useState<BillingNotice | null>(null);
   const [billingError, setBillingError] = useState<unknown>(null);
   /** Der Eintrag, für den gerade die Löschrückfrage offen steht. */
   const [entryToDelete, setEntryToDelete] = useState<TimeEntryResponse | null>(null);
@@ -185,26 +181,50 @@ export function TimeTrackingPage(): JSX.Element {
    * gelingen und das Drucken scheitern, und dann gälten Zeiten als
    * abgerechnet, für die es kein Dokument gibt.
    */
+  const undo = useMutation({
+    mutationFn: (ids: number[]) =>
+      apiClient.post<{ count: number }>('/time-entries/unbill', { ids }),
+    onSuccess: async (_result, ids) => {
+      await refresh();
+      toast.success(
+        `${ids.length === 1 ? 'Ein Eintrag steht' : `${ids.length} Einträge stehen`} wieder in der offenen Liste.`,
+      );
+    },
+    onError: (error) => setBillingError(error),
+  });
+
   const bill = useMutation({
     mutationFn: (customerId: number) =>
       apiClient.downloadFromPost('/time-entries/bill', { customerId }, 'Zeitnachweis.pdf'),
     onSuccess: async (file) => {
       setBillingError(null);
       saveFile(file);
+      await refresh();
 
       const result = billingResultFrom(file);
-      setNotice(result === null ? null : { ...result, undone: false });
-      await refresh();
-    },
-    onError: (error) => setBillingError(error),
-  });
+      if (result === null) return;
 
-  const undo = useMutation({
-    mutationFn: (ids: number[]) =>
-      apiClient.post<{ count: number }>('/time-entries/unbill', { ids }),
-    onSuccess: async () => {
-      setNotice((current) => (current === null ? null : { ...current, undone: true }));
-      await refresh();
+      /*
+       * Die Meldung ist die einzige Absicherung gegen einen Fehlklick:
+       * Abgerechnet wird ohne Rückfrage, und ohne den Weg zurück
+       * verschwänden ein Dutzend Einträge lautlos aus der offenen Liste —
+       * beim nächsten echten Abrechnen fehlten sie, und auffallen würde es
+       * erst beim Nachrechnen.
+       *
+       * Deshalb `duration: null`: Diese eine Meldung läuft nicht von selbst
+       * ab, sie wird geschlossen. Dass sie unten schwebt statt im Seitenfluss
+       * zu stehen, ist der Grund für den Umzug — der alte Balken schob beim
+       * Erscheinen die Reiter und die ganze Tabelle nach unten.
+       */
+      toast.success(
+        `${result.entryCount} ${result.entryCount === 1 ? 'Eintrag' : 'Einträge'} für ` +
+          `${result.customerName} abgerechnet — ${formatDuration(result.durationMinutes)} h. ` +
+          'Der Zeitnachweis wurde heruntergeladen.',
+        {
+          duration: null,
+          action: { label: 'Rückgängig', onClick: () => undo.mutate(result.ids) },
+        },
+      );
     },
     onError: (error) => setBillingError(error),
   });
@@ -260,15 +280,6 @@ export function TimeTrackingPage(): JSX.Element {
 
       {remove.isError && (
         <ErrorNotice error={remove.error} title="Der Eintrag konnte nicht gelöscht werden." />
-      )}
-
-      {notice !== null && (
-        <BillingNoticeBar
-          notice={notice}
-          isUndoing={undo.isPending}
-          onUndo={() => undo.mutate(notice.ids)}
-          onDismiss={() => setNotice(null)}
-        />
       )}
 
       {billingError !== null && (
@@ -368,69 +379,6 @@ function TabButton({
     >
       {children}
     </button>
-  );
-}
-
-/**
- * Die Meldung nach dem Abrechnen.
- *
- * Sie ist die einzige Absicherung gegen einen Fehlklick: Abgerechnet wird
- * ohne Rückfrage, und ohne diesen Weg zurück verschwänden ein Dutzend
- * Einträge lautlos aus der offenen Liste — beim nächsten echten Abrechnen
- * fehlten sie, und auffallen würde es erst beim Nachrechnen.
- */
-function BillingNoticeBar({
-  notice,
-  isUndoing,
-  onUndo,
-  onDismiss,
-}: {
-  notice: BillingNotice;
-  isUndoing: boolean;
-  onUndo: () => void;
-  onDismiss: () => void;
-}): JSX.Element {
-  return (
-    <div
-      role="status"
-      className={[
-        'flex flex-wrap items-center gap-3 rounded-lg border px-4 py-3 text-sm',
-        notice.undone
-          ? 'border-slate-200 bg-slate-50 text-slate-700'
-          : 'border-emerald-200 bg-emerald-50 text-emerald-900',
-      ].join(' ')}
-    >
-      {notice.undone ? (
-        <span>
-          Die Abrechnung für <strong>{notice.customerName}</strong> wurde zurückgenommen. Die
-          Einträge stehen wieder in der offenen Liste.
-        </span>
-      ) : (
-        <span>
-          <strong>{notice.entryCount}</strong> {notice.entryCount === 1 ? 'Eintrag' : 'Einträge'}{' '}
-          für <strong>{notice.customerName}</strong> abgerechnet —{' '}
-          <span className="tabular-nums">{formatDuration(notice.durationMinutes)} h</span>. Der
-          Zeitnachweis wurde heruntergeladen.
-        </span>
-      )}
-
-      <span className="ml-auto flex items-center gap-2">
-        {!notice.undone && (
-          <Button
-            variant="secondary"
-            size="sm"
-            pending={isUndoing}
-            pendingLabel="wird zurückgenommen …"
-            onClick={onUndo}
-          >
-            Rückgängig
-          </Button>
-        )}
-        <Button variant="ghost" size="sm" onClick={onDismiss}>
-          Schließen
-        </Button>
-      </span>
-    </div>
   );
 }
 

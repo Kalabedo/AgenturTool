@@ -237,6 +237,15 @@ ob sich die Anwendung wie ein Programm anfühlt oder wie fünf:
   Browser, solange es steht. Im Dialog gilt dieselbe Ordnung wie überall:
   Abbrechen links, die bestätigende Handlung rechts, und sie heißt nach dem,
   was sie tut.
+- **Rückmeldungen stehen dort, wo man hinsieht.** „Gespeichert." gehört neben
+  den Knopf (`StatusText` im Statusfeld von `FormActions`) und darf stehen
+  bleiben, solange es stimmt. Der `ToastProvider` am unteren Rand ist für das,
+  was sich dort nicht zeigen kann: eine Seite, die man gerade verlassen hat
+  („Kunde gelöscht."), eine Datei, die im Download-Ordner landet, eine
+  Handlung ohne sichtbare Spur (ein vermerkter Zahlungseingang). Beides
+  zugleich für dieselbe Handlung ist nicht doppelt so deutlich, sondern halb
+  so glaubwürdig. Fehler bleiben inline: Sie verlangen eine Entscheidung und
+  dürfen nicht von selbst verschwinden.
 - **`PageHeader` als Seitenkopf**, `Badge` für Etiketten, `SegmentedControl`
   für Filterreihen, `tabClassName` für Registerkarten. Jede handgebaute
   Variante davon weicht früher oder später ab.

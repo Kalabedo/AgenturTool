@@ -8,7 +8,7 @@ import { EmptyState } from '../../../components/ui/EmptyState.js';
 import { ErrorNotice } from '../../../components/ui/ErrorNotice.js';
 import { LoadingNote } from '../../../components/ui/LoadingNote.js';
 import { PageHeader } from '../../../components/ui/PageHeader.js';
-import { StatusText } from '../../../components/ui/StatusText.js';
+import { useToast } from '../../../components/ui/Toast.js';
 import { saveFile } from '../../invoices/saveFile.js';
 import { useDocumentTitle } from '../../../lib/useDocumentTitle.js';
 
@@ -27,6 +27,7 @@ import { useDocumentTitle } from '../../../lib/useDocumentTitle.js';
 export function BackupPage(): JSX.Element {
   useDocumentTitle('Backup');
   const queryClient = useQueryClient();
+  const toast = useToast();
 
   const status = useQuery({
     queryKey: queryKeys.backup,
@@ -35,14 +36,20 @@ export function BackupPage(): JSX.Element {
 
   const create = useMutation({
     mutationFn: () => apiClient.post<BackupSummary>('/backup/export', {}),
-    onSuccess: async () => {
+    onSuccess: async (summary) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.backup });
+      toast.success(
+        `Backup erstellt: ${summary.counts.invoices} Rechnungen und ${summary.counts.documents} PDFs gesichert.`,
+      );
     },
   });
 
   const download = useMutation({
     mutationFn: (filename: string) => apiClient.download(`/backup/${filename}`, filename),
-    onSuccess: saveFile,
+    onSuccess: (file) => {
+      saveFile(file);
+      toast.success('Das Archiv wurde heruntergeladen.');
+    },
   });
 
   const error = [create.error, download.error].find((candidate) => candidate !== null);
@@ -66,23 +73,16 @@ export function BackupPage(): JSX.Element {
             Das Archiv enthält ein Manifest mit einer Prüfsumme je Datei. Beim Zurückspielen wird
             jede davon geprüft, bevor etwas ersetzt wird.
           </p>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-            <Button
-              onClick={() => create.mutate()}
-              pending={create.isPending}
-              pendingLabel="wird erstellt …"
-            >
-              Backup jetzt erstellen
-            </Button>
-            <div className="min-h-[1.25rem] min-w-0 flex-1 text-sm">
-              {create.isSuccess && !create.isPending && (
-                <StatusText tone="success">
-                  {create.data.counts.invoices} Rechnungen und {create.data.counts.documents} PDFs
-                  gesichert.
-                </StatusText>
-              )}
-            </div>
-          </div>
+          {/* Die Rückmeldung steht unten als Meldung: Das neue Archiv taucht
+              in der Liste darunter auf, und die Zählung dazu muss nicht
+              dauerhaft neben dem Knopf stehen bleiben. */}
+          <Button
+            onClick={() => create.mutate()}
+            pending={create.isPending}
+            pendingLabel="wird erstellt …"
+          >
+            Backup jetzt erstellen
+          </Button>
           {error !== undefined && error !== null && (
             <ErrorNotice error={error} title="Das Backup ist fehlgeschlagen." />
           )}

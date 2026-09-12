@@ -23,6 +23,7 @@ import { Field } from '../../components/ui/Field.js';
 import { Input } from '../../components/ui/Input.js';
 import { LoadingNote } from '../../components/ui/LoadingNote.js';
 import { Select } from '../../components/ui/Select.js';
+import { useToast } from '../../components/ui/Toast.js';
 import { SendMailDialog } from '../mail/SendMailDialog.js';
 import { saveFile } from '../invoices/saveFile.js';
 import { TimeEntryTable } from './TimeEntryTable.js';
@@ -57,6 +58,7 @@ function shiftMonth(range: Range, direction: -1 | 1): Range {
  * denselben Daten wie beim ersten Mal und muss nirgends aufbewahrt werden.
  */
 export function BilledArchive(): JSX.Element {
+  const toast = useToast();
   const [range, setRange] = useState<Range>(() => currentMonth());
   const [exportError, setExportError] = useState<unknown>(null);
   const [mailOpen, setMailOpen] = useState(false);
@@ -95,6 +97,7 @@ export function BilledArchive(): JSX.Element {
     onSuccess: (file) => {
       setExportError(null);
       saveFile(file);
+      toast.success('Der Zeitnachweis wurde heruntergeladen.');
     },
     onError: (error) => setExportError(error),
   });

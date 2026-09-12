@@ -27,6 +27,7 @@ import { Field } from '../../components/ui/Field.js';
 import { FormActions } from '../../components/ui/FormActions.js';
 import { PageHeader } from '../../components/ui/PageHeader.js';
 import { StatusText } from '../../components/ui/StatusText.js';
+import { useToast } from '../../components/ui/Toast.js';
 import { Input } from '../../components/ui/Input.js';
 import { Select } from '../../components/ui/Select.js';
 import { Textarea } from '../../components/ui/Textarea.js';
@@ -46,6 +47,7 @@ export function InvoiceEditorPage(): JSX.Element {
   const invoiceId = Number(id);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [saved, setSaved] = useState(false);
   const [deleted, setDeleted] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
@@ -88,7 +90,10 @@ export function InvoiceEditorPage(): JSX.Element {
 
   const downloadEinvoice = useMutation({
     mutationFn: () => apiClient.download(`/invoices/${invoiceId}/xml`, `Rechnung-${invoiceId}.xml`),
-    onSuccess: saveFile,
+    onSuccess: (file) => {
+      saveFile(file);
+      toast.success('Die XRechnung wurde heruntergeladen.');
+    },
   });
 
   /**
@@ -149,6 +154,7 @@ export function InvoiceEditorPage(): JSX.Element {
     onSuccess: (updated) => {
       queryClient.setQueryData(queryKeys.invoices.byId(invoiceId), updated);
       form.reset(toInvoiceFormValues(updated));
+      toast.success('Die Kundendaten wurden übernommen.');
     },
   });
 
@@ -170,7 +176,13 @@ export function InvoiceEditorPage(): JSX.Element {
             'Rechnungsentwurf.pdf',
           )
         : apiClient.download(`/invoices/${invoiceId}/pdf`, `Rechnung-${invoiceId}.pdf`),
-    onSuccess: saveFile,
+    onSuccess: (file) => {
+      saveFile(file);
+      // Die Datei landet im Download-Ordner — auf dem Bildschirm ändert sich
+      // nichts. Ohne diese Meldung bliebe offen, ob der Klick etwas bewirkt
+      // hat.
+      toast.success('Das PDF wurde heruntergeladen.');
+    },
   });
 
   /**
@@ -191,6 +203,10 @@ export function InvoiceEditorPage(): JSX.Element {
       queryClient.setQueryData(queryKeys.invoices.byId(invoiceId), updated);
       await queryClient.invalidateQueries({ queryKey: queryKeys.invoices.all });
       form.reset(toInvoiceFormValues(updated));
+      // Die Nummer ist das Ergebnis dieser Handlung und steht danach oben in
+      // der Überschrift — die Meldung nennt sie, damit man nicht erst
+      // nachsehen muss, welche es geworden ist.
+      toast.success(`${invoiceDisplayName(updated)} wurde ausgestellt.`);
     },
   });
 
@@ -200,6 +216,7 @@ export function InvoiceEditorPage(): JSX.Element {
       queryClient.setQueryData(queryKeys.invoices.byId(invoiceId), updated);
       await queryClient.invalidateQueries({ queryKey: queryKeys.invoices.all });
       form.reset(toInvoiceFormValues(updated));
+      toast.success('Die Finalisierung wurde zurückgenommen, die Nummer ist wieder frei.');
     },
   });
 
@@ -207,6 +224,7 @@ export function InvoiceEditorPage(): JSX.Element {
     mutationFn: () => apiClient.post<InvoiceResponse>(`/invoices/${invoiceId}/regenerate-pdf`, {}),
     onSuccess: (updated) => {
       queryClient.setQueryData(queryKeys.invoices.byId(invoiceId), updated);
+      toast.success('Das PDF wurde neu erzeugt.');
     },
   });
 
@@ -217,6 +235,9 @@ export function InvoiceEditorPage(): JSX.Element {
       queryClient.removeQueries({ queryKey: queryKeys.invoices.byId(invoiceId) });
       await queryClient.invalidateQueries({ queryKey: queryKeys.invoices.all });
       navigate('/invoices', { replace: true });
+      // Nach dem Sprung in die Liste ist die einzige Spur des Löschens eine
+      // Zeile, die fehlt.
+      toast.success('Der Entwurf wurde gelöscht.');
     },
   });
 

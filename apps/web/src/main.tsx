@@ -5,6 +5,7 @@ import { RouterProvider } from 'react-router-dom';
 import { router } from './app/router.js';
 import { AuthGate } from './features/auth/AuthGate.js';
 import { ErrorBoundary } from './app/ErrorBoundary.js';
+import { ToastProvider } from './components/ui/Toast.js';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -28,9 +29,14 @@ createRoot(container).render(
   <StrictMode>
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <AuthGate>
-          <RouterProvider router={router} />
-        </AuthGate>
+        {/* Über dem Router: Eine Meldung soll den Seitenwechsel überleben,
+            den sie oft selbst ausgelöst hat — „Kunde gelöscht." erscheint
+            erst, wenn die Kundenliste schon steht. */}
+        <ToastProvider>
+          <AuthGate>
+            <RouterProvider router={router} />
+          </AuthGate>
+        </ToastProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   </StrictMode>,

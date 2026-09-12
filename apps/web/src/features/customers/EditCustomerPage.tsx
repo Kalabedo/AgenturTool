@@ -13,6 +13,7 @@ import { ErrorNotice } from '../../components/ui/ErrorNotice.js';
 import { LoadingNote } from '../../components/ui/LoadingNote.js';
 import { PageHeader } from '../../components/ui/PageHeader.js';
 import { StatusText } from '../../components/ui/StatusText.js';
+import { useToast } from '../../components/ui/Toast.js';
 import { fieldErrorsOf, formErrorOf, isNotFound } from '../../lib/errorMessage.js';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
 
@@ -21,6 +22,7 @@ export function EditCustomerPage(): JSX.Element {
   const customerId = Number(id);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [saved, setSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   // Sobald der Kunde gelöscht ist, darf die Detailabfrage nicht mehr laufen.
@@ -56,16 +58,27 @@ export function EditCustomerPage(): JSX.Element {
         `/customers/${customerId}/${archived ? 'archive' : 'unarchive'}`,
         {},
       ),
-    onSuccess: invalidate,
+    onSuccess: async (updated) => {
+      await invalidate(updated);
+      toast.success(
+        updated.archivedAt === null
+          ? `„${updated.companyName}" ist wieder aktiv.`
+          : `„${updated.companyName}" wurde archiviert und erscheint nicht mehr in der Auswahl.`,
+      );
+    },
   });
 
   const remove = useMutation({
     mutationFn: () => apiClient.delete<void>(`/customers/${customerId}`),
     onSuccess: async () => {
+      const name = customer.data?.companyName ?? 'Der Kunde';
       setDeleted(true);
       queryClient.removeQueries({ queryKey: queryKeys.customers.byId(customerId) });
       await queryClient.invalidateQueries({ queryKey: queryKeys.customers.all });
       navigate('/customers', { replace: true });
+      // In der Liste angekommen, ist der einzige Beleg fürs Löschen eine
+      // Zeile, die fehlt — und die fällt bei vielen Kunden niemandem auf.
+      toast.success(`„${name}" wurde gelöscht.`);
     },
   });
 

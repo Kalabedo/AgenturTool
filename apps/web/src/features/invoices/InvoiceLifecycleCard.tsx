@@ -16,6 +16,7 @@ import { Card } from '../../components/ui/Card.js';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog.js';
 import { Field } from '../../components/ui/Field.js';
 import { StatusText } from '../../components/ui/StatusText.js';
+import { useToast } from '../../components/ui/Toast.js';
 import { Input } from '../../components/ui/Input.js';
 import { SendMailDialog } from '../mail/SendMailDialog.js';
 import { RebillDialog } from './RebillDialog.js';
@@ -31,6 +32,7 @@ import { RebillDialog } from './RebillDialog.js';
 export function InvoiceLifecycleCard({ invoice }: { invoice: InvoiceResponse }): JSX.Element {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const toast = useToast();
   const [paidAt, setPaidAt] = useState(invoice.paidAt ?? '');
   const [rebillOpen, setRebillOpen] = useState(false);
   const [mailOpen, setMailOpen] = useState(false);
@@ -41,16 +43,33 @@ export function InvoiceLifecycleCard({ invoice }: { invoice: InvoiceResponse }):
     await queryClient.invalidateQueries({ queryKey: queryKeys.invoices.all });
   };
 
+  /*
+   * Vermerken und Entfernen sehen auf dem Bildschirm fast gleich aus: Im
+   * Feld steht danach dasselbe Datum, das man eben eingetippt hat. Erst die
+   * Meldung sagt, dass der Vermerk beim Server angekommen ist.
+   */
   const payment = useMutation({
     mutationFn: (value: string | null) =>
       apiClient.post<InvoiceResponse>(`/invoices/${invoice.id}/payment`, { paidAt: value }),
-    onSuccess: applyUpdate,
+    onSuccess: async (updated) => {
+      await applyUpdate(updated);
+      toast.success(
+        updated.paidAt === null ? 'Der Zahlungsvermerk wurde entfernt.' : 'Zahlung vermerkt.',
+      );
+    },
   });
 
   const sent = useMutation({
     mutationFn: (value: string | null) =>
       apiClient.post<InvoiceResponse>(`/invoices/${invoice.id}/sent`, { sentAt: value }),
-    onSuccess: applyUpdate,
+    onSuccess: async (updated) => {
+      await applyUpdate(updated);
+      toast.success(
+        updated.sentAt === null
+          ? 'Der Versandvermerk wurde zurückgenommen.'
+          : 'Als versendet vermerkt.',
+      );
+    },
   });
 
   const cancel = useMutation({
@@ -59,6 +78,11 @@ export function InvoiceLifecycleCard({ invoice }: { invoice: InvoiceResponse }):
       await queryClient.invalidateQueries({ queryKey: queryKeys.invoices.all });
       // Weiter zum Storno: Das ist der Beleg, der jetzt zählt.
       navigate(`/invoices/${cancellation.id}`);
+      // Nach dem Sprung sieht man ein fremdes Dokument. Die Meldung sagt,
+      // woher es kommt.
+      toast.success(
+        `${invoiceDisplayName(invoice)} wurde storniert — hier steht jetzt das Storno-Dokument.`,
+      );
     },
   });
 

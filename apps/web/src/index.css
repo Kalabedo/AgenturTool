@@ -33,6 +33,30 @@ a:focus-visible {
 }
 
 /*
+ * Die Rückmeldung am unteren Rand fährt kurz herein.
+ *
+ * Ohne die Bewegung erscheint sie schlagartig und wirkt wie ein Teil der
+ * Seite, der schon immer da war; mit ihr sieht man, dass gerade etwas
+ * passiert ist. Kurz genug, um niemanden warten zu lassen — und die Regel
+ * darunter nimmt sie zurück, wenn das Betriebssystem weniger Bewegung
+ * verlangt.
+ */
+@keyframes toast-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.toast-enter {
+  animation: toast-enter 150ms ease-out;
+}
+
+/*
  * Wer im Betriebssystem weniger Bewegung eingestellt hat, meint es ernst —
  * für manche Menschen lösen Übergänge Übelkeit aus. Die Anwendung braucht
  * ihre Animationen nicht, um verständlich zu sein.

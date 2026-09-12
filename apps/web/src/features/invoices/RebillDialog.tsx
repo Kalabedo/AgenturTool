@@ -17,6 +17,7 @@ import { Checkbox } from '../../components/ui/Checkbox.js';
 import { Dialog } from '../../components/ui/Dialog.js';
 import { ErrorNotice } from '../../components/ui/ErrorNotice.js';
 import { LoadingNote } from '../../components/ui/LoadingNote.js';
+import { useToast } from '../../components/ui/Toast.js';
 
 /**
  * „Neue Rechnung auf Basis dieser Rechnung."
@@ -227,6 +228,7 @@ export function RebillDialog({
 }): JSX.Element {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const toast = useToast();
   const [refresh, setRefresh] = useState(true);
 
   const preview = useQuery({
@@ -247,6 +249,9 @@ export function RebillDialog({
       await queryClient.invalidateQueries({ queryKey: queryKeys.invoices.all });
       onClose();
       navigate(`/invoices/${created.id}`);
+      // Der neue Entwurf sieht aus wie die Rechnung, aus der er entstand.
+      // Die Meldung hält fest, dass man jetzt im neuen steht.
+      toast.success(`Neuer Entwurf auf Basis von ${invoiceName} angelegt.`);
     },
   });
 

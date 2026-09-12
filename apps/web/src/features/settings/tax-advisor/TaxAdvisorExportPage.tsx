@@ -10,7 +10,7 @@ import { Button } from '../../../components/ui/Button.js';
 import { Card } from '../../../components/ui/Card.js';
 import { FormActions } from '../../../components/ui/FormActions.js';
 import { PageHeader } from '../../../components/ui/PageHeader.js';
-import { StatusText } from '../../../components/ui/StatusText.js';
+import { useToast } from '../../../components/ui/Toast.js';
 import { Checkbox } from '../../../components/ui/Checkbox.js';
 import { ErrorNotice } from '../../../components/ui/ErrorNotice.js';
 import { Field } from '../../../components/ui/Field.js';
@@ -33,6 +33,7 @@ function currentMonth(): { from: string; to: string } {
 /** Ein vollständiges, aber bewusst nicht als DATEV-Datei ausgegebenes Kanzleipaket. */
 export function TaxAdvisorExportPage(): JSX.Element {
   useDocumentTitle('Steuerberater-Export');
+  const toast = useToast();
   const defaults = currentMonth();
   const [from, setFrom] = useState(defaults.from);
   const [to, setTo] = useState(defaults.to);
@@ -47,7 +48,10 @@ export function TaxAdvisorExportPage(): JSX.Element {
   const download = useMutation({
     mutationFn: (payload: TaxAdvisorExportPayload) =>
       apiClient.downloadFromPost('/tax-advisor/export', payload, 'steuerberater-export.zip'),
-    onSuccess: saveFile,
+    onSuccess: (file) => {
+      saveFile(file);
+      toast.success('Das Übergabepaket wurde heruntergeladen.');
+    },
   });
 
   function inputsChanged(): void {
@@ -122,13 +126,7 @@ export function TaxAdvisorExportPage(): JSX.Element {
             }}
           />
 
-          <FormActions
-            status={
-              download.isSuccess && !download.isPending ? (
-                <StatusText tone="success">Das Paket wurde erstellt.</StatusText>
-              ) : null
-            }
-          >
+          <FormActions>
             <Button
               type="submit"
               disabled={download.isPending}

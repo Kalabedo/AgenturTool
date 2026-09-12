@@ -13,6 +13,7 @@ import { ErrorNotice } from '../../../components/ui/ErrorNotice.js';
 import { LoadingNote } from '../../../components/ui/LoadingNote.js';
 import { PageHeader } from '../../../components/ui/PageHeader.js';
 import { StatusText } from '../../../components/ui/StatusText.js';
+import { useToast } from '../../../components/ui/Toast.js';
 import { fieldErrorsOf, formErrorOf, isNotFound } from '../../../lib/errorMessage.js';
 import { useDocumentTitle } from '../../../lib/useDocumentTitle.js';
 
@@ -21,6 +22,7 @@ export function EditTaxProfilePage(): JSX.Element {
   const profileId = Number(id);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [saved, setSaved] = useState(false);
   const [deleted, setDeleted] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -52,16 +54,25 @@ export function EditTaxProfilePage(): JSX.Element {
         `/tax-profiles/${profileId}/${archived ? 'archive' : 'unarchive'}`,
         {},
       ),
-    onSuccess: refresh,
+    onSuccess: async (updated) => {
+      await refresh(updated);
+      toast.success(
+        updated.archivedAt === null
+          ? `„${updated.name}" ist wieder aktiv.`
+          : `„${updated.name}" wurde archiviert und erscheint nicht mehr in der Auswahl.`,
+      );
+    },
   });
 
   const remove = useMutation({
     mutationFn: () => apiClient.delete<void>(`/tax-profiles/${profileId}`),
     onSuccess: async () => {
+      const name = profile.data?.name ?? 'Das Profil';
       setDeleted(true);
       queryClient.removeQueries({ queryKey: queryKeys.taxProfiles.byId(profileId) });
       await queryClient.invalidateQueries({ queryKey: queryKeys.taxProfiles.all });
       navigate('/settings/tax-profiles', { replace: true });
+      toast.success(`„${name}" wurde gelöscht.`);
     },
   });
 
