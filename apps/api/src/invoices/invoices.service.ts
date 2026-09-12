@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, type Customer, type Invoice, type InvoiceItem } from '@prisma/client';
 import {
+  DOCUMENT_KIND,
   DOCUMENT_TYPE,
   INVOICE_EVENT_TYPE,
   INVOICE_STATUS,
@@ -42,7 +43,7 @@ import { InvoiceNumbersService } from './invoice-numbers.service';
 
 type InvoiceWithItems = Invoice & {
   items: InvoiceItem[];
-  documents: { path: string }[];
+  documents: { path: string; kind: string; einvoiceProfile: string | null }[];
   cancelledByInvoice: { id: number } | null;
 };
 
@@ -56,7 +57,7 @@ type InvoiceWithItems = Invoice & {
 const WITH_ITEMS = {
   include: {
     items: { orderBy: { position: 'asc' } },
-    documents: { select: { path: true } },
+    documents: { select: { path: true, kind: true, einvoiceProfile: true } },
     cancelledByInvoice: { select: { id: true } },
   },
 } as const;
@@ -768,6 +769,9 @@ export class InvoicesService {
       cancelledByInvoiceId: invoice.cancelledByInvoice?.id ?? null,
 
       hasDocument: invoice.documents.length > 0,
+      pdfEinvoiceProfile:
+        invoice.documents.find((document) => document.kind === DOCUMENT_KIND.PDF)
+          ?.einvoiceProfile ?? null,
       // Ein Blick ins Dateisystem je Rechnung. Ein `stat` ist billig, und
       // die Alternative wäre, dem Benutzer eine Datei anzubieten, die es
       // nicht mehr gibt.

@@ -21,6 +21,7 @@ import { TaxProfilesService } from '../src/tax-profiles/tax-profiles.service';
 import { TemplateSettingsService } from '../src/template-settings/template-settings.service';
 import { InvoiceDocumentsService } from '../src/pdf/invoice-documents.service';
 import { InvoicePdfService } from '../src/pdf/invoice-pdf.service';
+import { EinvoiceService } from '../src/einvoice/einvoice.service';
 import { InvoiceFinalizeService } from '../src/invoices/invoice-finalize.service';
 import { InvoiceNumbersService } from '../src/invoices/invoice-numbers.service';
 import { InvoicesService } from '../src/invoices/invoices.service';
@@ -75,6 +76,7 @@ beforeAll(async () => {
     numbers,
     documents,
     invoicePdf,
+    new EinvoiceService(prisma, documents),
   );
 
   invoices = new InvoicesService(prisma, company, numbers, documents);

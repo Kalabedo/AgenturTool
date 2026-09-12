@@ -6,6 +6,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { PrismaClient } from '@prisma/client';
 import {
   DISCOUNT_TYPE,
+  DOCUMENT_KIND,
   INVOICE_EVENT_TYPE,
   INVOICE_STATUS,
   NUMBER_PATTERN_SETTING_KEY,
@@ -20,6 +21,7 @@ import { TaxProfilesService } from '../src/tax-profiles/tax-profiles.service';
 import { TemplateSettingsService } from '../src/template-settings/template-settings.service';
 import { InvoiceDocumentsService } from '../src/pdf/invoice-documents.service';
 import { InvoicePdfService } from '../src/pdf/invoice-pdf.service';
+import { EinvoiceService } from '../src/einvoice/einvoice.service';
 import { InvoiceFinalizeService } from '../src/invoices/invoice-finalize.service';
 import { InvoiceNumbersService } from '../src/invoices/invoice-numbers.service';
 import { InvoicesService } from '../src/invoices/invoices.service';
@@ -79,6 +81,7 @@ beforeAll(async () => {
     numbers,
     documents,
     invoicePdf,
+    new EinvoiceService(prisma, documents),
   );
 
   invoices = new InvoicesService(prisma, company, numbers, documents);
@@ -437,4 +440,105 @@ describe('PDF-Ablage', () => {
       '%PDF-1.4 fremd',
     );
   });
+});
+
+/**
+ * ZUGFeRD beim Ausstellen.
+ *
+ * Hier geht es um die Entscheidung, nicht um das Dateiformat: Bekommt das
+ * PDF den Datensatz, und wird festgehalten, ob es geklappt hat. Wie das
+ * eingebettete PDF innen aussieht, prüft `zugferd.test.ts` an einer echten
+ * Chromium-Ausgabe.
+ */
+describe('ZUGFeRD beim Ausstellen', () => {
+  async function pdfRow(invoiceId: number) {
+    return prisma.invoiceDocument.findFirstOrThrow({
+      where: { invoiceId, kind: DOCUMENT_KIND.PDF },
+    });
+  }
+
+  /**
+   * Die Firmendaten, die eine E-Rechnung braucht.
+   *
+   * Die Grundeinrichtung der übrigen Tests genügt § 14 UStG, aber nicht
+   * EN 16931: Telefonnummer (BR-DE-6) und elektronische Adresse (BT-34)
+   * verlangt erst die E-Rechnung. Genau deshalb steht das hier und nicht im
+   * gemeinsamen `beforeEach` — die anderen Tests sollen weiterhin den Fall
+   * abdecken, dass eine Rechnung ohne Datensatz entsteht.
+   */
+  beforeEach(async () => {
+    await prisma.company.update({
+      where: { id: 1 },
+      data: {
+        phone: '07961 123456',
+        electronicAddress: 'rechnung@xyz-agentur.example',
+        electronicAddressScheme: 'EM',
+      },
+    });
+  });
+
+  it('bettet den Datensatz ein und hält das Profil fest', async () => {
+    const id = await createDraft();
+    await finalizer.finalize(id);
+
+    const pdf = await pdfRow(id);
+    expect(pdf.einvoiceProfile).toBe('zugferd-en16931');
+
+    // Der Beleg, dass wirklich eingebettet wurde und nicht nur vermerkt.
+    const bytes = fs.readFileSync(path.join(dataDir, pdf.path));
+    expect(bytes.toString('latin1')).toContain('factur-x.xml');
+  }, 90_000);
+
+  it('erzeugt ZUGFeRD auch ohne Käuferreferenz — anders als die XRechnung', async () => {
+    // Der eigentliche Gewinn: BT-10 ist eine Pflicht der deutschen CIUS,
+    // nicht der EU-Norm. Eine Rechnung an eine Firma ohne Leitweg-ID bekommt
+    // deshalb kein XML daneben, aber sehr wohl einen Datensatz im PDF.
+    const id = await createDraft({
+      buyerData: JSON.stringify({ ...BUYER, buyerReference: null }),
+    });
+    await finalizer.finalize(id);
+
+    const documentRows = await prisma.invoiceDocument.findMany({ where: { invoiceId: id } });
+    expect(documentRows.map((row) => row.kind)).toEqual([DOCUMENT_KIND.PDF]);
+
+    const pdf = await pdfRow(id);
+    expect(pdf.einvoiceProfile).toBe('zugferd-en16931');
+  }, 90_000);
+
+  it('stellt trotzdem aus, wenn für den Datensatz Angaben fehlen', async () => {
+    // Ohne Steuernummer und USt-IdNr. gibt es keinen Datensatz. Eine
+    // Rechnung ohne eingebettetes XML ist eine gültige Rechnung; eine, die
+    // sich nicht ausstellen ließ, wäre gar keine.
+    await prisma.company.update({ where: { id: 1 }, data: { vatId: null, taxNumber: null } });
+    const id = await createDraft();
+
+    // § 14 UStG verlangt eine steuerliche Kennung — das Ausstellen scheitert
+    // hier also schon vorher, und zwar richtigerweise.
+    await expect(finalizer.finalize(id)).rejects.toMatchObject({
+      code: 'FINALIZE_VALIDATION_FAILED',
+    });
+  }, 90_000);
+
+  it('behält den Datensatz, wenn das PDF neu erzeugt wird', async () => {
+    const id = await createDraft();
+    await finalizer.finalize(id);
+
+    const before = await pdfRow(id);
+    fs.rmSync(path.join(dataDir, before.path));
+
+    await finalizer.regenerateDocument(id);
+
+    const after = await pdfRow(id);
+    expect(after.einvoiceProfile).toBe('zugferd-en16931');
+    expect(fs.readFileSync(path.join(dataDir, after.path)).toString('latin1')).toContain(
+      'factur-x.xml',
+    );
+
+    // Die XML-Zeile gehört nicht zum PDF und darf beim Neuerzeugen nicht
+    // mit verschwinden.
+    const xml = await prisma.invoiceDocument.findFirst({
+      where: { invoiceId: id, kind: DOCUMENT_KIND.XML },
+    });
+    expect(xml).not.toBeNull();
+  }, 90_000);
 });

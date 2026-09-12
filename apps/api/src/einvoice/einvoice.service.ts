@@ -14,7 +14,12 @@ import {
   type IsoDate,
   type UnitCode,
 } from '@agentur-tool/shared';
-import { buildEinvoiceModel, renderCii, DEFAULT_EINVOICE_PROFILE } from '@agentur-tool/einvoice';
+import {
+  buildEinvoiceModel,
+  renderCii,
+  DEFAULT_EINVOICE_PROFILE,
+  type EinvoiceProfile,
+} from '@agentur-tool/einvoice';
 import type { RenderModelSourceItem } from '@agentur-tool/invoice-template';
 import { ApiError } from '../common/api-error';
 import { PrismaService } from '../common/prisma.service';
@@ -107,14 +112,43 @@ export class EinvoiceService {
     });
   }
 
-  private renderFromSnapshots(invoice: Awaited<ReturnType<EinvoiceService['load']>>): string {
+  /**
+   * Die E-Rechnung einer ausgestellten Rechnung, aus den Snapshots.
+   *
+   * Öffentlich, weil zwei Wege sie brauchen: der Download hier und das
+   * Neuerzeugen des PDFs im Finalisieren-Dienst. Eine zweite Abbildung
+   * dafür zu schreiben hieße, zwei Fassungen derselben Rechnung zu haben,
+   * die auseinanderlaufen können.
+   *
+   * @returns Das XML, oder null, wenn der Rechnung dafür Angaben fehlen.
+   */
+  async renderForProfile(id: number, profile: EinvoiceProfile): Promise<string | null> {
+    const invoice = await this.load(id);
+    if (invoice.number === null || invoice.sellerSnapshot === null) return null;
+
+    try {
+      return this.renderFromSnapshots(invoice, profile);
+    } catch {
+      // Fehlende Angaben sind hier kein Fehler, sondern eine Antwort: Diese
+      // Rechnung bekommt keinen strukturierten Datensatz.
+      return null;
+    }
+  }
+
+  private renderFromSnapshots(
+    invoice: Awaited<ReturnType<EinvoiceService['load']>>,
+    profile: EinvoiceProfile = DEFAULT_EINVOICE_PROFILE,
+  ): string {
     const seller = this.parse(sellerSnapshotSchema, invoice.sellerSnapshot, invoice.id);
     const buyer = this.parse(buyerDataSchema, invoice.buyerData, invoice.id);
     const tax = this.parse(taxSnapshotSchema, invoice.taxSnapshot, invoice.id);
     const template = this.parse(templateSnapshotSchema, invoice.templateSnapshot, invoice.id);
     const totals = this.parse(totalsSnapshotSchema, invoice.totalsSnapshot, invoice.id);
 
-    const missing = checkEinvoiceReady({ seller, buyer, tax });
+    const missing = checkEinvoiceReady(
+      { seller, buyer, tax },
+      { requireBuyerReference: profile.requiresBuyerReference },
+    );
     if (missing.length > 0) {
       throw ApiError.validation(
         'Zu dieser Rechnung lässt sich keine E-Rechnung erzeugen; es fehlen Angaben.',
@@ -157,7 +191,7 @@ export class EinvoiceService {
       { precedingInvoiceNumber: invoice.cancelsInvoice?.number ?? null },
     );
 
-    return renderCii(model, DEFAULT_EINVOICE_PROFILE);
+    return renderCii(model, profile);
   }
 
   private async load(id: number) {

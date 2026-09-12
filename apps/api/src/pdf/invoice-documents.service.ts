@@ -23,6 +23,13 @@ export interface StagedDocument {
   relativePath: string;
   sha256: string;
   sizeBytes: number;
+  /**
+   * Das E-Rechnungs-Profil, das die Datei trägt — oder null.
+   *
+   * Wandert unverändert in die Spalte gleichen Namens. Ein PDF ohne
+   * eingebetteten Datensatz und ein Zeitnachweis tragen hier null.
+   */
+  einvoiceProfile: string | null;
 }
 
 /**
@@ -101,6 +108,7 @@ export class InvoiceDocumentsService implements OnApplicationBootstrap {
     year: number,
     number: string,
     kind: DocumentKind = DOCUMENT_KIND.PDF,
+    einvoiceProfile: string | null = null,
   ): Promise<StagedDocument> {
     const tempPath = path.join(
       this.storage.tmpDir,
@@ -114,6 +122,7 @@ export class InvoiceDocumentsService implements OnApplicationBootstrap {
       relativePath: this.relativePathFor(year, number, kind),
       sha256: crypto.createHash('sha256').update(bytes).digest('hex'),
       sizeBytes: bytes.length,
+      einvoiceProfile,
     };
   }
 

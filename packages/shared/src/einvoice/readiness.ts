@@ -31,6 +31,24 @@ export interface EinvoiceReadinessInput {
   tax: TaxSnapshot;
 }
 
+export interface EinvoiceReadinessOptions {
+  /**
+   * Ob die Käuferreferenz (BT-10) verlangt wird.
+   *
+   * **Kein Detail, sondern der Unterschied zwischen zwei Standards.** Die
+   * EU-Norm stellt das Feld frei; erst die deutsche CIUS macht es zur
+   * Pflicht, weil öffentliche Auftraggeber dort ihre Leitweg-ID erwarten.
+   *
+   * Für eine XRechnung ist die Angabe deshalb zwingend, für ein
+   * ZUGFeRD-Dokument nach EN 16931 nicht. Diese Unterscheidung entscheidet,
+   * wie weit die E-Rechnung überhaupt reicht: Eine Solo-Agentur rechnet
+   * überwiegend mit Firmen ab, die keine Leitweg-ID haben. Verlangte man
+   * sie überall, bekäme die Mehrzahl der Rechnungen gar keinen
+   * strukturierten Datensatz — obwohl die Norm ihn zuließe.
+   */
+  requireBuyerReference?: boolean;
+}
+
 function isBlank(value: string | null | undefined): boolean {
   return value === null || value === undefined || value.trim() === '';
 }
@@ -38,13 +56,19 @@ function isBlank(value: string | null | undefined): boolean {
 /**
  * Alles, was dem XML-Export im Weg steht — leer heißt: lässt sich ausgeben.
  */
-export function checkEinvoiceReady(input: EinvoiceReadinessInput): FinalizationProblem[] {
+export function checkEinvoiceReady(
+  input: EinvoiceReadinessInput,
+  options: EinvoiceReadinessOptions = {},
+): FinalizationProblem[] {
   const problems: FinalizationProblem[] = [];
   const { seller, buyer, tax } = input;
+  // Vorbelegt mit „ja", weil der vorhandene Aufrufer die XRechnung erzeugt.
+  // Wer die Norm allein meint, sagt es ausdrücklich.
+  const { requireBuyerReference = true } = options;
 
   // BT-10. In XRechnung ein Pflichtfeld ohne Ausnahme: Die Norm der EU
   // kennt das Feld als optional, die deutsche CIUS macht es zur Pflicht.
-  if (isBlank(buyer.buyerReference)) {
+  if (requireBuyerReference && isBlank(buyer.buyerReference)) {
     problems.push({
       field: 'buyerReference',
       message:

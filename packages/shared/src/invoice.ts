@@ -341,6 +341,15 @@ export interface InvoiceResponse {
   /** Ob ein gespeichertes PDF vorliegt (entsteht beim Finalisieren). */
   hasDocument: boolean;
   /**
+   * Das E-Rechnungs-Profil im gespeicherten PDF, oder null.
+   *
+   * Beantwortet die Frage, die man der Datei nicht ansieht: Trägt dieses
+   * PDF den strukturierten Datensatz in sich (ZUGFeRD) oder ist es ein
+   * gewöhnliches? Die Oberfläche sagt es damit, bevor jemand die Rechnung
+   * verschickt — sonst wäre „hybrid" eine Annahme statt einer Auskunft.
+   */
+  pdfEinvoiceProfile: string | null;
+  /**
    * Datensatz vorhanden, Datei nicht — reparierbar, weil der Snapshot alles
    * enthält, was das Dokument braucht (Abschnitt 13).
    */

@@ -56,6 +56,10 @@ sie hier korrigiert und nicht nur im Code.
 | D45 | E-Mail-Versandwege       | **Zwei Wege mit verschiedenen Zusagen:** SMTP verschickt selbst und setzt den Versandvermerk; die lokale Mail-Anwendung bekommt einen fertigen Entwurf samt Anhängen (Apple Mail über AppleScript, sonst als `.eml`), und der Vermerk bleibt beim Benutzer. Vorbelegung ist „kein Versand" (Abschnitt 27) |
 | D46 | SMTP-Passwort            | **Verschlüsselt in der Datenbank, Schlüssel außerhalb:** Schlüsselbund des Betriebssystems, ersatzweise eine Schlüsseldatei unter DATA_DIR. Beide liegen nicht im Backup — ein anderswo eingespieltes Backup verlangt eine Neueingabe                                                                     |
 | D47 | E-Mail-Vorlagen          | **Drei feste Vorlagen mit Platzhaltern**, bearbeitbar und zurücksetzbar; das Einsetzen liegt in `shared` und läuft für Vorschau und Versand durch dieselbe Funktion                                                                                                                                       |
+| D48 | ZUGFeRD-Ausgabe          | **Jedes ausgestellte PDF ist ein PDF/A-3 mit eingebettetem XML** — kein Schalter, keine zweite Datei; scheitert das Einbetten, entsteht das gewöhnliche PDF und die Ablage vermerkt es                                                                                                                    |
+| D49 | PDF/A-Nachbearbeitung    | **pdf-lib**, reines JavaScript — kein Ghostscript und keine nativen Bindings, die je Plattform gebaut und signiert werden müssten                                                                                                                                                                         |
+| D50 | Profil im PDF            | **EN 16931 im eingebetteten Datensatz, XRechnung in der eigenständigen Datei** — die Käuferreferenz ist deutsche Pflicht, nicht europäische                                                                                                                                                               |
+| D51 | PDF/A-Prüfung            | **veraPDF in der CI**, feste Fassung, Java nur auf dem Bauserver — wie der KoSIT-Validator beim XML                                                                                                                                                                                                       |
 
 Zu D21: Rechnungs-, Leistungs- und Fälligkeitsdatum sind Kalendertage, keine
 Zeitpunkte. Als `DateTime` müsste an jeder Grenze zwischen Browser, API und
@@ -1792,11 +1796,11 @@ steckt im Profil.
 Gebaut: **XRechnung als eigenständige XML-Datei.** Sie entsteht beim
 Ausstellen, wird wie das PDF eingefroren und lässt sich herunterladen.
 
+Gebaut: **ZUGFeRD / Factur-X.** Jedes ausgestellte PDF ist ein PDF/A-3 mit
+eingebettetem CII-XML — siehe den folgenden Abschnitt.
+
 Nicht gebaut, in dieser Reihenfolge sinnvoll:
 
-- **ZUGFeRD** (PDF/A-3 mit eingebettetem XML) setzt auf derselben Abbildung
-  auf. Der Aufwand liegt nicht im XML, sondern im PDF: `printToPDF` von
-  Electron erzeugt kein PDF/A-3, und die Datei müsste nachbearbeitet werden.
 - **Eingehende E-Rechnungen lesen** ist ein eigenes Feature mit eigener
   Oberfläche.
 - **Peppol-Versand** wird **nicht** gebaut. Er bräuchte einen akkreditierten
@@ -1805,6 +1809,59 @@ Nicht gebaut, in dieser Reihenfolge sinnvoll:
   Grenze liegt: eine Verbindung, die der Benutzer einrichtet, die auf
   Knopfdruck entsteht und die ohne Einrichtung gar nicht existiert. Die Datei
   geht per E-Mail; das genügt.
+
+### ZUGFeRD: dasselbe Dokument für Menschen und Maschinen
+
+Ein ZUGFeRD-Dokument ist kein eigenes Format, sondern eine Verabredung über
+drei Dinge: Das PDF ist ein **PDF/A-3**, darin steckt die **CII-XML-Datei**
+als Anhang mit der Beziehungsangabe `Alternative`, und die **XMP-Metadaten**
+sagen, dass beides der Fall ist.
+
+**Jedes ausgestellte PDF ist ein ZUGFeRD-PDF**, sofern die Angaben reichen.
+Es gibt keinen Schalter und keine zweite Datei: Für einen Menschen sieht das
+Dokument aus wie zuvor, für eine Maschine ist es lesbar. Eine Entscheidung,
+die in jedem Fall gleich ausfiele, gehört nicht in die Oberfläche.
+
+Umgesetzt in `packages/einvoice/src/zugferd.ts` mit **pdf-lib** — reines
+JavaScript ohne native Abhängigkeiten, was bei einer Verpackung zählt, die
+schon mit Prismas Engines und dem fehlenden asar-Archiv (D35) genug zu tun
+hat. Das Einbetten passiert **nachträglich** und fasst die Seiten nicht an:
+Chromium kennt kein PDF/A, aber Ausgabeprofil, Metadaten und Anhang lassen
+sich hinzufügen, ohne etwas neu zu zeichnen. Ein Test vergleicht Seitenzahl
+und Seitenmaß vor und nach dem Einbetten.
+
+Drei Festlegungen, die dabei anfielen:
+
+- **Der eingebettete Datensatz folgt der EU-Norm, die eigenständige Datei
+  bleibt eine XRechnung.** Das ist kein Detail, sondern entscheidet über die
+  Reichweite: BT-10 (Käuferreferenz) ist eine Pflicht der deutschen CIUS,
+  nicht der Norm. Verlangte man sie überall, bekäme die Mehrzahl der
+  Rechnungen einer Solo-Agentur gar keinen strukturierten Datensatz — denn
+  eine Leitweg-ID haben nur öffentliche Auftraggeber. Die Unterscheidung
+  steht als `requiresBuyerReference` am Profil, nicht als Sonderfall im
+  Prüfcode.
+- **Scheitern kostet nicht das Ausstellen.** Lässt sich der Datensatz nicht
+  einbetten, entsteht das gewöhnliche PDF. Eine Rechnung ohne eingebettetes
+  XML ist eine gültige Rechnung; eine, die sich nicht ausstellen ließ, wäre
+  gar keine. Damit „nicht hybrid" trotzdem ein sichtbarer Zustand bleibt und
+  keine stille Annahme, hält `InvoiceDocument.einvoiceProfile` fest, was
+  tatsächlich erzeugt wurde, und die Oberfläche sagt es an der Rechnung.
+- **Das Farbprofil wird gerechnet, nicht mitgeliefert.** PDF/A verlangt einen
+  `OutputIntent` mit eingebettetem ICC-Profil. Die Profile in macOS und
+  Windows gehören Apple beziehungsweise Microsoft, und die Anwendung wird
+  verkauft — die Zahlen der sRGB-Norm dagegen sind frei.
+  `scripts/build-srgb-profile.mjs` baut daraus ein ICC-v2-Profil; das
+  Ergebnis ist eingecheckt, wie die Schriften in `invoice-template` (D29).
+
+**Geprüft wird mit veraPDF**, dem Referenzprüfer der PDF Association —
+dieselbe Arbeitsteilung wie beim XML und dem KoSIT-Validator: Die eigenen
+Tests prüfen, ob herauskommt, was gedacht war; ob das Gedachte der Norm
+genügt, sagt nur, wer die Regeln gemacht hat. Bei PDF/A wiegt das schwerer,
+weil das PDF aus Chromium kommt und Chromium kein Interesse an
+Archivformaten hat. Die Muster erzeugt der Test, der sie ohnehin baut
+(`ZUGFERD_MUSTER_DIR=… pnpm vitest run apps/api/test/zugferd.test.ts`,
+danach `pnpm pdfa:pruefen`); beides läuft in der CI. Java läuft
+ausschließlich dort und wird nie ausgeliefert.
 
 ### Entscheidungen
 

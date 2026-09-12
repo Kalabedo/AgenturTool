@@ -41,6 +41,20 @@ jobs:
       - name: E-Rechnung gegen den KoSIT-Validator prüfen
         run: pnpm --filter @agentur-tool/einvoice pruefen
 
+      # Dasselbe Prinzip für das PDF: Ob Chromiums Ausgabe nach dem
+      # Einbetten wirklich ein PDF/A-3 ist, sagt nicht unser Test, sondern
+      # der Referenzprüfer der PDF Association. Die Muster erzeugt der Test,
+      # der sie ohnehin baut — ein zweiter Weg dorthin wäre eine zweite
+      # Fassung, die irgendwann abweicht.
+      - name: ZUGFeRD-Muster erzeugen
+        run: xvfb-run -a pnpm vitest run apps/api/test/zugferd.test.ts
+        env:
+          ELECTRON_NO_SANDBOX: 'true'
+          ZUGFERD_MUSTER_DIR: ${{ runner.temp }}/zugferd-muster
+
+      - name: ZUGFeRD-PDFs gegen veraPDF prüfen
+        run: pnpm pdfa:pruefen ${{ runner.temp }}/zugferd-muster/*.pdf
+
       - name: Rauchprobe (Paketbaum)
         run: |
           pnpm --filter @agentur-tool/desktop paket --nur-baum

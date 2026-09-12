@@ -731,6 +731,19 @@ export function InvoiceEditorPage(): JSX.Element {
           </FormActions>
 
           {/*
+            Was im PDF steckt, sieht man ihm nicht an — deshalb steht es
+            hier. Ein ZUGFeRD-PDF ist die Regel; dass eines fehlt, ist die
+            Ausnahme und der Fall, in dem jemand etwas wissen muss.
+          */}
+          {!editable && data.hasDocument && (
+            <p className="text-sm text-slate-500">
+              {data.pdfEinvoiceProfile === null
+                ? 'Dieses PDF enthält keinen strukturierten Datensatz. Es ist eine gültige Rechnung; ein Empfänger, der sie maschinell einlesen will, braucht die XRechnung daneben.'
+                : 'Dieses PDF ist ein ZUGFeRD-Dokument: Der strukturierte Datensatz steckt darin und wird beim Verschicken mitgeliefert.'}
+            </p>
+          )}
+
+          {/*
             Ein Hinweis und keine Fehlermeldung: Die Rechnung ist gültig,
             sie lässt sich nur nicht als XRechnung ausgeben. Wer sie per
             PDF verschickt, hat hier nichts zu tun.

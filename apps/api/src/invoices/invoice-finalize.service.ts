@@ -39,7 +39,14 @@ import {
   type UnitCode,
 } from '@agentur-tool/shared';
 import type { RenderModelSourceItem } from '@agentur-tool/invoice-template';
-import { buildEinvoiceModel, renderCii } from '@agentur-tool/einvoice';
+import {
+  buildEinvoiceModel,
+  embedZugferd,
+  renderCii,
+  XRECHNUNG_3_0,
+  ZUGFERD_EN16931,
+  type EinvoiceProfile,
+} from '@agentur-tool/einvoice';
 import { ApiError } from '../common/api-error';
 import { PrismaService } from '../common/prisma.service';
 import { CompanyService } from '../company/company.service';
@@ -47,6 +54,7 @@ import { TaxProfilesService } from '../tax-profiles/tax-profiles.service';
 import { TemplateSettingsService } from '../template-settings/template-settings.service';
 import { InvoiceDocumentsService, type StagedDocument } from '../pdf/invoice-documents.service';
 import { InvoicePdfService } from '../pdf/invoice-pdf.service';
+import { EinvoiceService } from '../einvoice/einvoice.service';
 import { InvoiceNumbersService } from './invoice-numbers.service';
 
 type InvoiceWithItems = Invoice & { items: InvoiceItem[] };
@@ -128,6 +136,9 @@ export class InvoiceFinalizeService {
     private readonly numbers: InvoiceNumbersService,
     private readonly documents: InvoiceDocumentsService,
     private readonly pdf: InvoicePdfService,
+    // Nur für den Reparaturweg: Auch ein neu erzeugtes PDF soll seinen
+    // eingebetteten Datensatz wiederbekommen.
+    private readonly einvoice: EinvoiceService,
   ) {}
 
   /**
@@ -255,21 +266,37 @@ export class InvoiceFinalizeService {
       items: frozen.items,
     });
 
-    const staged = [await this.documents.stage(document.bytes, scope.year, number)];
-
     // Die E-Rechnung entsteht aus **derselben** Quelle wie das PDF und in
     // derselben Transaktion. Das ist die Umsetzung von „eine ausgestellte
     // Rechnung ist ein Dokument": Wären es zwei getrennte Vorgänge, gäbe
     // es einen Moment, in dem die XML-Datei andere Beträge trüge als das
     // Papier — oder gar nicht existierte.
-    const einvoice = this.renderEinvoice(target, frozen, number);
-    if (einvoice !== null) {
+    //
+    // Zwei Ausgaben aus einem Modell, und der Unterschied ist genau ein
+    // Profil: Die eigenständige Datei ist eine XRechnung, der Datensatz im
+    // PDF folgt der reinen EU-Norm. Letztere verlangt keine Käuferreferenz
+    // und reicht damit über die Kunden hinaus, die eine Leitweg-ID haben.
+    const xrechnung = this.renderEinvoice(target, frozen, number, XRECHNUNG_3_0);
+    const zugferdXml = this.renderEinvoice(target, frozen, number, ZUGFERD_EN16931);
+
+    const pdf = await this.toZugferd(document.bytes, zugferdXml, {
+      number,
+      invoiceDate: target.invoiceDate,
+      sellerName: frozen.seller.companyName,
+    });
+
+    const staged = [
+      await this.documents.stage(pdf.bytes, scope.year, number, DOCUMENT_KIND.PDF, pdf.profile),
+    ];
+
+    if (xrechnung !== null) {
       staged.push(
         await this.documents.stage(
-          Buffer.from(einvoice, 'utf8'),
+          Buffer.from(xrechnung, 'utf8'),
           scope.year,
           number,
           DOCUMENT_KIND.XML,
+          XRECHNUNG_3_0.key,
         ),
       );
     }
@@ -297,6 +324,7 @@ export class InvoiceFinalizeService {
         path: file.relativePath,
         sha256: file.sha256,
         sizeBytes: file.sizeBytes,
+        einvoiceProfile: file.einvoiceProfile,
       })),
     });
 
@@ -324,20 +352,77 @@ export class InvoiceFinalizeService {
    * Was fehlt, sagt die Oberfläche neben dem Download-Knopf; dieselbe
    * Prüfung liefert die Liste.
    */
+  /**
+   * Macht aus dem gedruckten PDF ein ZUGFeRD-Dokument — wenn es geht.
+   *
+   * **Scheitern darf das Ausstellen nicht kosten.** Eine Rechnung ohne
+   * eingebetteten Datensatz ist eine vollkommen gültige Rechnung; eine
+   * Rechnung, die sich nicht ausstellen ließ, ist gar keine. Deshalb wird
+   * hier aufgefangen statt durchgereicht — und das Ergebnis in der Ablage
+   * vermerkt, damit „nicht hybrid" ein sichtbarer Zustand ist und keine
+   * stille Annahme.
+   */
+  private async toZugferd(
+    pdfBytes: Buffer,
+    xml: string | null,
+    document: { number: string; invoiceDate: string; sellerName: string },
+  ): Promise<{ bytes: Buffer; profile: string | null }> {
+    if (xml === null) return { bytes: pdfBytes, profile: null };
+
+    const { number, invoiceDate } = document;
+
+    try {
+      const embedded = await embedZugferd(pdfBytes, xml, {
+        title: `Rechnung ${number}`,
+        author: document.sellerName,
+        // Der Zeitpunkt kommt aus dem Rechnungsdatum, nicht aus der Uhr:
+        // Dieselbe Rechnung soll dieselbe Datei und damit dieselbe
+        // Prüfsumme ergeben. Das Rechnungsdatum ist ein Kalendertag (D21),
+        // deshalb Mitternacht UTC — die Angabe steht in den Metadaten und
+        // ist kein Zeitpunkt, an dem etwas geschehen wäre.
+        now: new Date(`${invoiceDate}T00:00:00.000Z`),
+      });
+      return { bytes: Buffer.from(embedded), profile: ZUGFERD_EN16931.key };
+    } catch (error) {
+      this.logger.warn(
+        `Zu ${number} ließ sich kein ZUGFeRD-PDF erzeugen (${String(error)}). ` +
+          'Die Rechnung wird als gewöhnliches PDF ausgestellt.',
+      );
+      return { bytes: pdfBytes, profile: null };
+    }
+  }
+
+  /**
+   * Der Firmenname aus dem eingefrorenen Snapshot.
+   *
+   * Steht in den PDF-Metadaten als Verfasser. Ein beschädigter oder
+   * fehlender Snapshot darf das Neuerzeugen nicht verhindern — der Name ist
+   * eine Beschriftung, kein Inhalt des Belegs.
+   */
+  private sellerNameOf(sellerSnapshot: string | null): string {
+    if (sellerSnapshot === null) return 'AgenturTool';
+    const parsed = sellerSnapshotSchema.safeParse(JSON.parse(sellerSnapshot));
+    return parsed.success ? parsed.data.companyName : 'AgenturTool';
+  }
+
   private renderEinvoice(
     target: IssueTarget,
     frozen: FrozenSources,
     number: string,
+    profile: EinvoiceProfile,
   ): string | null {
-    const problems = checkEinvoiceReady({
-      seller: frozen.seller,
-      buyer: frozen.buyer,
-      tax: frozen.tax,
-    });
+    const problems = checkEinvoiceReady(
+      {
+        seller: frozen.seller,
+        buyer: frozen.buyer,
+        tax: frozen.tax,
+      },
+      { requireBuyerReference: profile.requiresBuyerReference },
+    );
 
     if (problems.length > 0) {
       this.logger.log(
-        `Zu ${number} entsteht keine E-Rechnung: ${problems.map((problem) => problem.field).join(', ')}.`,
+        `Zu ${number} entsteht kein ${profile.label}: ${problems.map((problem) => problem.field).join(', ')}.`,
       );
       return null;
     }
@@ -364,7 +449,7 @@ export class InvoiceFinalizeService {
       { precedingInvoiceNumber: frozen.precedingInvoiceNumber },
     );
 
-    return renderCii(model);
+    return renderCii(model, profile);
   }
 
   /**
@@ -662,17 +747,38 @@ export class InvoiceFinalizeService {
     }
 
     const rendered = await this.pdf.renderInvoice(id);
-    const staged = await this.documents.stage(rendered.bytes, invoice.numberYear, invoice.number);
+
+    // Auch das neu erzeugte PDF ist ein ZUGFeRD-Dokument. Ohne diesen
+    // Schritt verlöre ausgerechnet der Reparaturweg den eingebetteten
+    // Datensatz — die Datei sähe unverändert aus und wäre es nicht.
+    const zugferdXml = await this.einvoice.renderForProfile(id, ZUGFERD_EN16931);
+    const pdf = await this.toZugferd(rendered.bytes, zugferdXml, {
+      number: invoice.number,
+      invoiceDate: invoice.invoiceDate,
+      sellerName: this.sellerNameOf(invoice.sellerSnapshot),
+    });
+
+    const staged = await this.documents.stage(
+      pdf.bytes,
+      invoice.numberYear,
+      invoice.number,
+      DOCUMENT_KIND.PDF,
+      pdf.profile,
+    );
 
     try {
       await this.prisma.$transaction(async (tx) => {
-        await tx.invoiceDocument.deleteMany({ where: { invoiceId: id } });
+        // Nur die PDF-Zeile: Ein `deleteMany` über alle Dokumente nähme auch
+        // die XML-Datei mit, die hier gar nicht neu entsteht — die Rechnung
+        // behielte die Datei auf der Platte und verlöre ihren Nachweis.
+        await tx.invoiceDocument.deleteMany({ where: { invoiceId: id, kind: DOCUMENT_KIND.PDF } });
         await tx.invoiceDocument.create({
           data: {
             invoiceId: id,
             path: staged.relativePath,
             sha256: staged.sha256,
             sizeBytes: staged.sizeBytes,
+            einvoiceProfile: staged.einvoiceProfile,
           },
         });
         await tx.invoiceEvent.create({

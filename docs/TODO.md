@@ -137,16 +137,24 @@ Deutschland und anschließend auf einer breiteren Nutzung in der EU.
   - Oberfläche zunächst weiterhin auf Deutsch; die Dokumentensprache wird
     davon unabhängig behandelt.
 
-- [ ] **ZUGFeRD-/Factur-X-Hybridrechnungen**
-  - Zusätzlich zur vorhandenen XRechnung eine EN-16931-konforme XML-Datei in
-    ein PDF/A-3-Dokument einbetten.
-  - Dasselbe Rechnungsmodell für XRechnung und ZUGFeRD/Factur-X verwenden,
-    damit Beträge und Pflichtangaben nicht auseinanderlaufen.
-  - Ausgabeprofil und technische Validierung klar anzeigen.
-  - PDF und eingebettete XML gemeinsam unveränderlich archivieren und mit
-    Prüfsummen sichern.
-  - Die Bezeichnung Factur-X für französischsprachige beziehungsweise
-    internationale Nutzung berücksichtigen.
+- [x] **ZUGFeRD-/Factur-X-Hybridrechnungen**
+  - [x] Zusätzlich zur vorhandenen XRechnung eine EN-16931-konforme XML-Datei
+        in ein PDF/A-3-Dokument einbetten. Jedes ausgestellte PDF ist ein
+        ZUGFeRD-Dokument; es gibt keinen Schalter und keine zweite Datei.
+  - [x] Dasselbe Rechnungsmodell für XRechnung und ZUGFeRD/Factur-X
+        verwenden. Unterschiedlich ist genau ein Profil: Die eigenständige
+        Datei ist eine XRechnung, der Datensatz im PDF folgt der reinen
+        EU-Norm — und verlangt deshalb keine Käuferreferenz, was ZUGFeRD
+        für deutlich mehr Kunden möglich macht.
+  - [x] Ausgabeprofil und technische Validierung klar anzeigen. Die Rechnung
+        sagt, ob ihr PDF den Datensatz trägt; geprüft wird mit veraPDF in
+        der CI, wie das XML mit dem KoSIT-Validator.
+  - [x] PDF und eingebettete XML gemeinsam unveränderlich archivieren und mit
+        Prüfsummen sichern — beides entsteht in derselben Transaktion, und
+        das Einbetten ist deterministisch, damit die Prüfsumme trägt.
+  - [x] Die Bezeichnung Factur-X berücksichtigen: Der Anhang heißt wie
+        vorgeschrieben `factur-x.xml`, und die Metadaten nutzen den
+        gemeinsamen Namensraum beider Standards.
 
 ## Produktregeln für diese Erweiterungen
 

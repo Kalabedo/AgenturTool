@@ -21,11 +21,14 @@
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "golden": "tsx test/write-golden.ts",
-    "pruefen": "node scripts/validate.mjs"
+    "pruefen": "node scripts/validate.mjs",
+    "srgb": "node scripts/build-srgb-profile.mjs",
+    "pdfa:pruefen": "node scripts/validate-pdfa.mjs"
   },
   "dependencies": {
+    "@agentur-tool/invoice-template": "workspace:*",
     "@agentur-tool/shared": "workspace:*",
-    "@agentur-tool/invoice-template": "workspace:*"
+    "pdf-lib": "^1.17.1"
   },
   "devDependencies": {
     "tsup": "^8.3.0"

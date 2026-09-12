@@ -36,6 +36,15 @@ export interface EinvoiceProfile {
   businessProcessId: string | null;
   /** Der Dateiname, unter dem die Datei üblicherweise verschickt wird. */
   fileSuffix: string;
+  /**
+   * Ob BT-10 (Käuferreferenz) Pflicht ist.
+   *
+   * Steht am Profil und nicht im Prüfcode, weil genau das der Unterschied
+   * zwischen der EU-Norm und der deutschen Einschränkung ist — dieselbe
+   * Linie wie bei den Steuerprofilen: die Regel als Angabe, nicht als
+   * Sonderfall im Ablauf.
+   */
+  requiresBuyerReference: boolean;
 }
 
 export const XRECHNUNG_3_0: EinvoiceProfile = {
@@ -48,6 +57,7 @@ export const XRECHNUNG_3_0: EinvoiceProfile = {
   specificationId: 'urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0',
   businessProcessId: 'urn:fdc:peppol.eu:2017:poacc:billing:01:1.0',
   fileSuffix: '.xml',
+  requiresBuyerReference: true,
 };
 
 /**
@@ -65,9 +75,36 @@ export const EN16931_CII: EinvoiceProfile = {
   // Die reine Norm verlangt BT-23 nicht.
   businessProcessId: null,
   fileSuffix: '.xml',
+  requiresBuyerReference: false,
 };
 
-export const EINVOICE_PROFILES: readonly EinvoiceProfile[] = [XRECHNUNG_3_0, EN16931_CII];
+/**
+ * Das Profil des XML, das in einem ZUGFeRD-PDF steckt.
+ *
+ * Inhaltlich dieselbe Kennung wie {@link EN16931_CII} — und das ist der
+ * Punkt: ZUGFeRD ist kein eigenes XML-Format, sondern die EU-Norm in einer
+ * PDF-Datei. Ein eigener Eintrag steht trotzdem hier, weil die Ablage
+ * festhalten soll, wofür eine Datei erzeugt wurde, und weil `fileSuffix`
+ * sich unterscheidet: Das Ergebnis ist ein PDF, keine XML-Datei.
+ *
+ * Dass die Käuferreferenz hier nicht verlangt wird, ist die praktische
+ * Folge davon — und der Grund, warum ZUGFeRD für deutlich mehr Kunden
+ * funktioniert als die XRechnung.
+ */
+export const ZUGFERD_EN16931: EinvoiceProfile = {
+  key: 'zugferd-en16931',
+  label: 'ZUGFeRD / Factur-X (EN 16931)',
+  specificationId: 'urn:cen.eu:en16931:2017',
+  businessProcessId: null,
+  fileSuffix: '.pdf',
+  requiresBuyerReference: false,
+};
+
+export const EINVOICE_PROFILES: readonly EinvoiceProfile[] = [
+  XRECHNUNG_3_0,
+  EN16931_CII,
+  ZUGFERD_EN16931,
+];
 
 /** Das Profil, das ohne besondere Angabe benutzt wird. */
 export const DEFAULT_EINVOICE_PROFILE = XRECHNUNG_3_0;

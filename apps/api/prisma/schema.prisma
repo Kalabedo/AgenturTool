@@ -361,6 +361,19 @@ model InvoiceDocument {
   /// PDF | XML — dieselbe Ablage trägt beide Ausgaben einer Rechnung.
   kind String @default("PDF")
 
+  /// Welches E-Rechnungs-Profil diese Datei trägt, oder NULL.
+  ///
+  /// Beantwortet die Frage, die man einer Datei sonst nicht ansieht: Ist
+  /// dieses PDF ein ZUGFeRD-Dokument oder ein gewöhnliches? NULL heißt
+  /// „kein strukturierter Datensatz darin" — ein Zeitnachweis, oder eine
+  /// Rechnung, der beim Ausstellen Angaben fehlten.
+  ///
+  /// Kein CHECK-Constraint, aus demselben Grund wie bei `kind`: SQLite
+  /// könnte ihn nur über einen Tabellenneubau anfügen, und der verwürfe die
+  /// Trigger auf InvoiceItem. Geprüft wird gegen die Profilliste in
+  /// packages/einvoice/src/profiles.ts.
+  einvoiceProfile String?
+
   /// Pfad relativ zu DATA_DIR, z. B. invoices/2026/2026-001.pdf
   path      String @unique
   sha256    String

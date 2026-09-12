@@ -70,6 +70,7 @@ beforeAll(async () => {
     numbers,
     documents,
     invoicePdf,
+    new EinvoiceService(prisma, documents),
   );
 
   einvoice = new EinvoiceService(prisma, documents);

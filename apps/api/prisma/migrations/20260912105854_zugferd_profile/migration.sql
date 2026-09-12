@@ -1,0 +1,12 @@
+-- Welches E-Rechnungs-Profil eine abgelegte Datei trägt.
+--
+-- Gebraucht für ZUGFeRD: Einem PDF sieht man von außen nicht an, ob ein
+-- strukturierter Datensatz darin steckt. Die Spalte hält fest, was beim
+-- Ausstellen tatsächlich erzeugt wurde — NULL heißt „gewöhnliches PDF".
+--
+-- Bewusst ohne CHECK-Constraint, aus demselben Grund wie bei `kind`
+-- (siehe 20260911072246_einvoice_fields): SQLite kann einer bestehenden
+-- Tabelle keinen CHECK anfügen, das ginge nur über einen Neuaufbau — und
+-- der verwürfe die Trigger, die eine ausgestellte Rechnung vor Veränderung
+-- schützen. Ein reines ADD COLUMN lässt sie unberührt.
+ALTER TABLE "InvoiceDocument" ADD COLUMN "einvoiceProfile" TEXT;

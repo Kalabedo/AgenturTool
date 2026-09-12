@@ -150,6 +150,7 @@ beforeAll(async () => {
     new InvoiceNumbersService(prisma),
     documents,
     invoicePdf,
+    new EinvoiceService(prisma, documents),
   );
 
   settings = new MailSettingsService(prisma, storage);
