@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -18,6 +18,7 @@ import { buildRenderModel, embeddedFontCss, resolveTemplate } from '@agentur-too
 import { apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
+import { useRemainingViewportHeight } from '../../lib/useRemainingViewportHeight.js';
 import { Button } from '../../components/ui/Button.js';
 import { Card } from '../../components/ui/Card.js';
 import { Checkbox } from '../../components/ui/Checkbox.js';
@@ -79,6 +80,13 @@ function toFormValues(settings: TemplateSettingsResponse): FormValues {
  * etwas anderes passiert als dort: Man stellt nicht einen Wert ein und geht
  * wieder, man schaut beim Einstellen zu. Dafür braucht die Vorschau Platz.
  *
+ * Regler und Vorschau scrollen unabhängig voneinander, jede Spalte in ihrem
+ * eigenen Kasten. Vorher scrollte die Seite als Ganzes und die Vorschau
+ * klebte oben fest — was bei kurzen Rechnungen aussah wie zwei getrennte
+ * Bereiche, bei langen aber nicht mehr: Die Vorschau lief unten aus dem Bild,
+ * und um ihr Ende zu sehen, musste man die Regler bis zum Anschlag
+ * durchscrollen.
+ *
  * Zwei Dinge sind bewusst getrennt: Die Vorschau folgt jedem Tastendruck,
  * gespeichert wird erst auf Knopfdruck. Die Einstellungen gelten für **jeden
  * offenen Entwurf** und werden beim Ausstellen eingefroren — ein
@@ -93,6 +101,15 @@ export function DesignPage(): JSX.Element {
   useDocumentTitle('Design');
   const queryClient = useQueryClient();
   const [saved, setSaved] = useState(false);
+
+  /*
+   * Die beiden Spalten füllen den Rest des Fensters und scrollen darin
+   * selbst. Gemessen statt gerechnet, siehe den Hook — über dem Formular
+   * stehen Kopfzeile und Seitenkopf, deren Höhe hier niemand kennen soll.
+   * Unten bleibt so viel Luft, wie `main` ohnehin als Abstand hat (py-8).
+   */
+  const formRef = useRef<HTMLFormElement>(null);
+  const paneHeight = useRemainingViewportHeight(formRef, 32);
 
   const settings = useQuery({
     queryKey: queryKeys.templateSettings,
@@ -209,191 +226,217 @@ export function DesignPage(): JSX.Element {
       />
 
       <form
+        ref={formRef}
         onSubmit={form.handleSubmit((payload) => {
           setSaved(false);
           save.mutate(payload);
         })}
         className="grid grid-cols-1 gap-6 lg:grid-cols-[24rem_minmax(0,1fr)]"
+        /*
+         * Nur ab `lg`: Darunter stehen die Spalten untereinander, und zwei
+         * Scrollkästen in einer Spalte wären auf einem schmalen Bildschirm
+         * eine Zumutung. Dort scrollt weiterhin die Seite.
+         */
+        style={paneHeight === undefined ? undefined : { ['--pane-h' as string]: `${paneHeight}px` }}
       >
-        <div className="space-y-5">
-          <Card title="Vorlage" description="Vier Aufbauten, dieselben Angaben.">
-            <DesignPicker
-              value={values.templateKey}
-              onChange={(key) =>
-                form.setValue('templateKey', key as FormValues['templateKey'], {
-                  shouldDirty: true,
-                })
-              }
-              sample={{ ...sample, items: sample.items.slice(0, 3) }}
-              template={preview}
-            />
-          </Card>
-
-          <Card title="Farben">
-            <div className="space-y-4">
-              <ColorField
-                label="Akzent"
-                hint="Überschriften und hervorgehobene Stellen."
-                value={values.accentColor}
-                fallback={COLOR_DEFAULTS.accentColor}
-                onChange={(v) => form.setValue('accentColor', v, { shouldDirty: true })}
-                error={form.formState.errors.accentColor?.message}
-              />
-              <ColorField
-                label="Text"
-                value={values.inkColor}
-                fallback={COLOR_DEFAULTS.inkColor}
-                disabled={!colors.includes('ink')}
-                onChange={(v) => form.setValue('inkColor', v, { shouldDirty: true })}
-                error={form.formState.errors.inkColor?.message}
-              />
-              <ColorField
-                label="Nebentext"
-                hint="Beschriftungen, Einheiten, Fußtext."
-                value={values.inkSoftColor}
-                fallback={COLOR_DEFAULTS.inkSoftColor}
-                disabled={!colors.includes('inkSoft')}
-                onChange={(v) => form.setValue('inkSoftColor', v, { shouldDirty: true })}
-                error={form.formState.errors.inkSoftColor?.message}
-              />
-              <ColorField
-                label="Linien"
-                value={values.ruleColor}
-                fallback={COLOR_DEFAULTS.ruleColor}
-                disabled={!colors.includes('rule')}
-                onChange={(v) => form.setValue('ruleColor', v, { shouldDirty: true })}
-                error={form.formState.errors.ruleColor?.message}
-              />
-              <ColorField
-                label="Flächen"
-                hint="Tabellenkopf und Gesamtbetrag."
-                value={values.bandColor}
-                fallback={COLOR_DEFAULTS.bandColor}
-                disabled={!colors.includes('band')}
-                onChange={(v) => form.setValue('bandColor', v, { shouldDirty: true })}
-                error={form.formState.errors.bandColor?.message}
-              />
-            </div>
-          </Card>
-
-          <Card title="Schrift und Dichte">
-            <div className="space-y-4">
-              <Field label="Schrift" hint="Mitgeliefert, damit PDF und Vorschau gleich umbrechen.">
-                <Select {...form.register('fontFamily')}>
-                  {TEMPLATE_FONT_FAMILY_VALUES.map((family) => (
-                    <option key={family} value={family}>
-                      {family}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-
-              <Field
-                label="Dichte"
-                hint={
-                  hasDensity
-                    ? 'Wie eng die Positionen stehen — und damit, wie viele auf eine Seite passen.'
-                    : 'Dieses Design setzt eine feste Dichte.'
+        {/*
+         * `min-h-0` ist nicht schmückend: Ohne das bekommt ein Grid-Element
+         * als Mindesthöhe seinen Inhalt, die Höhenvorgabe verpufft und der
+         * Kasten scrollt nie.
+         */}
+        <div className="flex min-h-0 flex-col lg:h-[var(--pane-h)]">
+          <div className="min-h-0 flex-1 space-y-5 lg:overflow-y-auto lg:pr-3">
+            <Card title="Vorlage" description="Vier Aufbauten, dieselben Angaben.">
+              <DesignPicker
+                value={values.templateKey}
+                onChange={(key) =>
+                  form.setValue('templateKey', key as FormValues['templateKey'], {
+                    shouldDirty: true,
+                  })
                 }
-              >
-                <SegmentedControl
-                  label="Dichte"
-                  value={values.density}
-                  onChange={(v) => form.setValue('density', v, { shouldDirty: true })}
-                  options={TEMPLATE_DENSITY_VALUES.map((value) => ({
-                    value,
-                    label: DENSITY_LABELS[value],
-                  }))}
+                sample={{ ...sample, items: sample.items.slice(0, 3) }}
+                template={preview}
+              />
+            </Card>
+
+            <Card title="Farben">
+              <div className="space-y-4">
+                <ColorField
+                  label="Akzent"
+                  hint="Überschriften und hervorgehobene Stellen."
+                  value={values.accentColor}
+                  fallback={COLOR_DEFAULTS.accentColor}
+                  onChange={(v) => form.setValue('accentColor', v, { shouldDirty: true })}
+                  error={form.formState.errors.accentColor?.message}
                 />
-              </Field>
-            </div>
-          </Card>
+                <ColorField
+                  label="Text"
+                  value={values.inkColor}
+                  fallback={COLOR_DEFAULTS.inkColor}
+                  disabled={!colors.includes('ink')}
+                  onChange={(v) => form.setValue('inkColor', v, { shouldDirty: true })}
+                  error={form.formState.errors.inkColor?.message}
+                />
+                <ColorField
+                  label="Nebentext"
+                  hint="Beschriftungen, Einheiten, Fußtext."
+                  value={values.inkSoftColor}
+                  fallback={COLOR_DEFAULTS.inkSoftColor}
+                  disabled={!colors.includes('inkSoft')}
+                  onChange={(v) => form.setValue('inkSoftColor', v, { shouldDirty: true })}
+                  error={form.formState.errors.inkSoftColor?.message}
+                />
+                <ColorField
+                  label="Linien"
+                  value={values.ruleColor}
+                  fallback={COLOR_DEFAULTS.ruleColor}
+                  disabled={!colors.includes('rule')}
+                  onChange={(v) => form.setValue('ruleColor', v, { shouldDirty: true })}
+                  error={form.formState.errors.ruleColor?.message}
+                />
+                <ColorField
+                  label="Flächen"
+                  hint="Tabellenkopf und Gesamtbetrag."
+                  value={values.bandColor}
+                  fallback={COLOR_DEFAULTS.bandColor}
+                  disabled={!colors.includes('band')}
+                  onChange={(v) => form.setValue('bandColor', v, { shouldDirty: true })}
+                  error={form.formState.errors.bandColor?.message}
+                />
+              </div>
+            </Card>
 
-          <Card title="Blöcke" description="Was auf dem Dokument erscheint.">
-            <div className="space-y-3">
-              <Checkbox
-                label="Logo zeigen"
-                checked={values.showLogo}
-                onChange={(event) =>
-                  form.setValue('showLogo', event.target.checked, { shouldDirty: true })
-                }
-              />
-              {logoWidth && values.showLogo && (
+            <Card title="Schrift und Dichte">
+              <div className="space-y-4">
                 <Field
-                  label="Logobreite"
-                  hint="10 bis 80 Millimeter."
-                  error={form.formState.errors.logoWidthMm?.message}
+                  label="Schrift"
+                  hint="Mitgeliefert, damit PDF und Vorschau gleich umbrechen."
                 >
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="range"
-                      min={10}
-                      max={80}
-                      step={1}
-                      value={Number(String(values.logoWidthMm).replace(',', '.')) || 40}
-                      onChange={(event) =>
-                        form.setValue('logoWidthMm', event.target.value, { shouldDirty: true })
-                      }
-                      className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-surface-raised accent-ink"
-                      aria-label="Logobreite in Millimetern"
-                    />
-                    <Input {...form.register('logoWidthMm')} className="w-20 text-right" />
-                    <span className="text-sm text-ink-subtle">mm</span>
-                  </div>
+                  <Select {...form.register('fontFamily')}>
+                    {TEMPLATE_FONT_FAMILY_VALUES.map((family) => (
+                      <option key={family} value={family}>
+                        {family}
+                      </option>
+                    ))}
+                  </Select>
                 </Field>
-              )}
-              <Checkbox
-                label="Zahlungsdetails im Kopf"
-                checked={values.showPaymentBlock}
-                onChange={(event) =>
-                  form.setValue('showPaymentBlock', event.target.checked, { shouldDirty: true })
-                }
-              />
-              {blocks.includes('footerRule') && (
+
+                <Field
+                  label="Dichte"
+                  hint={
+                    hasDensity
+                      ? 'Wie eng die Positionen stehen — und damit, wie viele auf eine Seite passen.'
+                      : 'Dieses Design setzt eine feste Dichte.'
+                  }
+                >
+                  <SegmentedControl
+                    label="Dichte"
+                    value={values.density}
+                    onChange={(v) => form.setValue('density', v, { shouldDirty: true })}
+                    options={TEMPLATE_DENSITY_VALUES.map((value) => ({
+                      value,
+                      label: DENSITY_LABELS[value],
+                    }))}
+                  />
+                </Field>
+              </div>
+            </Card>
+
+            <Card title="Blöcke" description="Was auf dem Dokument erscheint.">
+              <div className="space-y-3">
                 <Checkbox
-                  label="Linie über dem Fußtext"
-                  checked={values.showFooterRule}
+                  label="Logo zeigen"
+                  checked={values.showLogo}
                   onChange={(event) =>
-                    form.setValue('showFooterRule', event.target.checked, { shouldDirty: true })
+                    form.setValue('showLogo', event.target.checked, { shouldDirty: true })
                   }
                 />
+                {logoWidth && values.showLogo && (
+                  <Field
+                    label="Logobreite"
+                    hint="10 bis 80 Millimeter."
+                    error={form.formState.errors.logoWidthMm?.message}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="range"
+                        min={10}
+                        max={80}
+                        step={1}
+                        value={Number(String(values.logoWidthMm).replace(',', '.')) || 40}
+                        onChange={(event) =>
+                          form.setValue('logoWidthMm', event.target.value, { shouldDirty: true })
+                        }
+                        className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-surface-raised accent-ink"
+                        aria-label="Logobreite in Millimetern"
+                      />
+                      <Input {...form.register('logoWidthMm')} className="w-20 text-right" />
+                      <span className="text-sm text-ink-subtle">mm</span>
+                    </div>
+                  </Field>
+                )}
+                <Checkbox
+                  label="Zahlungsdetails im Kopf"
+                  checked={values.showPaymentBlock}
+                  onChange={(event) =>
+                    form.setValue('showPaymentBlock', event.target.checked, { shouldDirty: true })
+                  }
+                />
+                {blocks.includes('footerRule') && (
+                  <Checkbox
+                    label="Linie über dem Fußtext"
+                    checked={values.showFooterRule}
+                    onChange={(event) =>
+                      form.setValue('showFooterRule', event.target.checked, { shouldDirty: true })
+                    }
+                  />
+                )}
+              </div>
+            </Card>
+
+            <Card title="Texte" description="Erscheinen auf jeder Rechnung.">
+              <div className="space-y-4">
+                <Field label="Zahlungshinweis" hint="Steht unter den Summen.">
+                  <Textarea rows={2} {...form.register('paymentNote')} />
+                </Field>
+                <Field label="Schlusssatz">
+                  <Textarea rows={2} {...form.register('closingNote')} />
+                </Field>
+                <Field label="Fußtext" hint="Ganz unten, mittig — etwa Registergericht.">
+                  <Textarea rows={2} {...form.register('footerText')} />
+                </Field>
+              </div>
+            </Card>
+          </div>
+
+          {/*
+             Außerhalb des Scrollkastens: „Speichern" steht am Fuß der Spalte
+             und bleibt sichtbar, egal bei welchem Regler man gerade ist. In
+             einer Spalte, die selbst scrollt, wäre eine Schaltfläche ganz
+             unten sonst dauerhaft aus dem Bild.
+          */}
+          <div className="shrink-0 space-y-4 pt-5 lg:border-t lg:border-border lg:pr-3 lg:pt-4">
+            {save.isError && (
+              <ErrorNotice error={save.error} title="Das Design ließ sich nicht speichern." />
+            )}
+
+            <FormActions>
+              <Button type="submit" disabled={save.isPending || !form.formState.isDirty}>
+                {save.isPending ? 'Wird gespeichert …' : 'Speichern'}
+              </Button>
+              {saved && !form.formState.isDirty && (
+                <StatusText tone="success">Gespeichert.</StatusText>
               )}
-            </div>
-          </Card>
-
-          <Card title="Texte" description="Erscheinen auf jeder Rechnung.">
-            <div className="space-y-4">
-              <Field label="Zahlungshinweis" hint="Steht unter den Summen.">
-                <Textarea rows={2} {...form.register('paymentNote')} />
-              </Field>
-              <Field label="Schlusssatz">
-                <Textarea rows={2} {...form.register('closingNote')} />
-              </Field>
-              <Field label="Fußtext" hint="Ganz unten, mittig — etwa Registergericht.">
-                <Textarea rows={2} {...form.register('footerText')} />
-              </Field>
-            </div>
-          </Card>
-
-          {save.isError && (
-            <ErrorNotice error={save.error} title="Das Design ließ sich nicht speichern." />
-          )}
-
-          <FormActions>
-            <Button type="submit" disabled={save.isPending || !form.formState.isDirty}>
-              {save.isPending ? 'Wird gespeichert …' : 'Speichern'}
-            </Button>
-            {saved && !form.formState.isDirty && (
-              <StatusText tone="success">Gespeichert.</StatusText>
-            )}
-            {form.formState.isDirty && (
-              <StatusText tone="muted">Noch nicht gespeichert.</StatusText>
-            )}
-          </FormActions>
+              {form.formState.isDirty && (
+                <StatusText tone="muted">Noch nicht gespeichert.</StatusText>
+              )}
+            </FormActions>
+          </div>
         </div>
 
-        {/* Die Vorschau bleibt beim Scrollen durch die Regler stehen. */}
-        <div className="lg:sticky lg:top-6 lg:self-start">
+        {/* Die Vorschau scrollt für sich — lange Rechnungen erreicht man,
+            ohne die Regler anzurühren. */}
+        <div className="min-h-0 lg:h-[var(--pane-h)] lg:overflow-y-auto">
           <TemplateFrame
             css={`
               ${embeddedFontCss(preview.fontFamily)}${design.css}
