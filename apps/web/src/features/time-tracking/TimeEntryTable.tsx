@@ -8,6 +8,8 @@ import {
   type IsoDate,
   type TimeEntryResponse,
 } from '@agentur-tool/shared';
+import { Badge } from '../../components/ui/Badge.js';
+import { Button } from '../../components/ui/Button.js';
 
 interface TimeEntryTableProps {
   entries: readonly TimeEntryResponse[];
@@ -73,9 +75,9 @@ export function TimeEntryTable({
               >
                 {formatDayDe(day.date as IsoDate)}
                 {isWeekend(day.date as IsoDate) && (
-                  <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-normal text-amber-800">
+                  <Badge tone="warning" className="ml-2 font-normal">
                     Wochenende
-                  </span>
+                  </Badge>
                 )}
               </th>
               <td className="px-4 py-2 text-right text-xs uppercase tracking-wide text-slate-500">
@@ -115,26 +117,27 @@ export function TimeEntryTable({
                   </td>
                 )}
                 {editable && (
-                  <td className="whitespace-nowrap px-4 py-2.5 text-right">
-                    {onEdit !== undefined && (
-                      <button
-                        type="button"
-                        className="rounded text-sm text-slate-600 hover:underline focus:outline-none focus:ring-2 focus:ring-slate-300"
-                        onClick={() => onEdit(entry)}
-                      >
-                        Bearbeiten
-                      </button>
-                    )}
-                    {onDelete !== undefined && (
-                      <button
-                        type="button"
-                        className="ml-3 rounded text-sm text-rose-700 hover:underline focus:outline-none focus:ring-2 focus:ring-rose-300"
-                        disabled={isDeleting}
-                        onClick={() => onDelete(entry)}
-                      >
-                        Löschen
-                      </button>
-                    )}
+                  <td className="whitespace-nowrap px-2 py-1.5 text-right">
+                    {/* Dieselben stillen Knöpfe wie in der Rechnungsliste:
+                        gleiche Größe, gleicher Abstand, gleiche Reihenfolge —
+                        das Zerstörende zuletzt. */}
+                    <div className="flex justify-end gap-1">
+                      {onEdit !== undefined && (
+                        <Button variant="ghost" size="sm" onClick={() => onEdit(entry)}>
+                          Bearbeiten
+                        </Button>
+                      )}
+                      {onDelete !== undefined && (
+                        <Button
+                          variant="ghost-danger"
+                          size="sm"
+                          disabled={isDeleting}
+                          onClick={() => onDelete(entry)}
+                        >
+                          Löschen
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 )}
               </tr>

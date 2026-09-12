@@ -9,8 +9,11 @@ import {
 } from '@agentur-tool/shared';
 import { apiClient } from '../../../lib/apiClient.js';
 import { queryKeys } from '../../../lib/queryKeys.js';
+import { Badge } from '../../../components/ui/Badge.js';
 import { buttonClassName } from '../../../components/ui/Button.js';
+import { Checkbox } from '../../../components/ui/Checkbox.js';
 import { EmptyState } from '../../../components/ui/EmptyState.js';
+import { PageHeader } from '../../../components/ui/PageHeader.js';
 import { ErrorNotice } from '../../../components/ui/ErrorNotice.js';
 import { LoadingNote } from '../../../components/ui/LoadingNote.js';
 import { useDocumentTitle } from '../../../lib/useDocumentTitle.js';
@@ -29,29 +32,22 @@ export function TaxProfileListPage(): JSX.Element {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">Steuerprofile</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Wiederkehrende steuerliche Konstellationen. Das gewählte Profil setzt den Vorschlag für
-            neue Positionen; jede Position behält ihren eigenen Satz, damit gemischte Rechnungen
-            möglich bleiben.
-          </p>
-        </div>
-        <Link to="/settings/tax-profiles/new" className={buttonClassName()}>
-          Neues Profil
-        </Link>
-      </div>
+      <PageHeader
+        title="Steuerprofile"
+        description="Wiederkehrende steuerliche Konstellationen. Das gewählte Profil setzt den Vorschlag für neue Positionen; jede Position behält ihren eigenen Satz, damit gemischte Rechnungen möglich bleiben."
+        actions={
+          <Link to="/settings/tax-profiles/new" className={buttonClassName()}>
+            Neues Profil
+          </Link>
+        }
+      />
 
-      <label className="flex items-center gap-2 text-sm text-slate-600">
-        <input
-          type="checkbox"
-          checked={includeArchived}
-          onChange={(event) => setIncludeArchived(event.target.checked)}
-          className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-2 focus:ring-slate-200"
-        />
-        Archivierte anzeigen
-      </label>
+      <Checkbox
+        id="includeArchived"
+        label="Archivierte anzeigen"
+        checked={includeArchived}
+        onChange={(event) => setIncludeArchived(event.target.checked)}
+      />
 
       {profiles.isSuccess && !hasDefault && profiles.data.length > 0 && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
@@ -106,15 +102,9 @@ export function TaxProfileListPage(): JSX.Element {
                     </Link>
                     <div className="mt-1 flex flex-wrap gap-1">
                       {profile.isDefault && profile.archivedAt === null && (
-                        <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-xs text-emerald-800">
-                          Standard
-                        </span>
+                        <Badge tone="success">Standard</Badge>
                       )}
-                      {profile.archivedAt !== null && (
-                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600">
-                          archiviert
-                        </span>
-                      )}
+                      {profile.archivedAt !== null && <Badge>archiviert</Badge>}
                     </div>
                     {profile.noteText !== null && (
                       <p className="mt-1 max-w-md text-xs text-slate-500">{profile.noteText}</p>

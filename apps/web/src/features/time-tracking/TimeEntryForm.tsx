@@ -17,6 +17,7 @@ import {
 import { Button } from '../../components/ui/Button.js';
 import { Card } from '../../components/ui/Card.js';
 import { Field } from '../../components/ui/Field.js';
+import { FormActions } from '../../components/ui/FormActions.js';
 import { Input } from '../../components/ui/Input.js';
 import { Select } from '../../components/ui/Select.js';
 import { TimeInput, gridHintFor } from './TimeInput.js';
@@ -170,6 +171,7 @@ export function TimeEntryForm({
             htmlFor="date"
             required
             error={errorFor('date')}
+            reserveMessageSpace
             className="sm:col-span-4 lg:col-span-2"
           >
             <Input
@@ -185,6 +187,7 @@ export function TimeEntryForm({
             htmlFor="customerId"
             required
             error={errorFor('customerId')}
+            reserveMessageSpace
             className="sm:col-span-8 lg:col-span-4"
           >
             <Select
@@ -207,6 +210,9 @@ export function TimeEntryForm({
             required
             error={errorFor('startMinutes')}
             hint={gridHintFor(start)}
+            // Der Rundungshinweis erscheint und verschwindet beim Tippen.
+            // Ohne reservierte Zeile hüpfte die ganze Seite darunter mit.
+            reserveMessageSpace
             className="sm:col-span-3 lg:col-span-2"
           >
             <Controller
@@ -231,6 +237,7 @@ export function TimeEntryForm({
             required
             error={errorFor('endMinutes')}
             hint={gridHintFor(end)}
+            reserveMessageSpace
             className="sm:col-span-3 lg:col-span-2"
           >
             <Controller
@@ -252,6 +259,7 @@ export function TimeEntryForm({
             label="Pause"
             htmlFor="breakMinutes"
             error={errorFor('breakMinutes')}
+            reserveMessageSpace
             // Die längste Option ist „4:00 h“ — in einer Zwölftelspalte
             // bliebe davon neben dem Aufklapp-Pfeil nichts übrig.
             className="sm:col-span-6 lg:col-span-2"
@@ -286,8 +294,28 @@ export function TimeEntryForm({
           </Field>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <Button type="submit" disabled={isSubmitting}>
+        <FormActions
+          /* Die Dauer steht rechts und in groß: Sie ist die Zahl, die am
+             Ende abgerechnet wird, und der schnellste Weg, einen
+             Zahlendreher zu bemerken. Sie liegt im Statusfeld der Leiste und
+             nicht zwischen den Knöpfen — sonst verschöbe jede Eingabe, die
+             sie erscheinen lässt, die Schaltflächen daneben. */
+          status={
+            <span aria-live="polite" className="block text-right">
+              {duration === null ? (
+                <span className="text-slate-400">Dauer ergibt sich aus Beginn und Ende</span>
+              ) : (
+                <>
+                  <span className="text-slate-500">Dauer</span>{' '}
+                  <span className="text-base font-semibold tabular-nums text-slate-900">
+                    {formatDuration(duration)} h
+                  </span>
+                </>
+              )}
+            </span>
+          }
+        >
+          <Button type="submit" pending={isSubmitting} pendingLabel="wird gespeichert …">
             {isEditing ? 'Änderung speichern' : 'Zeit eintragen'}
           </Button>
           {isEditing && (
@@ -295,23 +323,7 @@ export function TimeEntryForm({
               Abbrechen
             </Button>
           )}
-
-          {/* Die Dauer steht rechts und in groß: Sie ist die Zahl, die am
-              Ende abgerechnet wird, und der schnellste Weg, einen
-              Zahlendreher zu bemerken. */}
-          <span aria-live="polite" className="ml-auto text-sm">
-            {duration === null ? (
-              <span className="text-slate-400">Dauer ergibt sich aus Beginn und Ende</span>
-            ) : (
-              <>
-                <span className="text-slate-500">Dauer</span>{' '}
-                <span className="text-base font-semibold tabular-nums text-slate-900">
-                  {formatDuration(duration)} h
-                </span>
-              </>
-            )}
-          </span>
-        </div>
+        </FormActions>
       </form>
     </Card>
   );

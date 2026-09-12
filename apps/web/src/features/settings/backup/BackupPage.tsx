@@ -7,6 +7,8 @@ import { Card } from '../../../components/ui/Card.js';
 import { EmptyState } from '../../../components/ui/EmptyState.js';
 import { ErrorNotice } from '../../../components/ui/ErrorNotice.js';
 import { LoadingNote } from '../../../components/ui/LoadingNote.js';
+import { PageHeader } from '../../../components/ui/PageHeader.js';
+import { StatusText } from '../../../components/ui/StatusText.js';
 import { saveFile } from '../../invoices/saveFile.js';
 import { useDocumentTitle } from '../../../lib/useDocumentTitle.js';
 
@@ -47,6 +49,14 @@ export function BackupPage(): JSX.Element {
 
   return (
     <div className="space-y-6">
+      {/* Auch diese Seite bekommt ihren Kopf: Ohne ihn begann sie als
+          einzige Einstellungsseite direkt mit einer Karte, und beim Wechsel
+          aus einer anderen Registerkarte sprang der ganze Inhalt nach oben. */}
+      <PageHeader
+        title="Backup"
+        description="Datenbestand sichern und die vorhandenen Archive einsehen."
+      />
+
       <Card
         title="Backup erstellen"
         description="Datenbank, Logos und alle erzeugten PDFs in einer ZIP-Datei"
@@ -56,16 +66,22 @@ export function BackupPage(): JSX.Element {
             Das Archiv enthält ein Manifest mit einer Prüfsumme je Datei. Beim Zurückspielen wird
             jede davon geprüft, bevor etwas ersetzt wird.
           </p>
-          <div className="flex flex-wrap items-center gap-3">
-            <Button onClick={() => create.mutate()} disabled={create.isPending}>
-              {create.isPending ? 'wird erstellt …' : 'Backup jetzt erstellen'}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+            <Button
+              onClick={() => create.mutate()}
+              pending={create.isPending}
+              pendingLabel="wird erstellt …"
+            >
+              Backup jetzt erstellen
             </Button>
-            {create.isSuccess && !create.isPending && (
-              <span className="text-sm text-emerald-700">
-                {create.data.counts.invoices} Rechnungen und {create.data.counts.documents} PDFs
-                gesichert.
-              </span>
-            )}
+            <div className="min-h-[1.25rem] min-w-0 flex-1 text-sm">
+              {create.isSuccess && !create.isPending && (
+                <StatusText tone="success">
+                  {create.data.counts.invoices} Rechnungen und {create.data.counts.documents} PDFs
+                  gesichert.
+                </StatusText>
+              )}
+            </div>
           </div>
           {error !== undefined && error !== null && (
             <ErrorNotice error={error} title="Das Backup ist fehlgeschlagen." />
@@ -103,6 +119,7 @@ export function BackupPage(): JSX.Element {
                 </span>
                 <Button
                   variant="secondary"
+                  size="sm"
                   disabled={download.isPending}
                   onClick={() => download.mutate(entry.filename)}
                 >

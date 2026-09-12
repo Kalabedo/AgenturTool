@@ -218,6 +218,33 @@ apps/web/src/
 Routen: `/` · `/invoices` · `/invoices/new` · `/invoices/:id` ·
 `/invoices/:id/edit` · `/customers` · `/customers/:id` · `/settings/*`
 
+### Bedienkonventionen
+
+Die Bausteine in `components/ui/` sind keine Sammlung, sondern eine Abmachung.
+Wer eine neue Ansicht baut, hält sich an dieselben Regeln — genau daran hängt,
+ob sich die Anwendung wie ein Programm anfühlt oder wie fünf:
+
+- **Eine hervorgehobene Handlung je Ansicht.** `primary` ist der Knopf, den man
+  hier am häufigsten drückt; alles daneben ist `secondary`, das Zerstörende
+  `danger`, und `ghost` ist dieselbe Leiter ohne Rahmen — für Tabellenzeilen
+  und Leisten, in denen ein umrandeter Knopf die Zeile zerschneidet.
+- **`FormActions` unter jedem Formular.** Hauptaktion links, Rückmeldung
+  rechts, Löschen ganz rechts abgesetzt. Die Rückmeldung steht in einer eigenen
+  Zelle mit reservierter Höhe: „Gespeichert." darf die Knöpfe daneben nicht
+  verschieben.
+- **Rückfragen sind `ConfirmDialog`, nie `window.confirm`.** Das native Fenster
+  lässt sich nicht beschriften, zeigt „OK" statt „Löschen" und blockiert den
+  Browser, solange es steht. Im Dialog gilt dieselbe Ordnung wie überall:
+  Abbrechen links, die bestätigende Handlung rechts, und sie heißt nach dem,
+  was sie tut.
+- **`PageHeader` als Seitenkopf**, `Badge` für Etiketten, `SegmentedControl`
+  für Filterreihen, `tabClassName` für Registerkarten. Jede handgebaute
+  Variante davon weicht früher oder später ab.
+- **Nichts hüpft.** Was erscheint und verschwindet — Ladebeschriftungen,
+  Hinweise unter einem Feld —, bekommt seinen Platz vorher: `Button` mit
+  `pendingLabel` behält seine Breite, `Field` mit `reserveMessageSpace` seine
+  Höhe.
+
 **Vorschau-Detail:** Die Vorschau läuft in einem `<iframe>`, damit Tailwind
 Preflight und App-Styles nicht ins Template durchschlagen. Der Editor ist
 zweispaltig: links Formular, rechts A4-Vorschau (CSS-`transform: scale`),

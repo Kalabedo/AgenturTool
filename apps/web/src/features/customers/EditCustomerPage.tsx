@@ -4,10 +4,15 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { CustomerPayload, CustomerResponse } from '@agentur-tool/shared';
 import { apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
-import { Button } from '../../components/ui/Button.js';
+import { Badge } from '../../components/ui/Badge.js';
+import { Button, buttonClassName } from '../../components/ui/Button.js';
+import { Card } from '../../components/ui/Card.js';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog.js';
 import { CustomerForm, toCustomerValues } from './CustomerForm.js';
 import { ErrorNotice } from '../../components/ui/ErrorNotice.js';
 import { LoadingNote } from '../../components/ui/LoadingNote.js';
+import { PageHeader } from '../../components/ui/PageHeader.js';
+import { StatusText } from '../../components/ui/StatusText.js';
 import { fieldErrorsOf, formErrorOf, isNotFound } from '../../lib/errorMessage.js';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
 
@@ -17,6 +22,7 @@ export function EditCustomerPage(): JSX.Element {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [saved, setSaved] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   // Sobald der Kunde gelöscht ist, darf die Detailabfrage nicht mehr laufen.
   // Sie wäre sonst eine Anfrage, die garantiert mit 404 endet — und React
   // Query lädt eine aktiv beobachtete Abfrage sofort neu, auch wenn man sie
@@ -93,24 +99,16 @@ export function EditCustomerPage(): JSX.Element {
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link to="/customers" className="text-sm text-slate-500 hover:underline">
-          ← Kunden
-        </Link>
-        <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="text-xl font-semibold text-slate-900">{data.companyName}</h1>
-          {isArchived && (
-            <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-              archiviert
-            </span>
-          )}
-        </div>
-        <p className="mt-1 text-sm text-slate-500">
-          {data.invoiceCount === 0
+      <PageHeader
+        back={{ to: '/customers', label: 'Kunden' }}
+        title={data.companyName}
+        badges={isArchived ? <Badge>archiviert</Badge> : undefined}
+        description={
+          data.invoiceCount === 0
             ? 'Noch keine Rechnungen.'
-            : `${data.invoiceCount} Rechnung(en) — Änderungen wirken sich nicht auf bereits ausgestellte Rechnungen aus.`}
-        </p>
-      </div>
+            : `${data.invoiceCount} Rechnung(en) — Änderungen wirken sich nicht auf bereits ausgestellte Rechnungen aus.`
+        }
+      />
 
       {isArchived && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
@@ -135,17 +133,18 @@ export function EditCustomerPage(): JSX.Element {
         fieldErrors={fieldErrorsOf(save.error)}
         generalError={formErrorOf(save.error)}
         secondaryActions={
-          saved ? <span className="text-sm text-emerald-700">Gespeichert.</span> : null
+          <Link to="/customers" className={buttonClassName('secondary')}>
+            Abbrechen
+          </Link>
         }
+        status={saved ? <StatusText tone="success">Gespeichert.</StatusText> : null}
       />
 
-      <div className="rounded-lg border border-slate-200 bg-white p-5">
-        <h2 className="text-base font-semibold text-slate-900">Kunde verwalten</h2>
-        <p className="mt-0.5 text-sm text-slate-500">
-          Archivierte Kunden bleiben erhalten, tauchen aber nicht mehr in der Auswahl auf.
-        </p>
-
-        <div className="mt-4 flex flex-wrap items-center gap-3">
+      <Card
+        title="Kunde verwalten"
+        description="Archivierte Kunden bleiben erhalten, tauchen aber nicht mehr in der Auswahl auf."
+      >
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
           <Button
             variant="secondary"
             onClick={() => archive.mutate(!isArchived)}
@@ -154,37 +153,43 @@ export function EditCustomerPage(): JSX.Element {
             {isArchived ? 'Wieder aktivieren' : 'Archivieren'}
           </Button>
 
+          <div className="min-h-[1.25rem] min-w-0 flex-1 text-sm">
+            {removeError !== null ? (
+              <StatusText tone="error">{removeError}</StatusText>
+            ) : canDelete ? null : (
+              <span className="text-slate-500">
+                Endgültiges Löschen ist nicht möglich, solange Rechnungen auf diesen Kunden
+                verweisen.
+              </span>
+            )}
+          </div>
+
+          {/* Rechts außen und abgesetzt — überall in der Anwendung steht
+              dort, was sich nicht zurücknehmen lässt. */}
           {canDelete && (
             <Button
               variant="danger"
-              disabled={remove.isPending}
-              onClick={() => {
-                if (
-                  window.confirm(
-                    `„${data.companyName}" endgültig löschen? Das lässt sich nicht rückgängig machen.`,
-                  )
-                ) {
-                  remove.mutate();
-                }
-              }}
+              pending={remove.isPending}
+              pendingLabel="wird gelöscht …"
+              onClick={() => setConfirmDelete(true)}
             >
               Endgültig löschen
             </Button>
           )}
-
-          {!canDelete && (
-            <span className="text-sm text-slate-500">
-              Endgültiges Löschen ist nicht möglich, solange Rechnungen auf diesen Kunden verweisen.
-            </span>
-          )}
         </div>
+      </Card>
 
-        {removeError !== null && (
-          <p role="alert" className="mt-3 text-sm text-rose-600">
-            {removeError}
-          </p>
-        )}
-      </div>
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Kunde endgültig löschen"
+        description={`„${data.companyName}" wird gelöscht. Das lässt sich nicht rückgängig machen.`}
+        confirmLabel="Endgültig löschen"
+        pendingLabel="wird gelöscht …"
+        tone="danger"
+        isPending={remove.isPending}
+        onConfirm={() => remove.mutate()}
+        onClose={() => setConfirmDelete(false)}
+      />
     </div>
   );
 }

@@ -8,6 +8,9 @@ import {
 } from '@agentur-tool/shared';
 import { Button } from '../../../components/ui/Button.js';
 import { Card } from '../../../components/ui/Card.js';
+import { FormActions } from '../../../components/ui/FormActions.js';
+import { PageHeader } from '../../../components/ui/PageHeader.js';
+import { StatusText } from '../../../components/ui/StatusText.js';
 import { Checkbox } from '../../../components/ui/Checkbox.js';
 import { ErrorNotice } from '../../../components/ui/ErrorNotice.js';
 import { Field } from '../../../components/ui/Field.js';
@@ -66,12 +69,10 @@ export function TaxAdvisorExportPage(): JSX.Element {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-slate-900">Steuerberater-Export</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Ausgestellte Rechnungen und Stornos für einen Zeitraum gesammelt weitergeben.
-        </p>
-      </div>
+      <PageHeader
+        title="Steuerberater-Export"
+        description="Ausgestellte Rechnungen und Stornos für einen Zeitraum gesammelt weitergeben."
+      />
 
       <Card
         title="Übergabepaket erstellen"
@@ -121,16 +122,22 @@ export function TaxAdvisorExportPage(): JSX.Element {
             }}
           />
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit" disabled={preview.isPending || download.isPending}>
-              {preview.isPending ? 'Belege werden geprüft …' : 'Inhalt prüfen'}
+          <FormActions
+            status={
+              download.isSuccess && !download.isPending ? (
+                <StatusText tone="success">Das Paket wurde erstellt.</StatusText>
+              ) : null
+            }
+          >
+            <Button
+              type="submit"
+              disabled={download.isPending}
+              pending={preview.isPending}
+              pendingLabel="Belege werden geprüft …"
+            >
+              Inhalt prüfen
             </Button>
-            {download.isSuccess && !download.isPending && (
-              <span className="text-sm text-emerald-700" role="status">
-                Das Paket wurde erstellt.
-              </span>
-            )}
-          </div>
+          </FormActions>
 
           {preview.error !== null && (
             <ErrorNotice error={preview.error} title="Der Zeitraum konnte nicht geprüft werden." />
@@ -176,12 +183,13 @@ export function TaxAdvisorExportPage(): JSX.Element {
                   </span>
                   <Button
                     type="button"
-                    disabled={download.isPending}
+                    pending={download.isPending}
+                    pendingLabel="Paket wird erstellt …"
                     onClick={() => {
                       if (preview.variables !== undefined) download.mutate(preview.variables);
                     }}
                   >
-                    {download.isPending ? 'Paket wird erstellt …' : 'ZIP herunterladen'}
+                    ZIP herunterladen
                   </Button>
                 </div>
               )}

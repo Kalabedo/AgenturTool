@@ -11,11 +11,14 @@ import { apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
 import { useDebounced } from '../../lib/useDebounced.js';
+import { Badge } from '../../components/ui/Badge.js';
 import { Button, buttonClassName } from '../../components/ui/Button.js';
 import { EmptyState } from '../../components/ui/EmptyState.js';
 import { ErrorNotice } from '../../components/ui/ErrorNotice.js';
 import { LoadingNote } from '../../components/ui/LoadingNote.js';
 import { Input } from '../../components/ui/Input.js';
+import { PageHeader } from '../../components/ui/PageHeader.js';
+import { SegmentedControl } from '../../components/ui/SegmentedControl.js';
 
 const FILTERS: { value: CustomerArchiveFilter; label: string }[] = [
   { value: CUSTOMER_ARCHIVE_FILTER.ACTIVE, label: 'Aktiv' },
@@ -47,18 +50,15 @@ export function CustomerListPage(): JSX.Element {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">Kunden</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Rechnungsempfänger verwalten. Beim Erstellen einer Rechnung werden diese Daten
-            übernommen und lassen sich dort einmalig anpassen.
-          </p>
-        </div>
-        <Link to="/customers/new" className={buttonClassName()}>
-          Neuer Kunde
-        </Link>
-      </div>
+      <PageHeader
+        title="Kunden"
+        description="Rechnungsempfänger verwalten. Beim Erstellen einer Rechnung werden diese Daten übernommen und lassen sich dort einmalig anpassen."
+        actions={
+          <Link to="/customers/new" className={buttonClassName()}>
+            Neuer Kunde
+          </Link>
+        }
+      />
 
       <div className="flex flex-wrap items-center gap-3">
         <Input
@@ -66,27 +66,15 @@ export function CustomerListPage(): JSX.Element {
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Suche nach Name, Ort, Kundennummer …"
-          className="sm:max-w-sm"
+          className="sm:max-w-xs"
           aria-label="Kunden durchsuchen"
         />
-        <div className="flex max-w-full overflow-x-auto rounded-md border border-slate-300 bg-white p-0.5">
-          {FILTERS.map((filter) => (
-            <button
-              key={filter.value}
-              type="button"
-              onClick={() => setArchived(filter.value)}
-              className={[
-                'whitespace-nowrap rounded px-3 py-1 text-sm transition-colors',
-                'focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300',
-                archived === filter.value
-                  ? 'bg-slate-900 text-white'
-                  : 'text-slate-600 hover:bg-slate-50',
-              ].join(' ')}
-            >
-              {filter.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          label="Nach Archivstatus filtern"
+          options={FILTERS}
+          value={archived}
+          onChange={setArchived}
+        />
       </div>
 
       {customers.isLoading && <LoadingNote>Kunden werden geladen …</LoadingNote>}
@@ -145,11 +133,7 @@ export function CustomerListPage(): JSX.Element {
                     {customer.contactName !== null && (
                       <span className="block text-xs text-slate-500">{customer.contactName}</span>
                     )}
-                    {customer.archivedAt !== null && (
-                      <span className="mt-1 inline-block rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600">
-                        archiviert
-                      </span>
-                    )}
+                    {customer.archivedAt !== null && <Badge className="mt-1">archiviert</Badge>}
                   </td>
                   <td className="px-4 py-3 text-slate-500">{customer.customerNumber ?? '—'}</td>
                   <td className="px-4 py-3 text-slate-500">

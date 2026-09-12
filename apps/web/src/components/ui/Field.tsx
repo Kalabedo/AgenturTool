@@ -11,6 +11,13 @@ interface FieldProps {
   error?: string;
   hint?: string;
   required?: boolean;
+  /**
+   * Hält die Zeile unter dem Feld frei, auch wenn dort gerade nichts steht.
+   *
+   * Für Felder, deren Hinweis beim Tippen kommt und geht — ohne das
+   * verschiebt sich bei jedem Zeichen alles darunter um eine Zeile.
+   */
+  reserveMessageSpace?: boolean;
   children: ReactElement<FieldControlProps>;
   className?: string;
 }
@@ -21,6 +28,7 @@ export function Field({
   error,
   hint,
   required = false,
+  reserveMessageSpace = false,
   children,
   className = '',
 }: FieldProps): JSX.Element {
@@ -60,6 +68,8 @@ export function Field({
         <p id={messageId} className="mt-1 text-sm text-slate-500">
           {hint}
         </p>
+      ) : reserveMessageSpace ? (
+        <p aria-hidden="true" className="mt-1 h-5 text-sm" />
       ) : null}
     </div>
   );

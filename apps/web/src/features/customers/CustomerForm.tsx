@@ -20,7 +20,9 @@ import { Select } from '../../components/ui/Select.js';
 import { Button } from '../../components/ui/Button.js';
 import { Card } from '../../components/ui/Card.js';
 import { Field } from '../../components/ui/Field.js';
+import { FormActions } from '../../components/ui/FormActions.js';
 import { Input } from '../../components/ui/Input.js';
+import { StatusText } from '../../components/ui/StatusText.js';
 import { Textarea } from '../../components/ui/Textarea.js';
 
 type FormValues = CustomerInput;
@@ -74,8 +76,10 @@ interface CustomerFormProps {
   submitLabel: string;
   isSubmitting: boolean;
   onSubmit: (payload: CustomerPayload) => void;
-  /** Zusätzliche Bedienelemente rechts neben dem Speichern-Knopf. */
+  /** Zusätzliche Schaltflächen neben dem Speichern-Knopf. */
   secondaryActions?: React.ReactNode;
+  /** Rückmeldung zum Speichern — steht rechts in der Leiste. */
+  status?: React.ReactNode;
   /** Serverseitige Feldfehler, die beim Absenden zurückkamen. */
   fieldErrors?: Record<string, string>;
   generalError?: string | null;
@@ -87,6 +91,7 @@ export function CustomerForm({
   isSubmitting,
   onSubmit,
   secondaryActions,
+  status,
   fieldErrors,
   generalError,
 }: CustomerFormProps): JSX.Element {
@@ -207,11 +212,14 @@ export function CustomerForm({
           <Field label="Ort" htmlFor="city" error={errorFor('city')} className="sm:col-span-4">
             <Input id="city" invalid={errorFor('city') !== undefined} {...form.register('city')} />
           </Field>
+          {/* „DE" braucht keine halbe Zeile. Ein Feld sollte so breit sein
+              wie das, was hineingehört — sonst sieht ein Formular aus, als
+              wären die Breiten gewürfelt. */}
           <Field
             label="Land"
             htmlFor="country"
             error={errorFor('country')}
-            className="sm:col-span-3"
+            className="sm:col-span-2"
           >
             <Input
               id="country"
@@ -365,17 +373,16 @@ export function CustomerForm({
         </div>
       </Card>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'wird gespeichert …' : submitLabel}
+      <FormActions
+        status={
+          generalError != null ? <StatusText tone="error">{generalError}</StatusText> : status
+        }
+      >
+        <Button type="submit" pending={isSubmitting} pendingLabel="wird gespeichert …">
+          {submitLabel}
         </Button>
         {secondaryActions}
-        {generalError != null && (
-          <span role="alert" className="text-sm text-rose-600">
-            {generalError}
-          </span>
-        )}
-      </div>
+      </FormActions>
     </form>
   );
 }

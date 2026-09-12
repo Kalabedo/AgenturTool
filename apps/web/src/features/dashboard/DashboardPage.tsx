@@ -15,9 +15,11 @@ import {
 import { apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
+import { Badge } from '../../components/ui/Badge.js';
 import { Card } from '../../components/ui/Card.js';
 import { ErrorNotice } from '../../components/ui/ErrorNotice.js';
 import { LoadingNote } from '../../components/ui/LoadingNote.js';
+import { PageHeader } from '../../components/ui/PageHeader.js';
 
 /**
  * Einstieg in die Anwendung.
@@ -94,10 +96,7 @@ export function DashboardPage(): JSX.Element {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-slate-900">Dashboard</h1>
-        <p className="mt-1 text-sm text-slate-500">Was gerade offen ist</p>
-      </div>
+      <PageHeader title="Dashboard" description="Was gerade offen ist" />
 
       {company.isSuccess && missing.length > 0 && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-5">
@@ -206,16 +205,9 @@ export function DashboardPage(): JSX.Element {
                 <span className="whitespace-nowrap tabular-nums text-slate-900">
                   {formatCents(invoice.totals.grossCents)}
                 </span>
-                <span
-                  className={[
-                    'whitespace-nowrap rounded px-1.5 py-0.5 text-xs',
-                    invoice.status === INVOICE_STATUS.PAID
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : 'bg-slate-100 text-slate-600',
-                  ].join(' ')}
-                >
+                <Badge tone={invoice.status === INVOICE_STATUS.PAID ? 'success' : 'neutral'}>
                   {INVOICE_STATUS_LABELS[invoice.status]}
-                </span>
+                </Badge>
               </li>
             ))}
           </ul>

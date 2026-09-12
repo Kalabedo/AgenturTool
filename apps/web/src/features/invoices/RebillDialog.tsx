@@ -270,8 +270,13 @@ export function RebillDialog({
           <Button variant="secondary" onClick={onClose} disabled={create.isPending}>
             Abbrechen
           </Button>
-          <Button onClick={() => create.mutate()} disabled={create.isPending || !preview.isSuccess}>
-            {create.isPending ? 'wird angelegt …' : 'Entwurf anlegen'}
+          <Button
+            onClick={() => create.mutate()}
+            disabled={!preview.isSuccess}
+            pending={create.isPending}
+            pendingLabel="wird angelegt …"
+          >
+            Entwurf anlegen
           </Button>
         </>
       }

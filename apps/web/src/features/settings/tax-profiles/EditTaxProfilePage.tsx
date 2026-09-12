@@ -4,10 +4,15 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { TaxProfilePayload, TaxProfileResponse } from '@agentur-tool/shared';
 import { apiClient } from '../../../lib/apiClient.js';
 import { queryKeys } from '../../../lib/queryKeys.js';
-import { Button } from '../../../components/ui/Button.js';
+import { Badge } from '../../../components/ui/Badge.js';
+import { Button, buttonClassName } from '../../../components/ui/Button.js';
+import { Card } from '../../../components/ui/Card.js';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog.js';
 import { TaxProfileForm, toTaxProfileValues } from './TaxProfileForm.js';
 import { ErrorNotice } from '../../../components/ui/ErrorNotice.js';
 import { LoadingNote } from '../../../components/ui/LoadingNote.js';
+import { PageHeader } from '../../../components/ui/PageHeader.js';
+import { StatusText } from '../../../components/ui/StatusText.js';
 import { fieldErrorsOf, formErrorOf, isNotFound } from '../../../lib/errorMessage.js';
 import { useDocumentTitle } from '../../../lib/useDocumentTitle.js';
 
@@ -18,6 +23,7 @@ export function EditTaxProfilePage(): JSX.Element {
   const queryClient = useQueryClient();
   const [saved, setSaved] = useState(false);
   const [deleted, setDeleted] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const profile = useQuery({
     queryKey: queryKeys.taxProfiles.byId(profileId),
@@ -90,29 +96,21 @@ export function EditTaxProfilePage(): JSX.Element {
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link to="/settings/tax-profiles" className="text-sm text-slate-500 hover:underline">
-          ← Steuerprofile
-        </Link>
-        <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="text-xl font-semibold text-slate-900">{data.name}</h1>
-          {data.isDefault && !isArchived && (
-            <span className="rounded bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800">
-              Standard
-            </span>
-          )}
-          {isArchived && (
-            <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-              archiviert
-            </span>
-          )}
-        </div>
-        <p className="mt-1 text-sm text-slate-500">
-          {usageCount === 0
+      <PageHeader
+        back={{ to: '/settings/tax-profiles', label: 'Steuerprofile' }}
+        title={data.name}
+        badges={
+          <>
+            {data.isDefault && !isArchived && <Badge tone="success">Standard</Badge>}
+            {isArchived && <Badge>archiviert</Badge>}
+          </>
+        }
+        description={
+          usageCount === 0
             ? 'Wird bisher nicht verwendet.'
-            : 'Änderungen wirken sich nicht auf bereits ausgestellte Rechnungen aus — dort steht der eingefrorene Steuerhinweis.'}
-        </p>
-      </div>
+            : 'Änderungen wirken sich nicht auf bereits ausgestellte Rechnungen aus — dort steht der eingefrorene Steuerhinweis.'
+        }
+      />
 
       {isArchived && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
@@ -134,18 +132,18 @@ export function EditTaxProfilePage(): JSX.Element {
         fieldErrors={fieldErrorsOf(save.error)}
         generalError={formErrorOf(save.error)}
         secondaryActions={
-          saved ? <span className="text-sm text-emerald-700">Gespeichert.</span> : null
+          <Link to="/settings/tax-profiles" className={buttonClassName('secondary')}>
+            Abbrechen
+          </Link>
         }
+        status={saved ? <StatusText tone="success">Gespeichert.</StatusText> : null}
       />
 
-      <div className="rounded-lg border border-slate-200 bg-white p-5">
-        <h2 className="text-base font-semibold text-slate-900">Profil verwalten</h2>
-        <p className="mt-0.5 text-sm text-slate-500">
-          Archivierte Profile bleiben erhalten, damit bestehende Entwürfe und Kundenvorgaben ihre
-          Zuordnung behalten.
-        </p>
-
-        <div className="mt-4 flex flex-wrap items-center gap-3">
+      <Card
+        title="Profil verwalten"
+        description="Archivierte Profile bleiben erhalten, damit bestehende Entwürfe und Kundenvorgaben ihre Zuordnung behalten."
+      >
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
           <Button
             variant="secondary"
             onClick={() => archive.mutate(!isArchived)}
@@ -154,30 +152,41 @@ export function EditTaxProfilePage(): JSX.Element {
             {isArchived ? 'Wieder aktivieren' : 'Archivieren'}
           </Button>
 
-          {usageCount === 0 ? (
+          <div className="min-h-[1.25rem] min-w-0 flex-1 text-sm">
+            {removeError !== null ? (
+              <StatusText tone="error">{removeError}</StatusText>
+            ) : usageCount === 0 ? null : (
+              <span className="text-slate-500">
+                Endgültiges Löschen ist nicht möglich, solange Rechnungen oder Kunden dieses Profil
+                verwenden.
+              </span>
+            )}
+          </div>
+
+          {usageCount === 0 && (
             <Button
               variant="danger"
-              disabled={remove.isPending}
-              onClick={() => {
-                if (window.confirm(`„${data.name}" endgültig löschen?`)) remove.mutate();
-              }}
+              pending={remove.isPending}
+              pendingLabel="wird gelöscht …"
+              onClick={() => setConfirmDelete(true)}
             >
               Endgültig löschen
             </Button>
-          ) : (
-            <span className="text-sm text-slate-500">
-              Endgültiges Löschen ist nicht möglich, solange Rechnungen oder Kunden dieses Profil
-              verwenden.
-            </span>
           )}
         </div>
+      </Card>
 
-        {removeError !== null && (
-          <p role="alert" className="mt-3 text-sm text-rose-600">
-            {removeError}
-          </p>
-        )}
-      </div>
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Steuerprofil endgültig löschen"
+        description={`„${data.name}" wird gelöscht. Das lässt sich nicht rückgängig machen.`}
+        confirmLabel="Endgültig löschen"
+        pendingLabel="wird gelöscht …"
+        tone="danger"
+        isPending={remove.isPending}
+        onConfirm={() => remove.mutate()}
+        onClose={() => setConfirmDelete(false)}
+      />
     </div>
   );
 }

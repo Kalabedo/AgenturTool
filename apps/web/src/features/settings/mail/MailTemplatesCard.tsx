@@ -15,6 +15,8 @@ import { apiClient } from '../../../lib/apiClient.js';
 import { formErrorOf } from '../../../lib/errorMessage.js';
 import { queryKeys } from '../../../lib/queryKeys.js';
 import { Button } from '../../../components/ui/Button.js';
+import { FormActions } from '../../../components/ui/FormActions.js';
+import { StatusText } from '../../../components/ui/StatusText.js';
 import { Card } from '../../../components/ui/Card.js';
 import { ErrorNotice } from '../../../components/ui/ErrorNotice.js';
 import { Field } from '../../../components/ui/Field.js';
@@ -168,24 +170,34 @@ export function MailTemplatesCard(): JSX.Element {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 border-t border-slate-200 pt-5">
-          <Button disabled={!changed || save.isPending} onClick={() => save.mutate()}>
-            {save.isPending ? 'wird gespeichert …' : 'Vorlage speichern'}
+        <FormActions
+          className="border-t border-slate-200 pt-5"
+          status={
+            saveError !== null ? (
+              <StatusText tone="error">{saveError}</StatusText>
+            ) : saved ? (
+              <StatusText tone="success">Gespeichert.</StatusText>
+            ) : null
+          }
+        >
+          <Button
+            disabled={!changed}
+            pending={save.isPending}
+            pendingLabel="wird gespeichert …"
+            onClick={() => save.mutate()}
+          >
+            Vorlage speichern
           </Button>
           <Button
             variant="secondary"
-            disabled={reset.isPending || (active?.isDefault === true && !changed)}
+            disabled={active?.isDefault === true && !changed}
+            pending={reset.isPending}
+            pendingLabel="wird zurückgesetzt …"
             onClick={() => reset.mutate()}
           >
             Auslieferungstext wiederherstellen
           </Button>
-          {saved && <span className="text-sm text-emerald-700">Gespeichert.</span>}
-          {saveError !== null && (
-            <span role="alert" className="text-sm text-rose-600">
-              {saveError}
-            </span>
-          )}
-        </div>
+        </FormActions>
       </div>
     </Card>
   );

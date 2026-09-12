@@ -21,7 +21,10 @@ import { fieldErrorsOf, formErrorOf } from '../../lib/errorMessage.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
 import { Button, buttonClassName } from '../../components/ui/Button.js';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog.js';
 import { EmptyState } from '../../components/ui/EmptyState.js';
+import { PageHeader } from '../../components/ui/PageHeader.js';
+import { tabClassName } from '../../components/ui/tabs.js';
 import { ErrorNotice } from '../../components/ui/ErrorNotice.js';
 import { LoadingNote } from '../../components/ui/LoadingNote.js';
 import { saveFile } from '../invoices/saveFile.js';
@@ -84,6 +87,8 @@ export function TimeTrackingPage(): JSX.Element {
   const [values, setValues] = useState<TimeEntryFormValues>(() => emptyTimeEntryValues(todayIso()));
   const [notice, setNotice] = useState<BillingNotice | null>(null);
   const [billingError, setBillingError] = useState<unknown>(null);
+  /** Der Eintrag, für den gerade die Löschrückfrage offen steht. */
+  const [entryToDelete, setEntryToDelete] = useState<TimeEntryResponse | null>(null);
 
   const customers = useQuery({
     queryKey: queryKeys.customers.list('', CUSTOMER_ARCHIVE_FILTER.ALL),
@@ -168,6 +173,7 @@ export function TimeTrackingPage(): JSX.Element {
     mutationFn: (id: number) => apiClient.delete<void>(`/time-entries/${id}`),
     onSuccess: async (_result, id) => {
       await refresh();
+      setEntryToDelete(null);
       if (editingId === id) resetForm();
     },
   });
@@ -208,12 +214,10 @@ export function TimeTrackingPage(): JSX.Element {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-slate-900">Zeiterfassung</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Zeiten sammeln sich hier, bis sie abgerechnet werden. Erfasst wird in Viertelstunden.
-        </p>
-      </div>
+      <PageHeader
+        title="Zeiterfassung"
+        description="Zeiten sammeln sich hier, bis sie abgerechnet werden. Erfasst wird in Viertelstunden."
+      />
 
       {customers.isLoading && <LoadingNote>Kunden werden geladen …</LoadingNote>}
 
@@ -318,15 +322,7 @@ export function TimeTrackingPage(): JSX.Element {
                   setValues(toTimeEntryValues(entry));
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                onDelete={(entry) => {
-                  if (
-                    window.confirm(
-                      `Den Eintrag vom ${formatDateDe(entry.date as IsoDate)} wirklich löschen?`,
-                    )
-                  ) {
-                    remove.mutate(entry.id);
-                  }
-                }}
+                onDelete={(entry) => setEntryToDelete(entry)}
                 onBill={() => {
                   if (activeCustomerId !== null) bill.mutate(activeCustomerId);
                 }}
@@ -334,6 +330,20 @@ export function TimeTrackingPage(): JSX.Element {
             )}
           </div>
         </div>
+      )}
+
+      {entryToDelete !== null && (
+        <ConfirmDialog
+          open
+          title="Eintrag löschen"
+          description={`Der Eintrag vom ${formatDateDe(entryToDelete.date as IsoDate)} wird gelöscht. Das lässt sich nicht rückgängig machen.`}
+          confirmLabel="Löschen"
+          pendingLabel="wird gelöscht …"
+          tone="danger"
+          isPending={remove.isPending}
+          onConfirm={() => remove.mutate(entryToDelete.id)}
+          onClose={() => setEntryToDelete(null)}
+        />
       )}
     </div>
   );
@@ -354,13 +364,7 @@ function TabButton({
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={[
-        '-mb-px flex items-center rounded-t-md border-b-2 px-4 py-2 text-sm font-medium',
-        'focus:outline-none focus:ring-2 focus:ring-slate-300',
-        active
-          ? 'border-slate-900 text-slate-900'
-          : 'border-transparent text-slate-500 hover:text-slate-700',
-      ].join(' ')}
+      className={`flex items-center ${tabClassName(active)}`}
     >
       {children}
     </button>
@@ -412,17 +416,19 @@ function BillingNoticeBar({
 
       <span className="ml-auto flex items-center gap-2">
         {!notice.undone && (
-          <Button variant="secondary" disabled={isUndoing} onClick={onUndo}>
-            {isUndoing ? 'Wird zurückgenommen …' : 'Rückgängig'}
+          <Button
+            variant="secondary"
+            size="sm"
+            pending={isUndoing}
+            pendingLabel="wird zurückgenommen …"
+            onClick={onUndo}
+          >
+            Rückgängig
           </Button>
         )}
-        <button
-          type="button"
-          onClick={onDismiss}
-          className="rounded px-2 py-1 text-sm text-slate-500 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-300"
-        >
+        <Button variant="ghost" size="sm" onClick={onDismiss}>
           Schließen
-        </button>
+        </Button>
       </span>
     </div>
   );
@@ -495,8 +501,13 @@ function OpenTab({
           )}
         </div>
 
-        <Button disabled={isBilling || items.length === 0} onClick={onBill}>
-          {isBilling ? 'Wird abgerechnet …' : 'Abrechnen'}
+        <Button
+          disabled={items.length === 0}
+          pending={isBilling}
+          pendingLabel="wird abgerechnet …"
+          onClick={onBill}
+        >
+          Abrechnen
         </Button>
       </div>
 

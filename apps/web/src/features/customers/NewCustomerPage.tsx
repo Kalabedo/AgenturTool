@@ -5,6 +5,8 @@ import { apiClient } from '../../lib/apiClient.js';
 import { fieldErrorsOf, formErrorOf } from '../../lib/errorMessage.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 import { CustomerForm, emptyCustomerValues } from './CustomerForm.js';
+import { buttonClassName } from '../../components/ui/Button.js';
+import { PageHeader } from '../../components/ui/PageHeader.js';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
 
 export function NewCustomerPage(): JSX.Element {
@@ -23,12 +25,7 @@ export function NewCustomerPage(): JSX.Element {
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link to="/customers" className="text-sm text-slate-500 hover:underline">
-          ← Kunden
-        </Link>
-        <h1 className="mt-1 text-xl font-semibold text-slate-900">Neuer Kunde</h1>
-      </div>
+      <PageHeader back={{ to: '/customers', label: 'Kunden' }} title="Neuer Kunde" />
 
       <CustomerForm
         defaultValues={emptyCustomerValues()}
@@ -38,7 +35,10 @@ export function NewCustomerPage(): JSX.Element {
         fieldErrors={fieldErrorsOf(create.error)}
         generalError={formErrorOf(create.error)}
         secondaryActions={
-          <Link to="/customers" className="text-sm text-slate-600 hover:underline">
+          // Abbrechen ist eine Handlung und sieht deshalb aus wie eine —
+          // vorher war es ein Textlink neben einem Knopf, zwei Bauteile für
+          // zwei gleichrangige Auswege aus demselben Formular.
+          <Link to="/customers" className={buttonClassName('secondary')}>
             Abbrechen
           </Link>
         }

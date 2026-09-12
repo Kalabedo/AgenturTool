@@ -113,5 +113,9 @@ export const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(function T
 export function gridHintFor(value: string): string | undefined {
   const minutes = parseTimeInput(value);
   if (minutes === null || minutes % TIME_GRID_MINUTES === 0) return undefined;
-  return `Wird zu ${formatTimeOfDay(snapToGrid(minutes))} — erfasst wird in Viertelstunden.`;
+  // Kurz genug für eine Zeile: Der Hinweis erscheint und verschwindet beim
+  // Tippen, und in der schmalen Spalte brach der lange Satz auf zwei Zeilen
+  // um — das Formular wuchs dann bei jedem Zeichen. Dass in Viertelstunden
+  // erfasst wird, steht ohnehin über dem Formular.
+  return `Wird zu ${formatTimeOfDay(snapToGrid(minutes))} gerundet.`;
 }

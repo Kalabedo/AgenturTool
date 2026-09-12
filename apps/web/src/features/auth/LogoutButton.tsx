@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AuthSessionResponse } from '@agentur-tool/shared';
 import { apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
+import { Button } from '../../components/ui/Button.js';
 
 /**
  * Abmelden — samt der E-Mail-Adresse, unter der man gerade arbeitet.
@@ -35,14 +36,9 @@ export function LogoutButton(): JSX.Element | null {
   return (
     <div className="ml-auto flex items-center gap-3">
       <span className="text-sm text-slate-500">{user.email}</span>
-      <button
-        type="button"
-        className="rounded-md px-3 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
-        onClick={() => logout.mutate()}
-        disabled={logout.isPending}
-      >
+      <Button variant="ghost" size="sm" onClick={() => logout.mutate()} disabled={logout.isPending}>
         Abmelden
-      </button>
+      </Button>
     </div>
   );
 }

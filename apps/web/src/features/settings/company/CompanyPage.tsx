@@ -17,7 +17,10 @@ import { queryKeys } from '../../../lib/queryKeys.js';
 import { Button } from '../../../components/ui/Button.js';
 import { Card } from '../../../components/ui/Card.js';
 import { Field } from '../../../components/ui/Field.js';
+import { FormActions } from '../../../components/ui/FormActions.js';
 import { Input } from '../../../components/ui/Input.js';
+import { PageHeader } from '../../../components/ui/PageHeader.js';
+import { StatusText } from '../../../components/ui/StatusText.js';
 import { Select } from '../../../components/ui/Select.js';
 import { LogoUpload } from './LogoUpload.js';
 import { ErrorNotice } from '../../../components/ui/ErrorNotice.js';
@@ -118,14 +121,10 @@ export function CompanyPage(): JSX.Element {
       className="space-y-6"
       noValidate
     >
-      <div>
-        <h1 className="text-xl font-semibold text-slate-900">Unternehmensdaten</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Diese Angaben erscheinen auf jeder Rechnung. Sie werden beim Finalisieren als
-          unveränderlicher Snapshot festgehalten — spätere Änderungen wirken sich nicht auf bereits
-          ausgestellte Rechnungen aus.
-        </p>
-      </div>
+      <PageHeader
+        title="Unternehmensdaten"
+        description="Diese Angaben erscheinen auf jeder Rechnung. Sie werden beim Finalisieren als unveränderlicher Snapshot festgehalten — spätere Änderungen wirken sich nicht auf bereits ausgestellte Rechnungen aus."
+      />
 
       <Card title="Logo" description="Erscheint im Kopf der Rechnung">
         <LogoUpload logoUrl={company.data?.logoUrl ?? null} />
@@ -176,7 +175,7 @@ export function CompanyPage(): JSX.Element {
             label="Land"
             htmlFor="country"
             error={errors.country?.message}
-            className="sm:col-span-3"
+            className="sm:col-span-2"
           >
             <Input
               id="country"
@@ -370,22 +369,26 @@ export function CompanyPage(): JSX.Element {
         </Field>
       </Card>
 
-      <div className="flex items-center gap-3">
-        <Button type="submit" disabled={save.isPending || !form.formState.isDirty}>
-          {save.isPending ? 'wird gespeichert …' : 'Speichern'}
+      <FormActions
+        status={
+          generalError !== null ? (
+            <StatusText tone="error">{generalError}</StatusText>
+          ) : form.formState.isDirty ? (
+            <StatusText tone="muted">Ungespeicherte Änderungen</StatusText>
+          ) : saved ? (
+            <StatusText tone="success">Gespeichert.</StatusText>
+          ) : null
+        }
+      >
+        <Button
+          type="submit"
+          disabled={!form.formState.isDirty}
+          pending={save.isPending}
+          pendingLabel="wird gespeichert …"
+        >
+          Speichern
         </Button>
-        {saved && !form.formState.isDirty && (
-          <span className="text-sm text-emerald-700">Gespeichert.</span>
-        )}
-        {form.formState.isDirty && (
-          <span className="text-sm text-slate-500">Ungespeicherte Änderungen</span>
-        )}
-        {generalError !== null && (
-          <span role="alert" className="text-sm text-rose-600">
-            {generalError}
-          </span>
-        )}
-      </div>
+      </FormActions>
     </form>
   );
 }

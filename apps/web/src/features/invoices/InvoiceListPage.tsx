@@ -23,11 +23,14 @@ import { apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
 import { useDebounced } from '../../lib/useDebounced.js';
+import { Badge } from '../../components/ui/Badge.js';
 import { Button } from '../../components/ui/Button.js';
 import { EmptyState } from '../../components/ui/EmptyState.js';
 import { ErrorNotice } from '../../components/ui/ErrorNotice.js';
 import { LoadingNote } from '../../components/ui/LoadingNote.js';
 import { Input } from '../../components/ui/Input.js';
+import { PageHeader } from '../../components/ui/PageHeader.js';
+import { SegmentedControl } from '../../components/ui/SegmentedControl.js';
 import { Select } from '../../components/ui/Select.js';
 import { RebillDialog } from './RebillDialog.js';
 
@@ -41,11 +44,11 @@ const FILTERS: { value: string; label: string }[] = [
   { value: 'overdue', label: 'Überfällig' },
 ];
 
-const STATUS_STYLES: Record<InvoiceStatus, string> = {
-  DRAFT: 'bg-slate-100 text-slate-600',
-  ISSUED: 'bg-sky-100 text-sky-800',
-  PAID: 'bg-emerald-100 text-emerald-800',
-  CANCELLED: 'bg-rose-100 text-rose-800',
+const STATUS_TONES: Record<InvoiceStatus, 'neutral' | 'info' | 'success' | 'danger'> = {
+  DRAFT: 'neutral',
+  ISSUED: 'info',
+  PAID: 'success',
+  CANCELLED: 'danger',
 };
 
 const PAGE_SIZE = 25;
@@ -187,17 +190,19 @@ export function InvoiceListPage(): JSX.Element {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">Rechnungen</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Entwürfe lassen sich frei bearbeiten; ausgestellte Rechnungen sind unveränderlich.
-          </p>
-        </div>
-        <Button onClick={() => create.mutate()} disabled={create.isPending}>
-          {create.isPending ? 'wird angelegt …' : 'Neue Rechnung'}
-        </Button>
-      </div>
+      <PageHeader
+        title="Rechnungen"
+        description="Entwürfe lassen sich frei bearbeiten; ausgestellte Rechnungen sind unveränderlich."
+        actions={
+          <Button
+            onClick={() => create.mutate()}
+            pending={create.isPending}
+            pendingLabel="wird angelegt …"
+          >
+            Neue Rechnung
+          </Button>
+        }
+      />
 
       <div className="flex flex-wrap items-center gap-3">
         <Input
@@ -205,42 +210,34 @@ export function InvoiceListPage(): JSX.Element {
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Suche nach Nummer oder Empfänger …"
-          className="sm:max-w-sm"
+          className="sm:max-w-xs"
           aria-label="Rechnungen durchsuchen"
         />
 
-        <div className="flex max-w-full overflow-x-auto rounded-md border border-slate-300 bg-white p-0.5">
-          {FILTERS.map((entry) => (
-            <button
-              key={entry.value}
-              type="button"
-              onClick={() => update({ filter: entry.value })}
-              className={[
-                'whitespace-nowrap rounded px-3 py-1 text-sm transition-colors',
-                'focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300',
-                filter === entry.value
-                  ? 'bg-slate-900 text-white'
-                  : 'text-slate-600 hover:bg-slate-50',
-              ].join(' ')}
-            >
-              {entry.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          label="Nach Status filtern"
+          options={FILTERS}
+          value={filter}
+          onChange={(value) => update({ filter: value })}
+        />
 
-        <Select
-          value={year}
-          onChange={(event) => update({ year: event.target.value })}
-          aria-label="Jahr"
-          className="w-auto"
-        >
-          <option value="">Alle Jahre</option>
-          {selectableYears().map((entry) => (
-            <option key={entry} value={entry}>
-              {entry}
-            </option>
-          ))}
-        </Select>
+        {/* Feste Breite statt `w-auto`: Ein `Select` bringt `w-full` mit, und
+            in der Filterzeile zog das Jahresfeld die ganze Breite an sich
+            und rutschte in eine eigene Zeile. */}
+        <div className="w-40">
+          <Select
+            value={year}
+            onChange={(event) => update({ year: event.target.value })}
+            aria-label="Jahr"
+          >
+            <option value="">Alle Jahre</option>
+            {selectableYears().map((entry) => (
+              <option key={entry} value={entry}>
+                {entry}
+              </option>
+            ))}
+          </Select>
+        </div>
       </div>
 
       {invoices.isLoading && <LoadingNote>Rechnungen werden geladen …</LoadingNote>}
@@ -269,7 +266,13 @@ export function InvoiceListPage(): JSX.Element {
                 Filter zurücksetzen
               </Button>
             ) : (
-              <Button onClick={() => create.mutate()}>Neue Rechnung</Button>
+              <Button
+                onClick={() => create.mutate()}
+                pending={create.isPending}
+                pendingLabel="wird angelegt …"
+              >
+                Neue Rechnung
+              </Button>
             )
           }
         />
@@ -325,34 +328,28 @@ export function InvoiceListPage(): JSX.Element {
                       {formatCents(invoice.totals.grossCents)}
                     </td>
                     <td className="px-4 py-3">
-                      <span
-                        className={`rounded px-1.5 py-0.5 text-xs ${STATUS_STYLES[invoice.status]}`}
-                      >
-                        {INVOICE_STATUS_LABELS[invoice.status]}
-                      </span>
-                      {invoice.documentType === DOCUMENT_TYPE.CANCELLATION && (
-                        <span className="ml-1 rounded bg-slate-200 px-1.5 py-0.5 text-xs text-slate-700">
-                          Storno
-                        </span>
-                      )}
-                      {isOverdue(invoice) && (
-                        <span className="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800">
-                          überfällig
-                        </span>
-                      )}
+                      <div className="flex flex-wrap gap-1">
+                        <Badge tone={STATUS_TONES[invoice.status]}>
+                          {INVOICE_STATUS_LABELS[invoice.status]}
+                        </Badge>
+                        {invoice.documentType === DOCUMENT_TYPE.CANCELLATION && (
+                          <Badge>Storno</Badge>
+                        )}
+                        {isOverdue(invoice) && <Badge tone="warning">überfällig</Badge>}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-right">
                       {/* Auf einem Storno gibt es diesen Weg nicht — Grundlage
                           einer Neuausstellung ist die Rechnung selbst. */}
                       {invoice.documentType !== DOCUMENT_TYPE.CANCELLATION && (
-                        <button
-                          type="button"
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => setRebillFor(invoice)}
-                          className="whitespace-nowrap rounded px-2 py-1 text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
                           aria-label={`Neue Rechnung auf Basis von ${invoiceDisplayName(invoice)}`}
                         >
                           Als Vorlage
-                        </button>
+                        </Button>
                       )}
                     </td>
                   </tr>
@@ -367,6 +364,7 @@ export function InvoiceListPage(): JSX.Element {
               <div className="flex items-center gap-2">
                 <Button
                   variant="secondary"
+                  size="sm"
                   disabled={page <= 1}
                   onClick={() => update({ page: String(page - 1) })}
                 >
@@ -377,6 +375,7 @@ export function InvoiceListPage(): JSX.Element {
                 </span>
                 <Button
                   variant="secondary"
+                  size="sm"
                   disabled={page >= result.pageCount}
                   onClick={() => update({ page: String(page + 1) })}
                 >

@@ -272,15 +272,15 @@ export function SendMailDialog({
             </Button>
             <Button
               disabled={!ready || busy || recipients.length === 0}
+              pending={send.isPending}
+              pendingLabel="wird gesendet …"
               onClick={() => {
                 if (composed !== null) send.mutate(composed);
               }}
             >
-              {send.isPending
-                ? 'wird gesendet …'
-                : draft.data?.transport === MAIL_TRANSPORT.MAIL_APP
-                  ? 'In Mail-Anwendung öffnen'
-                  : 'Senden'}
+              {draft.data?.transport === MAIL_TRANSPORT.MAIL_APP
+                ? 'In Mail-Anwendung öffnen'
+                : 'Senden'}
             </Button>
           </>
         )
@@ -349,13 +349,14 @@ export function SendMailDialog({
               </Field>
             </div>
           ) : (
-            <button
-              type="button"
-              className="text-sm text-slate-500 underline hover:text-slate-800"
+            <Button
+              variant="ghost"
+              size="sm"
+              className="-ml-2.5"
               onClick={() => setShowCopies(true)}
             >
-              Kopie und Blindkopie
-            </button>
+              + Kopie und Blindkopie
+            </Button>
           )}
 
           <Field label="Betreff" htmlFor="mail-subject" required>

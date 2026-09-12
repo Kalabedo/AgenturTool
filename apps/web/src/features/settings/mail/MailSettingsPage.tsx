@@ -18,6 +18,9 @@ import { fieldErrorsOf, formErrorOf } from '../../../lib/errorMessage.js';
 import { queryKeys } from '../../../lib/queryKeys.js';
 import { useDocumentTitle } from '../../../lib/useDocumentTitle.js';
 import { Button } from '../../../components/ui/Button.js';
+import { FormActions } from '../../../components/ui/FormActions.js';
+import { PageHeader } from '../../../components/ui/PageHeader.js';
+import { StatusText } from '../../../components/ui/StatusText.js';
 import { Card } from '../../../components/ui/Card.js';
 import { Checkbox } from '../../../components/ui/Checkbox.js';
 import { ErrorNotice } from '../../../components/ui/ErrorNotice.js';
@@ -207,12 +210,10 @@ export function MailSettingsPage(): JSX.Element {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-slate-900">E-Mail</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Rechnungen und Zeitnachweise direkt aus AgenturTool verschicken.
-        </p>
-      </div>
+      <PageHeader
+        title="E-Mail"
+        description="Rechnungen und Zeitnachweise direkt aus AgenturTool verschicken."
+      />
 
       <Card
         title="Versandweg"
@@ -390,7 +391,8 @@ export function MailSettingsPage(): JSX.Element {
               {current.hasPassword && (
                 <Button
                   variant="secondary"
-                  disabled={removePassword.isPending}
+                  pending={removePassword.isPending}
+                  pendingLabel="wird gelöscht …"
                   onClick={() => removePassword.mutate(values)}
                 >
                   Gespeichertes Passwort löschen
@@ -411,34 +413,34 @@ export function MailSettingsPage(): JSX.Element {
           )}
 
           {check !== null && (
-            <p
-              role="status"
-              className={`text-sm ${check.ok ? 'text-emerald-700' : 'text-rose-600'}`}
-            >
-              {check.message}
-            </p>
+            <StatusText tone={check.ok ? 'success' : 'error'}>{check.message}</StatusText>
           )}
 
-          <div className="flex flex-wrap items-center gap-3 border-t border-slate-200 pt-5">
-            <Button type="submit" disabled={save.isPending}>
-              {save.isPending ? 'wird gespeichert …' : 'Speichern'}
+          <FormActions
+            className="border-t border-slate-200 pt-5"
+            status={
+              formError !== null ? (
+                <StatusText tone="error">{formError}</StatusText>
+              ) : saved ? (
+                <StatusText tone="success">Gespeichert.</StatusText>
+              ) : null
+            }
+          >
+            <Button type="submit" pending={save.isPending} pendingLabel="wird gespeichert …">
+              Speichern
             </Button>
             {isSmtp && (
               <Button
                 variant="secondary"
-                disabled={checkConnection.isPending || !current.ready}
+                disabled={!current.ready}
+                pending={checkConnection.isPending}
+                pendingLabel="wird geprüft …"
                 onClick={() => checkConnection.mutate()}
               >
-                {checkConnection.isPending ? 'wird geprüft …' : 'Verbindung prüfen'}
+                Verbindung prüfen
               </Button>
             )}
-            {saved && <span className="text-sm text-emerald-700">Gespeichert.</span>}
-            {formError !== null && (
-              <span role="alert" className="text-sm text-rose-600">
-                {formError}
-              </span>
-            )}
-          </div>
+          </FormActions>
         </form>
       </Card>
 

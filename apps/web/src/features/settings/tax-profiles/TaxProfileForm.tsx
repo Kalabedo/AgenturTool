@@ -19,6 +19,8 @@ import {
   type TaxCategoryCode,
 } from '@agentur-tool/shared';
 import { Button } from '../../../components/ui/Button.js';
+import { FormActions } from '../../../components/ui/FormActions.js';
+import { StatusText } from '../../../components/ui/StatusText.js';
 import { Card } from '../../../components/ui/Card.js';
 import { Checkbox } from '../../../components/ui/Checkbox.js';
 import { Field } from '../../../components/ui/Field.js';
@@ -64,6 +66,8 @@ interface TaxProfileFormProps {
   isSubmitting: boolean;
   onSubmit: (payload: TaxProfilePayload) => void;
   secondaryActions?: ReactNode;
+  /** Rückmeldung zum Speichern — steht rechts in der Leiste. */
+  status?: ReactNode;
   fieldErrors?: Record<string, string>;
   generalError?: string | null;
 }
@@ -74,6 +78,7 @@ export function TaxProfileForm({
   isSubmitting,
   onSubmit,
   secondaryActions,
+  status,
   fieldErrors,
   generalError,
 }: TaxProfileFormProps): JSX.Element {
@@ -257,17 +262,16 @@ export function TaxProfileForm({
         </div>
       </Card>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'wird gespeichert …' : submitLabel}
+      <FormActions
+        status={
+          generalError != null ? <StatusText tone="error">{generalError}</StatusText> : status
+        }
+      >
+        <Button type="submit" pending={isSubmitting} pendingLabel="wird gespeichert …">
+          {submitLabel}
         </Button>
         {secondaryActions}
-        {generalError != null && (
-          <span role="alert" className="text-sm text-rose-600">
-            {generalError}
-          </span>
-        )}
-      </div>
+      </FormActions>
     </form>
   );
 }

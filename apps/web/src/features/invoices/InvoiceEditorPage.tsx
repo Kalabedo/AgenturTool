@@ -19,9 +19,14 @@ import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
 import { formErrorOf, isNotFound } from '../../lib/errorMessage.js';
 import { ErrorNotice } from '../../components/ui/ErrorNotice.js';
 import { LoadingNote } from '../../components/ui/LoadingNote.js';
+import { Badge } from '../../components/ui/Badge.js';
 import { Button } from '../../components/ui/Button.js';
 import { Card } from '../../components/ui/Card.js';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog.js';
 import { Field } from '../../components/ui/Field.js';
+import { FormActions } from '../../components/ui/FormActions.js';
+import { PageHeader } from '../../components/ui/PageHeader.js';
+import { StatusText } from '../../components/ui/StatusText.js';
 import { Input } from '../../components/ui/Input.js';
 import { Select } from '../../components/ui/Select.js';
 import { Textarea } from '../../components/ui/Textarea.js';
@@ -44,6 +49,8 @@ export function InvoiceEditorPage(): JSX.Element {
   const [saved, setSaved] = useState(false);
   const [deleted, setDeleted] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
+  /** Welche Rückfrage gerade offen steht — es ist immer höchstens eine. */
+  const [confirming, setConfirming] = useState<'finalize' | 'unfinalize' | 'delete' | null>(null);
 
   const invoice = useQuery({
     queryKey: queryKeys.invoices.byId(invoiceId),
@@ -343,29 +350,23 @@ export function InvoiceEditorPage(): JSX.Element {
         className="mx-auto w-full min-w-0 max-w-5xl space-y-6 2xl:mx-0 2xl:max-w-none"
         noValidate
       >
-        <div>
-          <Link to="/invoices" className="text-sm text-slate-500 hover:underline">
-            ← Rechnungen
-          </Link>
-          <div className="mt-1 flex flex-wrap items-center gap-3">
-            <h1 className="text-xl font-semibold text-slate-900">{invoiceDisplayName(data)}</h1>
-            <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-              {INVOICE_STATUS_LABELS[data.status]}
-            </span>
-            <button
-              type="button"
-              className="ml-auto rounded border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+        <PageHeader
+          back={{ to: '/invoices', label: 'Rechnungen' }}
+          title={invoiceDisplayName(data)}
+          badges={<Badge>{INVOICE_STATUS_LABELS[data.status]}</Badge>}
+          description="Entwürfe bekommen erst beim Finalisieren eine Rechnungsnummer — so entstehen keine Lücken, wenn ein Entwurf verworfen wird."
+          actions={
+            <Button
+              variant="secondary"
               onClick={() => setShowPreview((open) => !open)}
               aria-pressed={showPreview}
             >
-              {showPreview ? 'Vorschau ausblenden' : 'Vorschau anzeigen'}
-            </button>
-          </div>
-          <p className="mt-1 text-sm text-slate-500">
-            Entwürfe bekommen erst beim Finalisieren eine Rechnungsnummer — so entstehen keine
-            Lücken, wenn ein Entwurf verworfen wird.
-          </p>
-        </div>
+              {/* Beide Beschriftungen sind gleich lang gehalten, damit der
+                  Knopf beim Umschalten nicht seine Breite ändert. */}
+              {showPreview ? 'Vorschau ausblenden' : 'Vorschau einblenden'}
+            </Button>
+          }
+        />
 
         {!editable && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
@@ -377,17 +378,9 @@ export function InvoiceEditorPage(): JSX.Element {
               {data.canUnfinalize ? (
                 <Button
                   variant="secondary"
-                  disabled={unfinalize.isPending}
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        `Finalisierung von ${invoiceDisplayName(data)} zurücknehmen? ` +
-                          'Die Nummer wird wieder freigegeben und das PDF gelöscht.',
-                      )
-                    ) {
-                      unfinalize.mutate();
-                    }
-                  }}
+                  pending={unfinalize.isPending}
+                  pendingLabel="wird zurückgenommen …"
+                  onClick={() => setConfirming('unfinalize')}
                 >
                   Finalisierung zurücknehmen
                 </Button>
@@ -395,9 +388,7 @@ export function InvoiceEditorPage(): JSX.Element {
                 <p className="text-sm text-amber-800">{data.unfinalizeBlocker}</p>
               )}
               {unfinalizeError !== null && (
-                <span role="alert" className="text-sm text-rose-600">
-                  {unfinalizeError.message}
-                </span>
+                <StatusText tone="error">{unfinalizeError.message}</StatusText>
               )}
             </div>
           </div>
@@ -414,10 +405,11 @@ export function InvoiceEditorPage(): JSX.Element {
             <Button
               variant="secondary"
               className="mt-3"
-              disabled={regeneratePdf.isPending}
+              pending={regeneratePdf.isPending}
+              pendingLabel="wird erzeugt …"
               onClick={() => regeneratePdf.mutate()}
             >
-              {regeneratePdf.isPending ? 'wird erzeugt …' : 'PDF neu erzeugen'}
+              PDF neu erzeugen
             </Button>
           </div>
         )}
@@ -447,14 +439,24 @@ export function InvoiceEditorPage(): JSX.Element {
               </Select>
             </Field>
 
-            <div className="flex items-end sm:col-span-2">
+            {/*
+              Der Knopf sitzt in derselben Rasterzeile wie die Kundenauswahl,
+              aber in einer eigenen Zelle mit Platz für die Beschriftung:
+              Vorher stand er in einer Zwei-Zwölftel-Spalte und lief mit
+              `whitespace-nowrap` darüber hinaus. `pt-6` setzt ihn auf die
+              Höhe des Feldes daneben — nicht `items-end`, das ihn bei einer
+              Fehlermeldung im Nachbarfeld mit nach unten gezogen hätte.
+            */}
+            <div className="sm:col-span-2 sm:pt-6">
               {data.customerId !== null && editable && (
                 <Button
                   variant="secondary"
+                  className="w-full"
+                  pending={refreshCustomer.isPending}
+                  pendingLabel="wird übernommen …"
                   onClick={() => refreshCustomer.mutate()}
-                  disabled={refreshCustomer.isPending}
                 >
-                  Kundendaten neu übernehmen
+                  Kundendaten übernehmen
                 </Button>
               )}
             </div>
@@ -492,10 +494,10 @@ export function InvoiceEditorPage(): JSX.Element {
             <Field label="Ort" htmlFor="city" className="sm:col-span-4">
               <Input id="city" disabled={!editable} {...form.register('city')} />
             </Field>
-            <Field label="Land" htmlFor="country" className="sm:col-span-3">
+            <Field label="Land" htmlFor="country" className="sm:col-span-2">
               <Input id="country" disabled={!editable} {...form.register('country')} />
             </Field>
-            <Field label="USt-IdNr." htmlFor="vatId" className="sm:col-span-3">
+            <Field label="USt-IdNr." htmlFor="vatId" className="sm:col-span-4">
               <Input id="vatId" disabled={!editable} {...form.register('vatId')} />
             </Field>
           </div>
@@ -628,68 +630,84 @@ export function InvoiceEditorPage(): JSX.Element {
           </div>
         </Card>
 
-        <div className="flex flex-wrap items-center gap-3">
-          {editable && (
-            <Button type="submit" disabled={save.isPending}>
-              {save.isPending ? 'wird gespeichert …' : 'Speichern'}
-            </Button>
-          )}
-          {editable && (
-            <Button
-              disabled={finalize.isPending}
-              onClick={() => {
-                if (
-                  window.confirm(
-                    'Rechnung ausstellen? Sie bekommt die nächste Rechnungsnummer und ist ' +
-                      'danach nicht mehr änderbar.',
-                  )
-                ) {
-                  finalize.mutate(form.getValues());
-                }
-              }}
-            >
-              {finalize.isPending ? 'wird ausgestellt …' : 'Rechnung ausstellen'}
-            </Button>
-          )}
-          <Button
-            variant="secondary"
-            disabled={downloadPdf.isPending}
-            onClick={() => downloadPdf.mutate(form.getValues())}
+        <div className="space-y-4">
+          {/*
+            Eine hervorgehobene Handlung, nicht zwei.
+            „Speichern" ist der Knopf, der in einem Entwurf am häufigsten
+            gedrückt wird — und der einzige, den auch Strg+S und die
+            Eingabetaste auslösen. „Rechnung ausstellen" steht direkt
+            daneben, aber als zweite Stufe: Es geschieht einmal, ist nicht
+            zurückzunehmen und fragt ohnehin noch einmal nach. Zwei schwarze
+            Knöpfe nebeneinander hätten beide Male „das hier ist gemeint"
+            behauptet.
+          */}
+          <FormActions
+            status={
+              saveMessage !== null ? (
+                <StatusText tone="error">{saveMessage}</StatusText>
+              ) : downloadMessage !== null ? (
+                <StatusText tone="error">{downloadMessage}</StatusText>
+              ) : finalizeMessage !== null && finalizeProblems.length === 0 ? (
+                <StatusText tone="error">{finalizeMessage}</StatusText>
+              ) : form.formState.isDirty ? (
+                <StatusText tone="muted">Ungespeicherte Änderungen</StatusText>
+              ) : saved ? (
+                <StatusText tone="success">Gespeichert.</StatusText>
+              ) : null
+            }
+            destructive={
+              editable ? (
+                <Button
+                  variant="danger"
+                  pending={remove.isPending}
+                  pendingLabel="wird gelöscht …"
+                  onClick={() => setConfirming('delete')}
+                >
+                  Entwurf löschen
+                </Button>
+              ) : undefined
+            }
           >
-            {downloadPdf.isPending ? 'PDF wird erzeugt …' : 'PDF herunterladen'}
-          </Button>
-          {!editable && (
+            {editable && (
+              <Button type="submit" pending={save.isPending} pendingLabel="wird gespeichert …">
+                Speichern
+              </Button>
+            )}
+            {editable && (
+              <Button
+                variant="secondary"
+                pending={finalize.isPending}
+                pendingLabel="wird ausgestellt …"
+                onClick={() => setConfirming('finalize')}
+              >
+                Rechnung ausstellen
+              </Button>
+            )}
             <Button
               variant="secondary"
-              disabled={downloadEinvoice.isPending || einvoiceStatus.data?.ready === false}
-              title={
-                einvoiceStatus.data?.ready === false
-                  ? 'Für die E-Rechnung fehlen noch Angaben.'
-                  : undefined
-              }
-              onClick={() => downloadEinvoice.mutate()}
+              pending={downloadPdf.isPending}
+              pendingLabel="PDF wird erzeugt …"
+              onClick={() => downloadPdf.mutate(form.getValues())}
             >
-              {downloadEinvoice.isPending ? 'XML wird erzeugt …' : 'XRechnung (XML)'}
+              PDF herunterladen
             </Button>
-          )}
-          {downloadMessage !== null && (
-            <span role="alert" className="text-sm text-rose-600">
-              {downloadMessage}
-            </span>
-          )}
-          {saved && !form.formState.isDirty && (
-            <span role="status" className="text-sm text-emerald-700">
-              Gespeichert.
-            </span>
-          )}
-          {form.formState.isDirty && (
-            <span className="text-sm text-slate-500">Ungespeicherte Änderungen</span>
-          )}
-          {saveMessage !== null && (
-            <span role="alert" className="text-sm text-rose-600">
-              {saveMessage}
-            </span>
-          )}
+            {!editable && (
+              <Button
+                variant="secondary"
+                disabled={einvoiceStatus.data?.ready === false}
+                pending={downloadEinvoice.isPending}
+                pendingLabel="XML wird erzeugt …"
+                title={
+                  einvoiceStatus.data?.ready === false
+                    ? 'Für die E-Rechnung fehlen noch Angaben.'
+                    : undefined
+                }
+                onClick={() => downloadEinvoice.mutate()}
+              >
+                XRechnung (XML)
+              </Button>
+            )}
+          </FormActions>
 
           {/*
             Ein Hinweis und keine Fehlermeldung: Die Rechnung ist gültig,
@@ -697,7 +715,7 @@ export function InvoiceEditorPage(): JSX.Element {
             PDF verschickt, hat hier nichts zu tun.
           */}
           {!editable && einvoiceStatus.data?.ready === false && (
-            <div className="w-full rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
               <p className="text-sm font-medium text-amber-900">
                 Diese Rechnung lässt sich noch nicht als XRechnung ausgeben:
               </p>
@@ -714,7 +732,7 @@ export function InvoiceEditorPage(): JSX.Element {
           )}
 
           {finalizeProblems.length > 0 && (
-            <div role="alert" className="w-full rounded-lg border border-rose-200 bg-rose-50 p-4">
+            <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-4">
               <p className="text-sm font-medium text-rose-900">
                 Diese Angaben fehlen noch, damit die Rechnung ausgestellt werden kann:
               </p>
@@ -724,28 +742,6 @@ export function InvoiceEditorPage(): JSX.Element {
                 ))}
               </ul>
             </div>
-          )}
-          {finalizeMessage !== null && finalizeProblems.length === 0 && (
-            <span role="alert" className="text-sm text-rose-600">
-              {finalizeMessage}
-            </span>
-          )}
-
-          {editable && (
-            <Button
-              variant="danger"
-              className="ml-auto"
-              disabled={remove.isPending}
-              onClick={() => {
-                if (
-                  window.confirm('Diesen Entwurf löschen? Das lässt sich nicht rückgängig machen.')
-                ) {
-                  remove.mutate();
-                }
-              }}
-            >
-              Entwurf löschen
-            </Button>
           )}
         </div>
       </form>
@@ -771,6 +767,49 @@ export function InvoiceEditorPage(): JSX.Element {
           />
         </aside>
       )}
+
+      <ConfirmDialog
+        open={confirming === 'finalize'}
+        title="Rechnung ausstellen"
+        description={`${invoiceDisplayName(data)} bekommt die nächste Rechnungsnummer und ist danach nicht mehr änderbar.`}
+        confirmLabel="Ausstellen"
+        pendingLabel="wird ausgestellt …"
+        isPending={finalize.isPending}
+        onConfirm={() => {
+          setConfirming(null);
+          finalize.mutate(form.getValues());
+        }}
+        onClose={() => setConfirming(null)}
+      />
+
+      <ConfirmDialog
+        open={confirming === 'unfinalize'}
+        title="Finalisierung zurücknehmen"
+        description={`Die Nummer von ${invoiceDisplayName(data)} wird wieder freigegeben und das PDF gelöscht.`}
+        confirmLabel="Zurücknehmen"
+        pendingLabel="wird zurückgenommen …"
+        isPending={unfinalize.isPending}
+        onConfirm={() => {
+          setConfirming(null);
+          unfinalize.mutate();
+        }}
+        onClose={() => setConfirming(null)}
+      />
+
+      <ConfirmDialog
+        open={confirming === 'delete'}
+        title="Entwurf löschen"
+        description="Der Entwurf wird gelöscht. Das lässt sich nicht rückgängig machen."
+        confirmLabel="Löschen"
+        pendingLabel="wird gelöscht …"
+        tone="danger"
+        isPending={remove.isPending}
+        onConfirm={() => {
+          setConfirming(null);
+          remove.mutate();
+        }}
+        onClose={() => setConfirming(null)}
+      />
     </div>
   );
 }

@@ -13,7 +13,9 @@ import { ApiRequestError, apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 import { Button } from '../../components/ui/Button.js';
 import { Card } from '../../components/ui/Card.js';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog.js';
 import { Field } from '../../components/ui/Field.js';
+import { StatusText } from '../../components/ui/StatusText.js';
 import { Input } from '../../components/ui/Input.js';
 import { SendMailDialog } from '../mail/SendMailDialog.js';
 import { RebillDialog } from './RebillDialog.js';
@@ -32,6 +34,7 @@ export function InvoiceLifecycleCard({ invoice }: { invoice: InvoiceResponse }):
   const [paidAt, setPaidAt] = useState(invoice.paidAt ?? '');
   const [rebillOpen, setRebillOpen] = useState(false);
   const [mailOpen, setMailOpen] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
 
   const applyUpdate = async (updated: InvoiceResponse): Promise<void> => {
     queryClient.setQueryData(queryKeys.invoices.byId(invoice.id), updated);
@@ -155,29 +158,17 @@ export function InvoiceLifecycleCard({ invoice }: { invoice: InvoiceResponse }):
           {isCancellable(invoice) && (
             <Button
               variant="danger"
-              disabled={cancel.isPending}
-              onClick={() => {
-                if (
-                  window.confirm(
-                    `${invoiceDisplayName(invoice)} stornieren? Es entsteht ein eigenes ` +
-                      'Storno-Dokument mit nächster Rechnungsnummer; die Rechnung selbst ' +
-                      'bleibt unverändert.',
-                  )
-                ) {
-                  cancel.mutate();
-                }
-              }}
+              className="ml-auto"
+              pending={cancel.isPending}
+              pendingLabel="Storno wird erstellt …"
+              onClick={() => setConfirmCancel(true)}
             >
-              {cancel.isPending ? 'Storno wird erstellt …' : 'Stornieren'}
+              Stornieren
             </Button>
           )}
         </div>
 
-        {error !== undefined && (
-          <p role="alert" className="text-sm text-rose-600">
-            {error.message}
-          </p>
-        )}
+        {error !== undefined && <StatusText tone="error">{error.message}</StatusText>}
       </div>
 
       {/* Erst beim Öffnen eingehängt, damit der Dialog jedes Mal mit der
@@ -200,6 +191,21 @@ export function InvoiceLifecycleCard({ invoice }: { invoice: InvoiceResponse }):
           onClose={() => setRebillOpen(false)}
         />
       )}
+
+      <ConfirmDialog
+        open={confirmCancel}
+        title="Rechnung stornieren"
+        description={`Für ${invoiceDisplayName(invoice)} entsteht ein eigenes Storno-Dokument mit der nächsten Rechnungsnummer. Die Rechnung selbst bleibt unverändert.`}
+        confirmLabel="Stornieren"
+        pendingLabel="Storno wird erstellt …"
+        tone="danger"
+        isPending={cancel.isPending}
+        onConfirm={() => {
+          setConfirmCancel(false);
+          cancel.mutate();
+        }}
+        onClose={() => setConfirmCancel(false)}
+      />
     </Card>
   );
 }
