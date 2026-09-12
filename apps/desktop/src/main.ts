@@ -14,7 +14,7 @@
  * Programm streiten könnte.
  */
 import path from 'node:path';
-import { BrowserWindow, app, dialog, session, shell } from 'electron';
+import { BrowserWindow, app, dialog, nativeTheme, session, shell } from 'electron';
 import type { INestApplication } from '@nestjs/common';
 import { bootstrap } from '@agentur-tool/api/dist/main';
 import { pdfTimeoutMs } from './config';
@@ -149,6 +149,18 @@ async function start(): Promise<void> {
       // eingerichtet und ausgelöst hat (D43, D45).
       mailHandoff: new ElectronMailHandoff(log),
       secretStore: SafeStorageSecretStore.create(log),
+      themeHost: {
+        setPreference: (preference) => {
+          /*
+           * Gemerkt wird nur „hell" oder „dunkel"; „system" heißt gerade,
+           * nichts zu merken, sondern beim nächsten Start das
+           * Betriebssystem zu fragen.
+           */
+          currentTheme = preference === 'system' ? undefined : preference;
+          // Damit auch Menüs und native Dialoge mitgehen.
+          nativeTheme.themeSource = preference;
+        },
+      },
     });
 
     api = running.app;
@@ -174,8 +186,26 @@ async function start(): Promise<void> {
   }
 }
 
+/**
+ * Die zuletzt gemeldete Darstellung.
+ *
+ * Der Hauptprozess hält sie, weil sie an zwei Stellen gebraucht wird: beim
+ * Schließen zum Schreiben in die Fensterdatei und beim Öffnen zum Setzen
+ * der Hintergrundfarbe.
+ */
+let currentTheme: 'light' | 'dark' | undefined;
+
 function openWindow(url: string): void {
   const state = readWindowState(stateDir);
+  currentTheme = state.theme;
+
+  /*
+   * Ohne diese Farbe zeigt Electron beim Start ein weißes Rechteck, bis die
+   * Seite zum ersten Mal zeichnet — bei dunkler Oberfläche ein deutliches
+   * Aufblitzen. Ist nichts gespeichert, entscheidet das Betriebssystem;
+   * die Oberfläche kommt gleich darauf zum selben Ergebnis.
+   */
+  const dark = state.theme === undefined ? nativeTheme.shouldUseDarkColors : state.theme === 'dark';
 
   window = new BrowserWindow({
     width: state.width,
@@ -186,6 +216,7 @@ function openWindow(url: string): void {
     minHeight: 600,
     title: 'AgenturTool',
     show: false,
+    backgroundColor: dark ? '#020617' : '#f8fafc',
     webPreferences: {
       // Das Fenster zeigt eine gewöhnliche Webanwendung von der eigenen
       // Rückschleife. Sie braucht keinen Zugang zu Node und bekommt ihn
@@ -207,7 +238,7 @@ function openWindow(url: string): void {
   // noch, und ein Schreibvorgang je Sitzung genügt.
   window.on('close', () => {
     if (window !== null) {
-      saveWindowState(window, stateDir);
+      saveWindowState(window, stateDir, currentTheme);
     }
   });
 

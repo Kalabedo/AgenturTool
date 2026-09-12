@@ -2,6 +2,7 @@ import { Global, Module, type DynamicModule } from '@nestjs/common';
 import { PDF_RENDERER_HOST, type PdfRenderer } from '../pdf/pdf-renderer';
 import { MAIL_HANDOFF_HOST, type MailHandoff } from '../mail/mail-handoff';
 import { SECRET_STORE_HOST, type SecretStore } from '../mail/secret-store';
+import { THEME_HOST, type ThemeHost } from '../app-theme/theme-host';
 
 /** Was der Gastgeber der Anwendung mitbringen kann. */
 export interface HostOptions {
@@ -33,6 +34,16 @@ export interface HostOptions {
    * (`mail/secret-store.ts`).
    */
   secretStore?: SecretStore;
+
+  /**
+   * Wohin die Wahl des Erscheinungsbilds gemeldet wird.
+   *
+   * Die Desktop-Anwendung schreibt sie in die Fensterdatei, damit das
+   * Fenster beim nächsten Start gleich im richtigen Ton aufgeht. Im
+   * Browserbetrieb gibt es kein Fenster und deshalb auch niemanden, dem
+   * das zu melden wäre.
+   */
+  themeHost?: ThemeHost;
 }
 
 /**
@@ -54,6 +65,7 @@ export class HostModule {
       { provide: PDF_RENDERER_HOST, useValue: options.pdfRenderer ?? null },
       { provide: MAIL_HANDOFF_HOST, useValue: options.mailHandoff ?? null },
       { provide: SECRET_STORE_HOST, useValue: options.secretStore ?? null },
+      { provide: THEME_HOST, useValue: options.themeHost ?? null },
     ];
 
     return {
