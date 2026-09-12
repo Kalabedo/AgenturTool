@@ -44,13 +44,15 @@ function Section({
     <section
       className={[
         'rounded-md border p-4',
-        tone === 'attention' ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-white',
+        tone === 'attention'
+          ? 'border-attention-border bg-attention-surface'
+          : 'border-border bg-surface',
       ].join(' ')}
     >
       <h3
         className={[
           'text-sm font-semibold',
-          tone === 'attention' ? 'text-amber-900' : 'text-slate-900',
+          tone === 'attention' ? 'text-attention-ink' : 'text-ink',
         ].join(' ')}
       >
         {title}
@@ -64,8 +66,8 @@ function Section({
 function Line({ label, children }: { label: string; children: ReactNode }): JSX.Element {
   return (
     <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 py-0.5">
-      <span className="text-slate-500">{label}</span>
-      <span className="text-slate-900">{children}</span>
+      <span className="text-ink-subtle">{label}</span>
+      <span className="text-ink">{children}</span>
     </div>
   );
 }
@@ -78,9 +80,9 @@ function Line({ label, children }: { label: string; children: ReactNode }): JSX.
  */
 function Change({ from, to }: { from: string; to: string }): JSX.Element {
   return (
-    <span className="text-slate-900">
-      <span className="text-slate-500">{from}</span>
-      <span aria-label=" wird zu " className="px-1.5 text-slate-400">
+    <span className="text-ink">
+      <span className="text-ink-subtle">{from}</span>
+      <span aria-label=" wird zu " className="px-1.5 text-ink-faint">
         →
       </span>
       {to}
@@ -105,14 +107,14 @@ function PreviewBody({
       <Section title="Wird übernommen">
         <Line label="Positionen">
           {preview.itemCount === 1 ? '1 Position' : `${preview.itemCount} Positionen`}
-          <span className="ml-2 tabular-nums text-slate-500">
+          <span className="ml-2 tabular-nums text-ink-subtle">
             {formatCents(preview.netCents)} netto
           </span>
         </Line>
         {preview.carriesNotes && <Line label="Rechnungstext">wird übernommen</Line>}
         {preview.carriesFooterNote && <Line label="Fußzeile">wird übernommen</Line>}
         {preview.itemCount === 0 && (
-          <p className="mt-1 text-slate-500">
+          <p className="mt-1 text-ink-subtle">
             Diese Rechnung hat keine Positionen — der Entwurf entsteht leer.
           </p>
         )}
@@ -123,12 +125,12 @@ function PreviewBody({
         <Line label="Leistungsdatum">{formatDateDe(toIsoDate(preview.serviceDate))}</Line>
         <Line label="Fällig">
           {formatDateDe(toIsoDate(preview.dueDate))}
-          <span className="ml-2 text-slate-500">
+          <span className="ml-2 text-ink-subtle">
             {preview.paymentTermDays} Tage
             {preview.paymentTermFromCustomer ? ' (Vorgabe des Kunden)' : ''}
           </span>
         </Line>
-        <p className="mt-2 text-slate-500">
+        <p className="mt-2 text-ink-subtle">
           Rechnungsnummer und Zahlungsvermerke entstehen nicht mit — der Entwurf bekommt seine
           Nummer erst beim Ausstellen.
         </p>
@@ -136,7 +138,7 @@ function PreviewBody({
 
       {preview.customerState === REBILL_CUSTOMER_STATE.NONE && (
         <Section title="Kundenangaben">
-          <p className="text-slate-500">
+          <p className="text-ink-subtle">
             Dieser Rechnung ist kein Kunde zugeordnet. Die Empfängerdaten werden unverändert
             übernommen.
           </p>
@@ -145,7 +147,7 @@ function PreviewBody({
 
       {preview.customerState === REBILL_CUSTOMER_STATE.MISSING && (
         <Section title="Kundenangaben" tone="attention">
-          <p className="text-amber-900">
+          <p className="text-attention-ink">
             Der zugeordnete Kunde existiert nicht mehr. Die Empfängerdaten der alten Rechnung werden
             unverändert übernommen.
           </p>
@@ -158,7 +160,7 @@ function PreviewBody({
           tone={preview.taxProfileChange !== null && refresh ? 'attention' : 'neutral'}
         >
           {!hasCustomerChanges ? (
-            <p className="text-slate-500">
+            <p className="text-ink-subtle">
               Die Angaben zu {preview.customerName} stimmen mit der alten Rechnung überein — es
               ändert sich nichts.
             </p>
@@ -175,12 +177,12 @@ function PreviewBody({
               <div
                 className={[
                   'mt-3 border-t pt-3',
-                  refresh ? 'border-slate-200' : 'border-slate-200 opacity-50',
+                  refresh ? 'border-border' : 'border-border opacity-50',
                 ].join(' ')}
               >
                 {preview.taxProfileChange !== null && (
-                  <div className="mb-2 rounded border border-amber-300 bg-amber-100/60 px-3 py-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-900">
+                  <div className="mb-2 rounded border border-attention-border bg-attention-surface/60 px-3 py-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-attention-ink">
                       Steuerprofil
                     </p>
                     <p className="mt-0.5">
@@ -189,7 +191,7 @@ function PreviewBody({
                         to={preview.taxProfileChange.to}
                       />
                     </p>
-                    <p className="mt-1 text-amber-900">
+                    <p className="mt-1 text-attention-ink">
                       Das ändert den Steuerausweis und den Hinweistext auf dem Dokument.
                     </p>
                   </div>
@@ -205,7 +207,7 @@ function PreviewBody({
           )}
 
           {preview.customerArchived && (
-            <p className="mt-3 border-t border-slate-200 pt-3 text-amber-800">
+            <p className="mt-3 border-t border-border pt-3 text-attention-ink">
               Dieser Kunde ist archiviert.
             </p>
           )}
@@ -268,7 +270,7 @@ export function RebillDialog({
       footer={
         <>
           {createError !== null && (
-            <span role="alert" className="mr-auto text-sm text-rose-600">
+            <span role="alert" className="mr-auto text-sm text-danger-strong">
               {createError}
             </span>
           )}

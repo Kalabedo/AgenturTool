@@ -115,7 +115,7 @@ export function InvoicePreview({
 
   if (company.data === undefined || templateSettings.data === undefined) {
     return (
-      <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-500">
+      <div className="rounded-lg border border-border bg-surface p-6 text-sm text-ink-subtle">
         Vorschau wird geladen …
       </div>
     );

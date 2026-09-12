@@ -39,8 +39,8 @@ export function AuthGate({ children }: { children: JSX.Element }): JSX.Element {
 
   if (session.isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
-        <p aria-live="polite" className="text-sm text-slate-500">
+      <div className="flex min-h-screen items-center justify-center bg-surface-sunken p-6">
+        <p aria-live="polite" className="text-sm text-ink-subtle">
           AgenturTool wird geladen …
         </p>
       </div>
@@ -49,7 +49,7 @@ export function AuthGate({ children }: { children: JSX.Element }): JSX.Element {
 
   if (session.isError) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
+      <div className="flex min-h-screen items-center justify-center bg-surface-sunken p-6">
         <div className="w-full max-w-md space-y-4">
           <ErrorNotice error={session.error} title="AgenturTool ist gerade nicht erreichbar." />
           <Button variant="secondary" onClick={() => void session.refetch()}>

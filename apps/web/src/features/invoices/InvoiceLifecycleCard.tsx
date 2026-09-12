@@ -41,7 +41,7 @@ import { RebillDialog } from './RebillDialog.js';
 function Section({ title, children }: { title: string; children: ReactNode }): JSX.Element {
   return (
     <section>
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</h3>
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">{title}</h3>
       <div className="mt-2">{children}</div>
     </section>
   );
@@ -115,7 +115,7 @@ export function InvoiceLifecycleCard({ invoice }: { invoice: InvoiceResponse }):
     <Card title="Vorgang">
       <div className="space-y-5">
         {invoice.cancelsInvoiceId !== null && (
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-ink-muted">
             Dieses Dokument hebt{' '}
             <Link className="underline" to={`/invoices/${invoice.cancelsInvoiceId}`}>
               die zugehörige Rechnung
@@ -124,7 +124,7 @@ export function InvoiceLifecycleCard({ invoice }: { invoice: InvoiceResponse }):
           </p>
         )}
         {invoice.cancelledByInvoiceId !== null && (
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-ink-muted">
             Diese Rechnung wurde storniert —{' '}
             <Link className="underline" to={`/invoices/${invoice.cancelledByInvoiceId}`}>
               zum Storno-Dokument
@@ -171,7 +171,7 @@ export function InvoiceLifecycleCard({ invoice }: { invoice: InvoiceResponse }):
                 </Button>
               )}
             </div>
-            <p id="paidAt-hint" className="mt-2 text-sm text-slate-500">
+            <p id="paidAt-hint" className="mt-2 text-sm text-ink-subtle">
               Leer lassen heißt: noch offen.
             </p>
           </Section>
@@ -181,7 +181,7 @@ export function InvoiceLifecycleCard({ invoice }: { invoice: InvoiceResponse }):
           <div className="flex flex-wrap items-center gap-3">
             <Button onClick={() => setMailOpen(true)}>Per E-Mail senden</Button>
             {invoice.sentAt !== null && (
-              <span className="text-sm text-slate-600">
+              <span className="text-sm text-ink-muted">
                 Versendet am {formatDateDe(toIsoDate(invoice.sentAt.slice(0, 10)))}
               </span>
             )}
@@ -190,11 +190,11 @@ export function InvoiceLifecycleCard({ invoice }: { invoice: InvoiceResponse }):
           {/* Der Vermerk von Hand steht bewusst kleiner und darunter: Er ist
               der Weg für die Rechnung, die per Post ging oder aus einem
               anderen Programm heraus verschickt wurde — nicht der übliche. */}
-          <p className="mt-3 text-sm text-slate-500">
+          <p className="mt-3 text-sm text-ink-subtle">
             {invoice.sentAt === null ? 'Anders verschickt? ' : 'Versehentlich vermerkt? '}
             <button
               type="button"
-              className="underline hover:text-slate-800 disabled:no-underline disabled:opacity-50"
+              className="underline hover:text-ink disabled:no-underline disabled:opacity-50"
               disabled={sent.isPending}
               onClick={() => sent.mutate(null)}
             >
@@ -203,7 +203,7 @@ export function InvoiceLifecycleCard({ invoice }: { invoice: InvoiceResponse }):
           </p>
         </Section>
 
-        <div className="flex flex-wrap items-center gap-3 border-t border-slate-200 pt-5">
+        <div className="flex flex-wrap items-center gap-3 border-t border-border pt-5">
           {!isCancellation && (
             <Button variant="secondary" onClick={() => setRebillOpen(true)}>
               Neue Rechnung auf Basis dieser Rechnung

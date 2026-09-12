@@ -294,7 +294,7 @@ export function MailSettingsPage(): JSX.Element {
           )}
 
           {isSmtp && (
-            <div className="space-y-4 border-t border-slate-200 pt-5">
+            <div className="space-y-4 border-t border-border pt-5">
               <div className="grid gap-4 sm:grid-cols-6">
                 <Field
                   label="Postausgangsserver"
@@ -402,7 +402,7 @@ export function MailSettingsPage(): JSX.Element {
           )}
 
           {current.problems.length > 0 && (
-            <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <div className="rounded-md border border-attention-border bg-attention-surface p-3 text-sm text-attention-ink">
               <p className="font-medium">Der Versand ist noch nicht einsatzbereit.</p>
               <ul className="mt-1 list-disc space-y-0.5 pl-5">
                 {current.problems.map((problem) => (
@@ -417,7 +417,7 @@ export function MailSettingsPage(): JSX.Element {
           )}
 
           <FormActions
-            className="border-t border-slate-200 pt-5"
+            className="border-t border-border pt-5"
             status={
               formError !== null ? (
                 <StatusText tone="error">{formError}</StatusText>

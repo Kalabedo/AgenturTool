@@ -49,10 +49,10 @@ export function Field({
     // der automatischen Mindestbreite bestimmt der breiteste Inhalt — in
     // Safari die längste Option eines <select> — die Spaltenbreite.
     <div className={`min-w-0 ${className}`}>
-      <label htmlFor={htmlFor} className="block text-sm font-medium text-slate-700">
+      <label htmlFor={htmlFor} className="block text-sm font-medium text-ink-muted">
         {label}
         {required && (
-          <span aria-hidden="true" className="ml-0.5 text-rose-600">
+          <span aria-hidden="true" className="ml-0.5 text-danger-strong">
             *
           </span>
         )}
@@ -61,11 +61,11 @@ export function Field({
       {/* Der Hinweis verschwindet, sobald ein Fehler dasteht — zwei Zeilen
           Text unter einem Feld lesen sich sonst wie ein Widerspruch. */}
       {error !== undefined ? (
-        <p id={messageId} className="mt-1 text-sm text-rose-600">
+        <p id={messageId} className="mt-1 text-sm text-danger-strong">
           {error}
         </p>
       ) : hint !== undefined ? (
-        <p id={messageId} className="mt-1 text-sm text-slate-500">
+        <p id={messageId} className="mt-1 text-sm text-ink-subtle">
           {hint}
         </p>
       ) : reserveMessageSpace ? (

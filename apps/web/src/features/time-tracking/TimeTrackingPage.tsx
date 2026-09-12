@@ -292,11 +292,11 @@ export function TimeTrackingPage(): JSX.Element {
 
       {!noCustomers && (
         <div>
-          <div className="flex gap-1 border-b border-slate-200" role="tablist">
+          <div className="flex gap-1 border-b border-border" role="tablist">
             <TabButton active={tab === 'open'} onClick={() => setTab('open')}>
               Offen
               {openCustomers.length > 0 && (
-                <span className="ml-2 rounded-full bg-slate-900 px-2 py-0.5 text-xs text-white">
+                <span className="ml-2 rounded-full bg-inverse px-2 py-0.5 text-xs text-on-inverse">
                   {openCustomers.reduce((total, entry) => total + entry.entryCount, 0)}
                 </span>
               )}
@@ -428,20 +428,20 @@ function OpenTab({
         onSelect={onSelectCustomer}
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface-sunken px-4 py-3">
         <div className="text-sm">
-          <span className="font-medium text-slate-900">
+          <span className="font-medium text-ink">
             {summary.entryCount} {summary.entryCount === 1 ? 'Eintrag' : 'Einträge'}
           </span>
-          <span className="mx-2 text-slate-300">·</span>
-          <span className="font-semibold tabular-nums text-slate-900">
+          <span className="mx-2 text-ink-faint">·</span>
+          <span className="font-semibold tabular-nums text-ink">
             {formatDuration(summary.durationMinutes)} h
           </span>
-          <span className="ml-2 tabular-nums text-slate-500">
+          <span className="ml-2 tabular-nums text-ink-subtle">
             ({formatDecimalHours(summary.durationMinutes)} Std.)
           </span>
           {activeCustomer !== undefined && (
-            <span className="ml-2 block text-xs text-slate-500 sm:ml-3 sm:inline">
+            <span className="ml-2 block text-xs text-ink-subtle sm:ml-3 sm:inline">
               {activeCustomer.from === activeCustomer.to
                 ? formatDateDe(activeCustomer.from as IsoDate)
                 : `${formatDateDe(activeCustomer.from as IsoDate)} – ${formatDateDe(activeCustomer.to as IsoDate)}`}

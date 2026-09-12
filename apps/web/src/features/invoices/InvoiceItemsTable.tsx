@@ -36,10 +36,10 @@ export function InvoiceItemsTable({
     fieldErrors?.[`items.${index}.${field}`] ?? errors?.[index]?.[field]?.message;
 
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+    <div className="overflow-hidden rounded-lg border border-border bg-surface">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[56rem] text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+          <thead className="border-b border-border bg-surface-sunken text-left text-xs uppercase tracking-wide text-ink-subtle">
             <tr>
               <th className="w-8 px-2 py-2 font-medium">#</th>
               <th className="px-2 py-2 font-medium">Beschreibung</th>
@@ -52,10 +52,10 @@ export function InvoiceItemsTable({
               <th className="w-16 px-2 py-2" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-border">
             {fields.map((field, index) => (
               <tr key={field.id} className="align-top">
-                <td className="px-2 py-2 pt-4 text-slate-400">{index + 1}</td>
+                <td className="px-2 py-2 pt-4 text-ink-faint">{index + 1}</td>
 
                 <td className="px-2 py-2">
                   <Input
@@ -64,7 +64,9 @@ export function InvoiceItemsTable({
                     {...form.register(`items.${index}.description`)}
                   />
                   {errorFor(index, 'description') !== undefined && (
-                    <p className="mt-1 text-xs text-rose-600">{errorFor(index, 'description')}</p>
+                    <p className="mt-1 text-xs text-danger-strong">
+                      {errorFor(index, 'description')}
+                    </p>
                   )}
                 </td>
 
@@ -133,7 +135,9 @@ export function InvoiceItemsTable({
                     </Select>
                   </div>
                   {errorFor(index, 'discountValue') !== undefined && (
-                    <p className="mt-1 text-xs text-rose-600">{errorFor(index, 'discountValue')}</p>
+                    <p className="mt-1 text-xs text-danger-strong">
+                      {errorFor(index, 'discountValue')}
+                    </p>
                   )}
                 </td>
 
@@ -147,10 +151,10 @@ export function InvoiceItemsTable({
                   />
                 </td>
 
-                <td className="px-2 py-2 pt-4 text-right tabular-nums text-slate-900">
+                <td className="px-2 py-2 pt-4 text-right tabular-nums text-ink">
                   {formatCents(calculation.items[index]?.netCents ?? 0)}
                   {(calculation.items[index]?.discountCents ?? 0) !== 0 && (
-                    <span className="block text-xs text-slate-400">
+                    <span className="block text-xs text-ink-faint">
                       −{formatCents(calculation.items[index]?.discountCents ?? 0)}
                     </span>
                   )}
@@ -164,7 +168,7 @@ export function InvoiceItemsTable({
                         aria-label={`Position ${index + 1} nach oben`}
                         disabled={index === 0}
                         onClick={() => move(index, index - 1)}
-                        className="rounded px-1 text-xs text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 disabled:opacity-30 disabled:hover:bg-transparent"
+                        className="rounded px-1 text-xs text-ink-faint hover:bg-surface-raised hover:text-ink-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-30 disabled:hover:bg-transparent"
                       >
                         ▲
                       </button>
@@ -173,7 +177,7 @@ export function InvoiceItemsTable({
                         aria-label={`Position ${index + 1} nach unten`}
                         disabled={index === fields.length - 1}
                         onClick={() => move(index, index + 1)}
-                        className="rounded px-1 text-xs text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 disabled:opacity-30 disabled:hover:bg-transparent"
+                        className="rounded px-1 text-xs text-ink-faint hover:bg-surface-raised hover:text-ink-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-30 disabled:hover:bg-transparent"
                       >
                         ▼
                       </button>
@@ -182,7 +186,7 @@ export function InvoiceItemsTable({
                       type="button"
                       aria-label={`Position ${index + 1} entfernen`}
                       onClick={() => remove(index)}
-                      className="rounded px-1 text-xs text-slate-400 hover:bg-rose-50 hover:text-rose-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-200"
+                      className="rounded px-1 text-xs text-ink-faint hover:bg-danger-surface hover:text-danger-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-danger-border"
                     >
                       entfernen
                     </button>
@@ -193,7 +197,7 @@ export function InvoiceItemsTable({
 
             {fields.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-sm text-slate-500">
+                <td colSpan={9} className="px-4 py-8 text-center text-sm text-ink-subtle">
                   Noch keine Positionen.
                 </td>
               </tr>
@@ -202,7 +206,7 @@ export function InvoiceItemsTable({
         </table>
       </div>
 
-      <div className="border-t border-slate-200 px-4 py-3">
+      <div className="border-t border-border px-4 py-3">
         <Button
           variant="secondary"
           onClick={() => {

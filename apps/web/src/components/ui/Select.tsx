@@ -17,11 +17,11 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
         // Höhe seiner längsten Option. Ohne das Zurücksetzen wächst das Feld
         // über seine Rasterspalte hinaus und schiebt die Nachbarn zusammen —
         // in Firefox fällt das nicht auf, weil es die Breite dort schrumpft.
-        'w-full min-w-0 rounded-md border bg-white px-3 py-2 text-sm text-slate-900 shadow-sm',
+        'w-full min-w-0 rounded-md border bg-surface px-3 py-2 text-sm text-ink shadow-sm',
         'focus:outline-none focus:ring-2',
         invalid
-          ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-200'
-          : 'border-slate-300 focus:border-slate-500 focus:ring-slate-200',
+          ? 'border-danger-border focus:border-danger-strong focus:ring-danger-border'
+          : 'border-border-strong focus:border-border-strong focus:ring-focus',
         className,
       ].join(' ')}
       {...props}

@@ -35,7 +35,7 @@ export function LogoutButton(): JSX.Element | null {
 
   return (
     <div className="ml-auto flex items-center gap-3">
-      <span className="text-sm text-slate-500">{user.email}</span>
+      <span className="text-sm text-ink-subtle">{user.email}</span>
       <Button variant="ghost" size="sm" onClick={() => logout.mutate()} disabled={logout.isPending}>
         Abmelden
       </Button>

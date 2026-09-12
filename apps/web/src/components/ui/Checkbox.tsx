@@ -15,14 +15,14 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(function Che
         ref={ref}
         id={id}
         type="checkbox"
-        className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-slate-900 focus:ring-2 focus:ring-slate-200"
+        className="mt-0.5 h-4 w-4 shrink-0 rounded border-border-strong text-ink focus:ring-2 focus:ring-focus"
         {...props}
       />
       <div className="min-w-0">
-        <label htmlFor={id} className="block text-sm text-slate-700">
+        <label htmlFor={id} className="block text-sm text-ink-muted">
           {label}
         </label>
-        {hint !== undefined && <p className="mt-0.5 text-sm text-slate-500">{hint}</p>}
+        {hint !== undefined && <p className="mt-0.5 text-sm text-ink-subtle">{hint}</p>}
       </div>
     </div>
   );

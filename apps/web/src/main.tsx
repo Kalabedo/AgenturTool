@@ -5,6 +5,7 @@ import { RouterProvider } from 'react-router-dom';
 import { router } from './app/router.js';
 import { AuthGate } from './features/auth/AuthGate.js';
 import { ErrorBoundary } from './app/ErrorBoundary.js';
+import { ThemeProvider } from './components/ThemeProvider.js';
 import { ToastProvider } from './components/ui/Toast.js';
 import './index.css';
 
@@ -28,16 +29,21 @@ if (!container) {
 createRoot(container).render(
   <StrictMode>
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        {/* Über dem Router: Eine Meldung soll den Seitenwechsel überleben,
-            den sie oft selbst ausgelöst hat — „Kunde gelöscht." erscheint
-            erst, wenn die Kundenliste schon steht. */}
-        <ToastProvider>
-          <AuthGate>
-            <RouterProvider router={router} />
-          </AuthGate>
-        </ToastProvider>
-      </QueryClientProvider>
+      {/* Über allem außer dem Fehlerfang: Auch die Anmeldeseite und die
+          ganzflächigen Zustände des AuthGate sollen im richtigen Modus
+          stehen — sie erscheinen, bevor die Anwendung selbst da ist. */}
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          {/* Über dem Router: Eine Meldung soll den Seitenwechsel überleben,
+              den sie oft selbst ausgelöst hat — „Kunde gelöscht." erscheint
+              erst, wenn die Kundenliste schon steht. */}
+          <ToastProvider>
+            <AuthGate>
+              <RouterProvider router={router} />
+            </AuthGate>
+          </ToastProvider>
+        </QueryClientProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   </StrictMode>,
 );

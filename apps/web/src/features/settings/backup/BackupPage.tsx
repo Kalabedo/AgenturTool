@@ -69,7 +69,7 @@ export function BackupPage(): JSX.Element {
         description="Datenbank, Logos und alle erzeugten PDFs in einer ZIP-Datei"
       >
         <div className="space-y-4">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-ink-muted">
             Das Archiv enthält ein Manifest mit einer Prüfsumme je Datei. Beim Zurückspielen wird
             jede davon geprüft, bevor etwas ersetzt wird.
           </p>
@@ -104,17 +104,17 @@ export function BackupPage(): JSX.Element {
             description="Ein Backup, das es nicht gibt, hilft im Ernstfall nicht. Das erste ist ein Klick."
           />
         ) : (
-          <ul className="divide-y divide-slate-100 text-sm">
+          <ul className="divide-y divide-border text-sm">
             {status.data.backups.map((entry) => (
               <li
                 key={entry.filename}
                 className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2"
               >
-                <span className="truncate font-medium text-slate-900">{entry.filename}</span>
-                <span className="whitespace-nowrap text-slate-500">
+                <span className="truncate font-medium text-ink">{entry.filename}</span>
+                <span className="whitespace-nowrap text-ink-subtle">
                   {new Date(entry.createdAt).toLocaleString('de-DE')}
                 </span>
-                <span className="whitespace-nowrap tabular-nums text-slate-500">
+                <span className="whitespace-nowrap tabular-nums text-ink-subtle">
                   {formatBytes(entry.sizeBytes)}
                 </span>
                 <Button
@@ -135,18 +135,18 @@ export function BackupPage(): JSX.Element {
         title="Zurückspielen"
         description="Läuft über die Kommandozeile, nicht über den Browser"
       >
-        <div className="space-y-3 text-sm text-slate-600">
+        <div className="space-y-3 text-sm text-ink-muted">
           <p>
             Die Wiederherstellung ersetzt Datenbank und Datenverzeichnis. Die Anwendung sollte dabei
             gestoppt sein:
           </p>
-          <pre className="overflow-x-auto rounded-md bg-slate-900 p-3 text-xs text-slate-100">
+          <pre className="overflow-x-auto rounded-md bg-inverse p-3 text-xs text-on-inverse">
             pnpm restore &lt;archiv.zip&gt; --force
           </pre>
           <p>
-            Ohne <code className="rounded bg-slate-100 px-1">--force</code> bricht der Vorgang ab,
-            solange Daten vorhanden sind. Mit der Option werden sie nicht gelöscht, sondern nach{' '}
-            <code className="rounded bg-slate-100 px-1">data.bak-&lt;Zeitstempel&gt;</code>{' '}
+            Ohne <code className="rounded bg-surface-raised px-1">--force</code> bricht der Vorgang
+            ab, solange Daten vorhanden sind. Mit der Option werden sie nicht gelöscht, sondern nach{' '}
+            <code className="rounded bg-surface-raised px-1">data.bak-&lt;Zeitstempel&gt;</code>{' '}
             verschoben. Anschließend laufen die Migrationen automatisch.
           </p>
         </div>

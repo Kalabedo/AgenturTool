@@ -13,7 +13,7 @@ const TABS = [
 export function SettingsLayout(): JSX.Element {
   return (
     <div className="space-y-6">
-      <nav aria-label="Einstellungen" className="flex flex-wrap gap-1 border-b border-slate-200">
+      <nav aria-label="Einstellungen" className="flex flex-wrap gap-1 border-b border-border">
         {TABS.map((tab) => (
           <NavLink key={tab.to} to={tab.to} className={({ isActive }) => tabClassName(isActive)}>
             {tab.label}

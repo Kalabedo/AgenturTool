@@ -90,8 +90,8 @@ export function EditCustomerPage(): JSX.Element {
     // Zwei verschiedene Lagen, zwei verschiedene Antworten: „gibt es nicht"
     // führt zurück zur Liste, „geht gerade nicht" lädt noch einmal.
     return isNotFound(customer.error) ? (
-      <div className="rounded-lg border border-slate-200 bg-white p-5">
-        <p className="text-sm text-slate-700">Dieser Kunde wurde nicht gefunden.</p>
+      <div className="rounded-lg border border-border bg-surface p-5">
+        <p className="text-sm text-ink-muted">Dieser Kunde wurde nicht gefunden.</p>
         <Link to="/customers" className="mt-3 inline-block text-sm font-medium underline">
           Zurück zur Kundenliste
         </Link>
@@ -124,8 +124,8 @@ export function EditCustomerPage(): JSX.Element {
       />
 
       {isArchived && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-          <p className="text-sm text-amber-900">
+        <div className="rounded-lg border border-attention-border bg-attention-surface p-4">
+          <p className="text-sm text-attention-ink">
             Dieser Kunde ist archiviert und erscheint nicht mehr in der Auswahl beim Erstellen einer
             Rechnung.
           </p>
@@ -170,7 +170,7 @@ export function EditCustomerPage(): JSX.Element {
             {removeError !== null ? (
               <StatusText tone="error">{removeError}</StatusText>
             ) : canDelete ? null : (
-              <span className="text-slate-500">
+              <span className="text-ink-subtle">
                 Endgültiges Löschen ist nicht möglich, solange Rechnungen auf diesen Kunden
                 verweisen.
               </span>

@@ -1,15 +1,134 @@
 @import 'tailwindcss';
 
+/*
+ * Die dark:-Variante hört auf ein Attribut an <html>.
+ *
+ * Ohne diese Zeile fragt Tailwind v4 allein das Betriebssystem — „Dunkel"
+ * ließe sich dann nicht erzwingen, während das System hell steht. Ein
+ * Attribut und keine Klasse, damit nichts versehentlich kollidiert und das
+ * Skript in index.html sich klar liest.
+ */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/*
+ * Die Marken der Oberfläche.
+ *
+ * Vorher standen die Farben als rohe Palettenklassen in 458 Stellen —
+ * bg-white, text-slate-900, border-slate-200. Das ließ sich nicht
+ * umschalten, ohne jede einzelne anzufassen. Jetzt sagt der Name, wozu eine
+ * Farbe da ist, und der dunkle Satz weiter unten tauscht nur die Werte.
+ *
+ * Bewusst wenige: Ein Dutzend Marken deckt die 56 bisher benutzten Klassen
+ * ab. Mehr Marken hießen nur, dieselbe Willkür unter anderem Namen zu
+ * pflegen.
+ */
+@theme {
+  /* Flächen, von oben nach unten: Karte, Seite, hervorgehobener Streifen. */
+  --color-surface: var(--color-white);
+  --color-surface-sunken: var(--color-slate-50);
+  --color-surface-raised: var(--color-slate-100);
+
+  --color-border: var(--color-slate-200);
+  --color-border-strong: var(--color-slate-300);
+
+  /* Schrift, von kräftig nach zurückhaltend. */
+  --color-ink: var(--color-slate-900);
+  --color-ink-muted: var(--color-slate-600);
+  --color-ink-subtle: var(--color-slate-500);
+  --color-ink-faint: var(--color-slate-400);
+
+  /* Die umgekehrte Fläche: primäre Schaltfläche, Meldungsstreifen. */
+  --color-inverse: var(--color-slate-900);
+  --color-inverse-hover: var(--color-slate-800);
+  --color-on-inverse: var(--color-white);
+
+  --color-focus: var(--color-slate-300);
+
+  /* Hinweis (amber): etwas fehlt oder braucht Aufmerksamkeit. */
+  --color-attention-surface: var(--color-amber-50);
+  --color-attention-border: var(--color-amber-200);
+  --color-attention-ink: var(--color-amber-900);
+
+  /* Fehler und Gefahr (rose). */
+  --color-danger-surface: var(--color-rose-50);
+  --color-danger-border: var(--color-rose-300);
+  --color-danger-ink: var(--color-rose-700);
+  --color-danger-strong: var(--color-rose-600);
+
+  /* Gelungen (emerald). */
+  --color-success-surface: var(--color-emerald-100);
+  --color-success-ink: var(--color-emerald-700);
+
+  /* Sachliche Auskunft (sky). */
+  --color-info-surface: var(--color-sky-100);
+  --color-info-ink: var(--color-sky-800);
+}
+
+/*
+ * Der dunkle Satz. Nur Werte, keine neuen Namen.
+ *
+ * Die Flächen kehren sich um: „sunken" ist im Dunkeln die tiefste und
+ * damit dunkelste Ebene, „raised" die hellste. Die Schrift läuft
+ * entsprechend andersherum. Deshalb reicht es, die Variablen zu tauschen —
+ * jede Utility zeigt auf die Variable, nicht auf den Wert.
+ */
+[data-theme='dark'] {
+  --color-surface: var(--color-slate-900);
+  --color-surface-sunken: var(--color-slate-950);
+  --color-surface-raised: var(--color-slate-800);
+
+  --color-border: var(--color-slate-700);
+  --color-border-strong: var(--color-slate-600);
+
+  --color-ink: var(--color-slate-100);
+  --color-ink-muted: var(--color-slate-300);
+  --color-ink-subtle: var(--color-slate-400);
+  --color-ink-faint: var(--color-slate-500);
+
+  /* Im Dunkeln ist die auffällige Fläche die helle. */
+  --color-inverse: var(--color-slate-100);
+  --color-inverse-hover: var(--color-white);
+  --color-on-inverse: var(--color-slate-900);
+
+  --color-focus: var(--color-slate-500);
+
+  /*
+   * Die Tonfarben werden gedämpft und die Schrift aufgehellt: Ein
+   * amber-50 auf Dunkel leuchtet wie eine Warnleuchte, und amber-900
+   * wäre darauf nicht mehr zu lesen.
+   */
+  --color-attention-surface: color-mix(in oklab, var(--color-amber-400) 14%, transparent);
+  --color-attention-border: color-mix(in oklab, var(--color-amber-400) 34%, transparent);
+  --color-attention-ink: var(--color-amber-200);
+
+  --color-danger-surface: color-mix(in oklab, var(--color-rose-500) 14%, transparent);
+  --color-danger-border: color-mix(in oklab, var(--color-rose-500) 40%, transparent);
+  --color-danger-ink: var(--color-rose-300);
+  --color-danger-strong: var(--color-rose-400);
+
+  --color-success-surface: color-mix(in oklab, var(--color-emerald-500) 16%, transparent);
+  --color-success-ink: var(--color-emerald-300);
+
+  --color-info-surface: color-mix(in oklab, var(--color-sky-500) 16%, transparent);
+  --color-info-ink: var(--color-sky-200);
+}
+
 html {
-  background: var(--color-slate-50);
+  background: var(--color-surface-sunken);
   /* Kurze und lange Seiten behalten dieselbe horizontale Geometrie. */
   scrollbar-gutter: stable;
+  /* Damit Bildlaufleisten und native Bedienelemente mitgehen. */
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
 }
 
 body {
   min-width: 320px;
-  color: var(--color-slate-900);
-  background: var(--color-slate-50);
+  color: var(--color-ink);
+  background: var(--color-surface-sunken);
 }
 
 button:not(:disabled),
@@ -27,7 +146,7 @@ button:not(:disabled),
  * der Tastatur erscheinen, nicht nach jedem Mausklick.
  */
 a:focus-visible {
-  outline: 2px solid var(--color-slate-500);
+  outline: 2px solid var(--color-ink-subtle);
   outline-offset: 2px;
   border-radius: 2px;
 }

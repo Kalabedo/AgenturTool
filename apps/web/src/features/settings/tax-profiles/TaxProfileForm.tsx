@@ -165,7 +165,7 @@ export function TaxProfileForm({
               />
             </Field>
           ) : (
-            <p className="text-sm text-slate-500 sm:col-span-6">
+            <p className="text-sm text-ink-subtle sm:col-span-6">
               Bei dieser Steuerart wird kein Steuersatz ausgewiesen; er wird auf 0 gesetzt.
             </p>
           )}

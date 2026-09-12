@@ -143,10 +143,10 @@ export function TaxAdvisorExportPage(): JSX.Element {
 
           {preview.data !== undefined && (
             <div
-              className="space-y-3 rounded-md border border-slate-200 bg-slate-50 p-4"
+              className="space-y-3 rounded-md border border-border bg-surface-sunken p-4"
               aria-live="polite"
             >
-              <p className="text-sm font-medium text-slate-900">
+              <p className="text-sm font-medium text-ink">
                 {preview.data.counts.invoices} Belege, davon {preview.data.counts.cancellations}{' '}
                 Stornos
                 {includeDocuments && (
@@ -158,7 +158,7 @@ export function TaxAdvisorExportPage(): JSX.Element {
               </p>
 
               {preview.data.problems.length > 0 ? (
-                <div role="alert" className="text-sm text-rose-700">
+                <div role="alert" className="text-sm text-danger-ink">
                   <p className="font-medium">Das Paket ist noch nicht vollständig:</p>
                   <ul className="mt-2 list-disc space-y-1 pl-5">
                     {preview.data.problems.map((problem, index) => (
@@ -176,7 +176,7 @@ export function TaxAdvisorExportPage(): JSX.Element {
                 </div>
               ) : (
                 <div className="flex flex-wrap items-center gap-3">
-                  <span className="text-sm text-emerald-700">
+                  <span className="text-sm text-success-ink">
                     Alle Daten und Belege sind lesbar.
                   </span>
                   <Button
@@ -201,9 +201,9 @@ export function TaxAdvisorExportPage(): JSX.Element {
       </Card>
 
       <Card title="Was enthalten ist">
-        <div className="space-y-3 text-sm text-slate-600">
+        <div className="space-y-3 text-sm text-ink-muted">
           <p>
-            <code className="rounded bg-slate-100 px-1">rechnungen.csv</code> enthält die
+            <code className="rounded bg-surface-raised px-1">rechnungen.csv</code> enthält die
             eingefrorenen Netto-, Steuer- und Bruttosummen. Dazu kommen eine Steueraufteilung je
             Steuersatz, alle Rechnungspositionen und ein Manifest mit SHA-256-Prüfsummen.
           </p>

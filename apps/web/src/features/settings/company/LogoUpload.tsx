@@ -62,7 +62,13 @@ export function LogoUpload({ logoUrl }: LogoUploadProps): JSX.Element {
   return (
     <div>
       <div className="flex items-start gap-5">
-        <div className="flex h-24 w-40 shrink-0 items-center justify-center rounded-md border border-dashed border-slate-300 bg-slate-50">
+        {/*
+         * Diese Fläche bleibt in jedem Modus hell, und das ist Absicht:
+         * Firmenlogos sind meist dunkle Tinte auf durchsichtigem Grund. Auf
+         * einer dunklen Platte verschwänden sie — und das Logo soll hier so
+         * aussehen wie später auf dem weißen Blatt der Rechnung.
+         */}
+        <div className="flex h-24 w-40 shrink-0 items-center justify-center rounded-md border border-dashed border-border-strong bg-white">
           {logoUrl === null ? (
             <span className="text-xs text-slate-400">kein Logo</span>
           ) : (
@@ -112,19 +118,19 @@ export function LogoUpload({ logoUrl }: LogoUploadProps): JSX.Element {
             )}
           </div>
 
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-ink-subtle">
             PNG, JPEG oder WebP, höchstens {formatBytes(LOGO_MAX_BYTES)}. Für scharfen Druck
             mindestens {LOGO_RECOMMENDED_MIN_WIDTH_PX} px breit.
           </p>
 
           {lowResolution && error === null && (
-            <p className="mt-1 text-sm text-amber-700">
+            <p className="mt-1 text-sm text-attention-ink">
               Das Logo ist schmaler als {LOGO_RECOMMENDED_MIN_WIDTH_PX} px und wird im PDF
               wahrscheinlich unscharf.
             </p>
           )}
           {error !== null && (
-            <p role="alert" className="mt-1 text-sm text-rose-600">
+            <p role="alert" className="mt-1 text-sm text-danger-strong">
               {error}
             </p>
           )}

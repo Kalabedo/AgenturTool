@@ -36,17 +36,17 @@ export function CustomerTabs({ customers, activeId, onSelect }: CustomerTabsProp
             onClick={() => onSelect(customer.customerId)}
             className={[
               'flex shrink-0 flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-left',
-              'transition-colors focus:outline-none focus:ring-2 focus:ring-slate-300',
+              'transition-colors focus:outline-none focus:ring-2 focus:ring-focus',
               active
-                ? 'border-slate-900 bg-slate-900 text-white'
-                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50',
+                ? 'border-ink bg-inverse text-on-inverse'
+                : 'border-border bg-surface text-ink-muted hover:border-border-strong hover:bg-surface-sunken',
             ].join(' ')}
           >
             <span className="text-sm font-medium">{customer.customerName}</span>
             <span
               className={[
                 'text-xs tabular-nums',
-                active ? 'text-slate-300' : 'text-slate-500',
+                active ? 'text-ink-faint' : 'text-ink-subtle',
               ].join(' ')}
             >
               {formatDuration(customer.durationMinutes)} h · {customer.entryCount}{' '}

@@ -85,7 +85,7 @@ function Notices({ draft }: { draft: MailDraftResponse }): JSX.Element | null {
   return (
     <div className="space-y-3">
       {!draft.transportReady && (
-        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+        <div className="rounded-md border border-attention-border bg-attention-surface p-3 text-sm text-attention-ink">
           <p className="font-medium">So lässt sich noch nichts verschicken.</p>
           <ul className="mt-1 list-disc space-y-0.5 pl-5">
             {draft.transportProblems.map((problem) => (
@@ -101,7 +101,7 @@ function Notices({ draft }: { draft: MailDraftResponse }): JSX.Element | null {
       )}
 
       {draft.warnings.map((warning) => (
-        <p key={warning} className="text-sm text-amber-800">
+        <p key={warning} className="text-sm text-attention-ink">
           {warning}
         </p>
       ))}
@@ -132,7 +132,7 @@ function Result({
 }): JSX.Element {
   if (result.message.status === MAIL_STATUS.SENT) {
     return (
-      <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+      <div className="rounded-md border border-success-ink/30 bg-success-surface p-4 text-sm text-success-ink">
         <p className="font-medium">Versendet an {formatAddressList(result.message.to)}.</p>
         {result.markedSentAt !== null && (
           <p className="mt-1">Die Rechnung ist damit als versendet vermerkt.</p>
@@ -152,15 +152,15 @@ function Result({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+      <div className="rounded-md border border-border bg-surface-sunken p-4 text-sm text-ink-muted">
         {result.handoff?.method === MAIL_HANDOFF_METHOD.DRAFT ? (
-          <p className="font-medium text-slate-900">
+          <p className="font-medium text-ink">
             Der Entwurf steht in {application}
             {withAttachments}. Dort nur noch abschicken.
           </p>
         ) : (
           <>
-            <p className="font-medium text-slate-900">
+            <p className="font-medium text-ink">
               Die fertige Nachricht ist in {application} geöffnet{withAttachments}.
             </p>
             <p className="mt-2">
@@ -177,17 +177,19 @@ function Result({
 
         {result.handoff?.path != null && (
           <details className="mt-2">
-            <summary className="cursor-pointer text-slate-500">
+            <summary className="cursor-pointer text-ink-subtle">
               Nichts aufgegangen? Hier liegt die Nachricht
             </summary>
-            <p className="mt-1 break-all font-mono text-xs text-slate-500">{result.handoff.path}</p>
+            <p className="mt-1 break-all font-mono text-xs text-ink-subtle">
+              {result.handoff.path}
+            </p>
           </details>
         )}
       </div>
 
       {invoiceId !== null &&
         (markedManually ? (
-          <p className="text-sm text-emerald-800">Als versendet vermerkt.</p>
+          <p className="text-sm text-success-ink">Als versendet vermerkt.</p>
         ) : (
           <Button variant="secondary" disabled={markPending} onClick={onMarkSent}>
             {markPending ? 'wird vermerkt …' : 'Jetzt als versendet markieren'}
@@ -287,7 +289,7 @@ export function SendMailDialog({
         ) : (
           <>
             {sendError !== null && (
-              <span role="alert" className="mr-auto text-sm text-rose-600">
+              <span role="alert" className="mr-auto text-sm text-danger-strong">
                 {sendError}
               </span>
             )}
@@ -407,7 +409,7 @@ export function SendMailDialog({
           </Field>
 
           <fieldset>
-            <legend className="text-sm font-medium text-slate-700">Anhänge</legend>
+            <legend className="text-sm font-medium text-ink-muted">Anhänge</legend>
             <div className="mt-2 space-y-2">
               {draft.data.attachments.map((option) => (
                 <Checkbox
@@ -430,7 +432,7 @@ export function SendMailDialog({
           </fieldset>
 
           {draft.data.transport === MAIL_TRANSPORT.MAIL_APP && (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-ink-subtle">
               Die Nachricht öffnet sich in deiner Mail-Anwendung — Anhänge inbegriffen. Abgeschickt
               wird sie dort von dir.
             </p>

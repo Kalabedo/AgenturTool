@@ -58,14 +58,14 @@ function StatTile({
       to={to}
       className={[
         'rounded-lg border p-5 transition-colors',
-        'focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300',
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-focus',
         tone === 'warning'
-          ? 'border-amber-200 bg-amber-50 hover:bg-amber-100'
-          : 'border-slate-200 bg-white hover:bg-slate-50',
+          ? 'border-attention-border bg-attention-surface hover:bg-attention-surface'
+          : 'border-border bg-surface hover:bg-surface-sunken',
       ].join(' ')}
     >
-      <p className="text-sm text-slate-600">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">{value ?? '—'}</p>
+      <p className="text-sm text-ink-muted">{label}</p>
+      <p className="mt-1 text-2xl font-semibold tabular-nums text-ink">{value ?? '—'}</p>
     </Link>
   );
 }
@@ -99,17 +99,17 @@ export function DashboardPage(): JSX.Element {
       <PageHeader title="Dashboard" description="Was gerade offen ist" />
 
       {company.isSuccess && missing.length > 0 && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-5">
-          <h2 className="text-sm font-semibold text-amber-900">
+        <div className="rounded-lg border border-attention-border bg-attention-surface p-5">
+          <h2 className="text-sm font-semibold text-attention-ink">
             Unternehmensdaten noch unvollständig
           </h2>
-          <p className="mt-1 text-sm text-amber-800">
+          <p className="mt-1 text-sm text-attention-ink">
             Zum Ausstellen einer Rechnung fehlen noch:{' '}
             {missing.map((field) => COMPANY_FIELD_LABELS[field] ?? field).join(', ')}.
           </p>
           <Link
             to="/settings/company"
-            className="mt-3 inline-block text-sm font-medium text-amber-900 underline"
+            className="mt-3 inline-block text-sm font-medium text-attention-ink underline"
           >
             Jetzt ergänzen
           </Link>
@@ -153,7 +153,7 @@ export function DashboardPage(): JSX.Element {
 
       {(overdue.data?.items.length ?? 0) > 0 && (
         <Card title="Überfällig" description="Ausgestellt, Fälligkeit vorbei, noch nicht bezahlt">
-          <ul className="divide-y divide-slate-100 text-sm">
+          <ul className="divide-y divide-border text-sm">
             {overdue.data?.items.map((invoice) => (
               <li
                 key={invoice.id}
@@ -162,11 +162,11 @@ export function DashboardPage(): JSX.Element {
                 <Link to={`/invoices/${invoice.id}`} className="font-medium hover:underline">
                   {invoiceDisplayName(invoice)}
                 </Link>
-                <span className="truncate text-slate-500">{invoice.buyerData.companyName}</span>
-                <span className="whitespace-nowrap text-amber-800">
+                <span className="truncate text-ink-subtle">{invoice.buyerData.companyName}</span>
+                <span className="whitespace-nowrap text-attention-ink">
                   fällig war {formatDateDe(toIsoDate(invoice.dueDate))}
                 </span>
-                <span className="whitespace-nowrap tabular-nums text-slate-900">
+                <span className="whitespace-nowrap tabular-nums text-ink">
                   {formatCents(invoice.totals.grossCents)}
                 </span>
               </li>
@@ -179,7 +179,7 @@ export function DashboardPage(): JSX.Element {
         {latest.isLoading ? (
           <LoadingNote />
         ) : latest.data?.items.length === 0 ? (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-ink-subtle">
             Noch keine Rechnung angelegt —{' '}
             <Link to="/invoices" className="underline">
               hier geht es los
@@ -187,7 +187,7 @@ export function DashboardPage(): JSX.Element {
             .
           </p>
         ) : (
-          <ul className="divide-y divide-slate-100 text-sm">
+          <ul className="divide-y divide-border text-sm">
             {latest.data?.items.map((invoice) => (
               <li
                 key={invoice.id}
@@ -196,13 +196,13 @@ export function DashboardPage(): JSX.Element {
                 <Link to={`/invoices/${invoice.id}`} className="font-medium hover:underline">
                   {invoiceDisplayName(invoice)}
                 </Link>
-                <span className="truncate text-slate-500">
+                <span className="truncate text-ink-subtle">
                   {invoice.buyerData.companyName === '' ? '—' : invoice.buyerData.companyName}
                 </span>
-                <span className="whitespace-nowrap text-slate-500">
+                <span className="whitespace-nowrap text-ink-subtle">
                   {formatDateDe(toIsoDate(invoice.invoiceDate))}
                 </span>
-                <span className="whitespace-nowrap tabular-nums text-slate-900">
+                <span className="whitespace-nowrap tabular-nums text-ink">
                   {formatCents(invoice.totals.grossCents)}
                 </span>
                 <Badge tone={invoice.status === INVOICE_STATUS.PAID ? 'success' : 'neutral'}>

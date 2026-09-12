@@ -46,10 +46,10 @@ export function TimeEntryTable({
   const editable = onEdit !== undefined || onDelete !== undefined;
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+    <div className="overflow-x-auto rounded-lg border border-border bg-surface">
       <table className="w-full min-w-[44rem] text-sm">
         <caption className="sr-only">Erfasste Zeiten, gruppiert nach Tag</caption>
-        <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+        <thead className="border-b border-border bg-surface-sunken text-left text-xs uppercase tracking-wide text-ink-subtle">
           <tr>
             <th className="px-4 py-2 text-right font-medium">Beginn</th>
             <th className="px-4 py-2 text-right font-medium">Ende</th>
@@ -66,12 +66,12 @@ export function TimeEntryTable({
         </thead>
 
         {days.map((day) => (
-          <tbody key={day.date} className="divide-y divide-slate-100 border-b border-slate-200">
-            <tr className="bg-slate-50/70">
+          <tbody key={day.date} className="divide-y divide-border border-b border-border">
+            <tr className="bg-surface-sunken/70">
               <th
                 scope="colgroup"
                 colSpan={2}
-                className="px-4 py-2 text-left text-sm font-semibold text-slate-900"
+                className="px-4 py-2 text-left text-sm font-semibold text-ink"
               >
                 {formatDayDe(day.date as IsoDate)}
                 {isWeekend(day.date as IsoDate) && (
@@ -80,10 +80,10 @@ export function TimeEntryTable({
                   </Badge>
                 )}
               </th>
-              <td className="px-4 py-2 text-right text-xs uppercase tracking-wide text-slate-500">
+              <td className="px-4 py-2 text-right text-xs uppercase tracking-wide text-ink-subtle">
                 Tag
               </td>
-              <td className="px-4 py-2 text-right text-sm font-semibold tabular-nums text-slate-900">
+              <td className="px-4 py-2 text-right text-sm font-semibold tabular-nums text-ink">
                 {formatDuration(day.durationMinutes)}
               </td>
               <td colSpan={(showBilledAt ? 1 : 0) + (editable ? 1 : 0) + 1} />
@@ -92,25 +92,25 @@ export function TimeEntryTable({
             {day.entries.map((entry) => (
               <tr
                 key={entry.id}
-                className={entry.id === editingId ? 'bg-slate-100' : 'hover:bg-slate-50'}
+                className={entry.id === editingId ? 'bg-surface-raised' : 'hover:bg-surface-sunken'}
               >
-                <td className="px-4 py-2.5 text-right tabular-nums text-slate-600">
+                <td className="px-4 py-2.5 text-right tabular-nums text-ink-muted">
                   {formatTimeOfDay(entry.startMinutes)}
                 </td>
-                <td className="px-4 py-2.5 text-right tabular-nums text-slate-600">
+                <td className="px-4 py-2.5 text-right tabular-nums text-ink-muted">
                   {formatTimeOfDay(entry.endMinutes)}
                 </td>
-                <td className="px-4 py-2.5 text-right tabular-nums text-slate-400">
+                <td className="px-4 py-2.5 text-right tabular-nums text-ink-faint">
                   {entry.breakMinutes === 0 ? '—' : formatDuration(entry.breakMinutes)}
                 </td>
-                <td className="px-4 py-2.5 text-right font-medium tabular-nums text-slate-900">
+                <td className="px-4 py-2.5 text-right font-medium tabular-nums text-ink">
                   {formatDuration(entry.durationMinutes)}
                 </td>
-                <td className="px-4 py-2.5 text-slate-600">
-                  {entry.description ?? <span className="text-slate-300">—</span>}
+                <td className="px-4 py-2.5 text-ink-muted">
+                  {entry.description ?? <span className="text-ink-faint">—</span>}
                 </td>
                 {showBilledAt && (
-                  <td className="whitespace-nowrap px-4 py-2.5 text-slate-500">
+                  <td className="whitespace-nowrap px-4 py-2.5 text-ink-subtle">
                     {entry.billedAt === null
                       ? '—'
                       : formatDateDe(entry.billedAt.slice(0, 10) as IsoDate)}

@@ -209,12 +209,12 @@ export function BilledArchive(): JSX.Element {
       {items.length > 0 && (
         <>
           <div className="flex flex-wrap items-baseline justify-between gap-3 px-1">
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-ink-subtle">
               {summary.entryCount} {summary.entryCount === 1 ? 'Eintrag' : 'Einträge'}
             </p>
-            <p className="text-sm tabular-nums text-slate-900">
+            <p className="text-sm tabular-nums text-ink">
               <span className="font-semibold">{formatDuration(summary.durationMinutes)} h</span>
-              <span className="ml-2 text-slate-500">
+              <span className="ml-2 text-ink-subtle">
                 ({formatDecimalHours(summary.durationMinutes)} Std.)
               </span>
             </p>
