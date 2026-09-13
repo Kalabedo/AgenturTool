@@ -131,6 +131,15 @@ Release-Pipeline vorgesehen.
 
 ## Update-Erlebnis in der Anwendung
 
+> **Stand der Umsetzung:** Gebaut ist die Meldung, nicht der Updater (D54,
+> Architektur Abschnitt 28). Die Anwendung prüft höchstens einmal in 24
+> Stunden, zeigt ein Banner und öffnet das Paket auf Klick im Browser;
+> geladen und installiert wird von Hand. Die Zustände „Download läuft" und
+> „Update bereit" unten beschreiben weiterhin das Ziel, sobald es einen
+> selbstinstallierenden Updater gibt — der braucht Backup vor der
+> Installation, Migrationslauf und Rückweg und ist deshalb ein eigenes
+> Vorhaben.
+
 ### Zustände
 
 1. **Keine neue Version:** keine Meldung.
@@ -167,13 +176,15 @@ Nach dem Download:
 
 ## Technischer Updatekanal
 
-Die bestehende Release-Pipeline veröffentlicht derzeit ausschließlich auf
-GitHub Releases und erzeugt noch keine Metadaten für einen Auto-Updater. Für
-bezahlte Downloads sollte der stabile Kanal langfristig unter einer eigenen
-Domain liegen, zum Beispiel:
+Die Release-Pipeline erzeugt neben den signierten Paketen die Feed-Datei und
+legt sie dem Release bei (`apps/desktop/scripts/updatefeed.mjs`). Auf die
+Website kommt sie zuletzt und erst, wenn die Pakete dort schon liegen; der
+Ablauf steht in [`RELEASE.md`](RELEASE.md). Der stabile Kanal liegt unter
+der eigenen Domain:
 
 ```text
-https://updates.agenturtool.de/stable/<plattform>/<architektur>/...
+https://updates.agenturtool.de/stable/updates.json
+https://updates.agenturtool.de/stable/AgenturTool-<Version>-<arch>.<ext>
 ```
 
 Der Updatefeed enthält nur:
@@ -214,12 +225,21 @@ schmale, typisierte Brücke. Externe Inhalte werden nie im App-Fenster geladen.
 - [ ] Merchant of Record und Lizenzmodell auswählen.
 - [ ] Produkt-, Datenschutz-, Widerrufs- und Supportseiten erstellen.
 - [ ] Lizenzformat und Offline-Verhalten definieren.
-- [ ] Updatefeed und getrennte Stable-/Test-Kanäle aufbauen.
-- [ ] Releasepipeline um Updater-Artefakte und atomare Veröffentlichung
-      erweitern.
-- [ ] Electron-Hauptprozess um Updateprüfung und Installation ergänzen.
-- [ ] Updatezustand über eine sichere Preload-Brücke an React geben.
-- [ ] Banner, Einstellungsseite und ungespeicherte-Änderungen-Schutz bauen.
+- [x] Updatefeed aufbauen; ein Testkanal lässt sich über
+      `AGENTUR_TOOL_UPDATE_FEED` gegen dieselbe Anwendung prüfen.
+- [x] Releasepipeline erzeugt die Feed-Datei aus den fertigen Paketen.
+- [ ] Releasepipeline um Updater-Artefakte (macOS-ZIP) und atomare
+      Veröffentlichung erweitern — erst nötig, wenn installiert statt nur
+      gemeldet wird.
+- [x] Electron-Hauptprozess um die Updateprüfung ergänzen.
+- [ ] Installation aus der Anwendung heraus, mit Backup davor und
+      Wiederanlauf nach der Migration.
+- [x] Updatezustand über die vorhandene API-Brücke an React geben — ein
+      Preload-Skript gibt es nicht, das Fenster spricht ohnehin HTTP mit dem
+      eigenen Server.
+- [x] Banner und Einstellungsseite bauen.
+- [ ] Schutz vor ungespeicherten Änderungen — nötig, sobald die Anwendung
+      für eine Installation selbst neu startet.
 - [ ] Backup vor Update und Wiederanlauf nach Migration testen.
 - [ ] Vollständigen Updatepfad auf macOS ARM64, macOS x64 und Windows x64
       testen.

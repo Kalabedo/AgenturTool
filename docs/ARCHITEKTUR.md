@@ -62,6 +62,7 @@ sie hier korrigiert und nicht nur im Code.
 | D51 | PDF/A-Prüfung            | **veraPDF in der CI**, feste Fassung, Java nur auf dem Bauserver — wie der KoSIT-Validator beim XML                                                                                                                                                                                                                                                                                                                                                                                                        |
 | D52 | Rechnungsdesigner        | **Vier mitgelieferte Designs plus Regler, kein freies CSS.** Jeder Regler ist ein Wert im `templateSnapshot`, den der Template-Code liest — eigenes CSS müsste mit eingefroren werden, sonst sähe eine alte Rechnung nach einem Umbau anders aus. Die Dichte ist eine Auswahl aus drei Stufen und kein stufenloser Regler, damit die Seitenumbrüche aller Kombinationen prüfbar bleiben                                                                                                                    |
 | D53 | Dunkelmodus              | **Hell, Dunkel, Automatisch — gespeichert im Browser, nicht auf dem Server.** Ein Erscheinungsbild ist eine Eigenschaft des Geräts; der Umweg über den Server brächte bei jedem Laden das Aufblitzen zurück, das die Vorabsetzung in `index.html` gerade vermeidet. Das Fenster bekommt die Wahl zusätzlich über die API in die Fensterdatei, weil Electron `backgroundColor` nur bei der Erzeugung setzen kann. Die Rechnungsvorschau bleibt in jedem Modus weiß: Sie zeigt Papier, kein Stück Oberfläche |
+| D54 | Updateprüfung            | **Melden, nicht installieren.** Der Hauptprozess holt höchstens einmal in 24 Stunden eine Feed-Datei von der eigenen HTTPS-Domain und zeigt das Ergebnis als Banner; geladen wird im Browser des Rechners, installiert von Hand. Ein selbstinstallierender Updater bräuchte Backup, Migrationslauf und Rückweg — das ist ein eigenes Vorhaben (Abschnitt 28)                                                                                                                                               |
 
 Zu D21: Rechnungs-, Leistungs- und Fälligkeitsdatum sind Kalendertage, keine
 Zeitpunkte. Als `DateTime` müsste an jeder Grenze zwischen Browser, API und
@@ -1334,6 +1335,10 @@ Grundsätze unabhängig vom Betriebsmodell:
   den Hostnamen und nicht über den Anfang der Zeichenkette; sonst käme
   `http://127.0.0.1.angreifer.example/` durch. Alles Abgewiesene steht im
   Protokoll, und die Rauchprobe verlangt, dass die Liste leer bleibt.
+- **Die Updateprüfung** (Abschnitt 28) geht denselben Weg an diesem Filter
+  vorbei: Sie läuft im Hauptprozess mit Nodes `fetch`, nicht im Fenster,
+  und kennt genau eine Adresse. Die Oberfläche bekommt nur den Zustand
+  über die API — sie lädt nie fremde Inhalte.
 - **Die eine Ausnahme liegt woanders:** Der E-Mail-Versand (Abschnitt 27)
   baut eine Verbindung nach draußen auf — aber nicht aus dem Fenster heraus,
   sondern aus dem Serverprozess, und nur, wenn jemand einen Versandweg
@@ -2219,6 +2224,95 @@ verlieren, auf den es beim Nachweis ankommt.
 
 ---
 
+## 28. Updates (D41, D54)
+
+Die Anwendung wird auf der eigenen Website verkauft und heruntergeladen
+(D38). Damit stellt sich eine Frage, die es bei einem Store nicht gibt: Wie
+erfährt jemand, dass es eine neue Fassung gibt?
+
+### Melden, nicht installieren
+
+Gebaut ist die Meldung, nicht der Updater. Der Hauptprozess holt eine
+JSON-Datei, vergleicht die Version und zeigt ein Banner; „Update laden"
+öffnet das Paket im Browser, installiert wird wie beim ersten Mal.
+
+Der Grund ist der Preis des anderen Wegs. Ein Updater, der die laufende
+Anwendung ersetzt, muss vorher ein Backup ziehen, die SQLite-Datei
+freigeben, den Migrationslauf des nächsten Starts überstehen und im
+Fehlerfall zurückkönnen — und er darf das alles nicht, während jemand eine
+Rechnung schreibt. Das ist ein eigenes Vorhaben mit eigenen Zusagen. Der
+Weg dorthin bleibt offen: Der Feed trägt Größe und SHA-256 jedes Pakets
+bereits mit, weil ein Updater genau die braucht.
+
+### Der Feed
+
+Eine Datei auf einer festen HTTPS-Adresse, erzeugt von der Releasepipeline
+(`apps/desktop/scripts/updatefeed.mjs`):
+
+```json
+{
+  "formatVersion": 1,
+  "version": "1.4.0",
+  "releasedAt": "2026-09-13",
+  "notes": "Verbesserte Exporte und Fehlerkorrekturen.",
+  "notesUrl": "https://agenturtool.de/releases/1.4.0",
+  "downloads": {
+    "macos-arm64": { "url": "…-arm64.dmg", "sizeBytes": 98000000, "sha256": "…" },
+    "macos-x64": { "url": "…-x64.dmg", "sizeBytes": 101000000, "sha256": "…" },
+    "windows-x64": { "url": "…-x64.exe", "sizeBytes": 92000000, "sha256": "…" }
+  }
+}
+```
+
+Kein GitHub-Release-Endpunkt: Die Downloads sollen später hinter Kauf- und
+Lizenzbedingungen liegen können (D39), und eine Datei, die man mit `scp`
+hinlegt, ist der kleinste Kanal, der das aushält.
+
+Gelesen wird der Feed mit `parseUpdateFeed` in `shared` — und streng: Er
+ist der einzige Text, der von außerhalb des Rechners in diese Anwendung
+kommt. Verlangt werden das Format, stabiles SemVer, ein Datum, je Paket
+Größe und eine SHA-256 in der Form einer SHA-256, und für jede Adresse
+HTTPS auf einem der wenigen erlaubten Hosts. Eine Umleitung aus dieser
+Liste heraus gilt als Fehler; sonst genügte eine Umleitung, um die feste
+Adresse zu umgehen. Dieselbe Prüfung läuft über die gemerkte Fassung in der
+Zustandsdatei — die erlaubten Hosts können sich mit einer neuen Fassung der
+Anwendung ändern.
+
+### Was den Rechner verlässt (D43)
+
+Ein `GET` auf die Feed-Adresse, in der Kennung Version und Betriebssystem.
+Keine Rechnerkennung, keine Kunden-, Rechnungs- oder Nutzungsdaten, keine
+Telemetrie. Die Prüfung läuft frühestens zehn Sekunden nach dem Start und
+höchstens einmal in 24 Stunden; der Zeitpunkt steht in
+`aktualisierung.json` neben der Fensterdatei und überlebt deshalb auch den
+Neustart. Abschalten lässt sich das an zwei Stellen: der Haken unter
+Einstellungen → Updates und `AGENTUR_TOOL_UPDATE_FEED=aus` für eine ganze
+Installation. Die Rauchprobe setzt genau diese Variable und prüft, dass der
+Endpunkt „abgeschaltet" meldet — das Versprechen „keine Anfrage nach außen"
+gilt dort unverändert.
+
+### Der Weg in die Oberfläche
+
+Über die API, nicht über IPC — dieselbe schmale Brücke wie beim
+PDF-Renderer, der Mail-Übergabe und dem Erscheinungsbild (`HostOptions`).
+Das Fenster lädt die Oberfläche ohnehin über HTTP vom eigenen Server, ein
+Preload-Skript gibt es nicht. `GET /api/app/update` liefert den Zustand,
+`POST /api/app/update/check` fragt sofort, `PUT /api/app/update/settings`
+schaltet die selbsttätige Prüfung, und `POST /api/app/update/download`
+öffnet das Paket im Browser. Ohne Gastgeber — der Browserbetrieb bei
+`pnpm dev` — meldet der Endpunkt „nicht unterstützt", und die Oberfläche
+zeigt nichts davon: Eine Weboberfläche aktualisiert man, indem man sie neu
+lädt.
+
+Gezeigt wird es an drei Stellen: ein Banner über der Kopfzeile, solange es
+etwas Neues gibt und niemand „Später" geklickt hat (gemerkt im
+`localStorage`, je Fassung); die Seite Einstellungen → Updates mit
+Version, Datum, Größe, Prüfsumme und den Schaltern; und der Menüpunkt
+„Nach Updates suchen …", der mit einem nativen Dialog antwortet — wer ihn
+im Menü sucht, hat die Oberfläche gerade nicht vor Augen.
+
+---
+
 ## Stand
 
 Die Reihenfolge aus Abschnitt 20 ist abgearbeitet: Schritte 0 bis 14 sind
@@ -2236,6 +2330,10 @@ aus CSV, PDFs und vorhandenen XMLs (Abschnitt 26). Zuletzt verlassen die
 Dokumente das Haus auch selbst: per SMTP oder über die Mail-Anwendung des
 Rechners, mit Vorlagen und einem Protokoll, das auch den gescheiterten
 Versuch festhält (Abschnitt 27).
+
+Zuletzt kam die Updateprüfung dazu: Die Anwendung sieht einmal am Tag auf
+der eigenen Domain nach, ob es eine neuere Fassung gibt, und sagt es —
+geladen und installiert wird von Hand (Abschnitt 28).
 
 Was bewusst offen bleibt, steht in Abschnitt 21 — unter anderem Mahnwesen,
 wiederkehrende Rechnungen, ZUGFeRD, das Lesen eingehender E-Rechnungen,

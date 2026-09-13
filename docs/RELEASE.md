@@ -1,8 +1,10 @@
 # Desktop-Releases
 
 Öffentliche Desktop-Pakete entstehen nur aus einem stabilen SemVer-Tag auf
-`main`. Die Anwendung aktualisiert sich nicht selbst; GitHub Releases sind der
-einzige Veröffentlichungsweg.
+`main`. Die Anwendung aktualisiert sich nicht selbst — sie meldet nur, dass
+es eine neue Fassung gibt (D54). Der Lauf erzeugt neben den Paketen die
+Feed-Datei, die eine installierte Anwendung dafür abfragt; ausgeliefert wird
+sie über die eigene Website.
 
 ## Unterstützte Pakete
 
@@ -67,13 +69,69 @@ einem Fehler ausschließlich die fehlenden Variablennamen.
 4. Den Lauf **Desktop-Release** und den Zugriff auf die geschützte Umgebung
    freigeben.
 5. Den erzeugten Release-Entwurf prüfen: zwei DMGs, ein EXE-Installer,
-   `SHA256SUMS` und automatisch erzeugte Hinweise müssen vorhanden sein.
+   `SHA256SUMS`, `updates.json` und automatisch erzeugte Hinweise müssen
+   vorhanden sein.
 6. Den Entwurf in GitHub veröffentlichen.
+7. Die Website bestücken — siehe den nächsten Abschnitt.
 
 Der Workflow lehnt Tags ab, die nicht exakt `vMAJOR.MINOR.PATCH` entsprechen,
 nicht zur Desktop-Version passen oder deren Commit nicht zu `main` gehört.
 Ein fehlgeschlagener Lauf darf denselben Entwurf und seine Dateien ersetzen;
 ein bereits veröffentlichter Release wird niemals überschrieben.
+
+## Website und Updatefeed
+
+Verkauft und heruntergeladen wird über die eigene Website (D38). Die
+installierte Anwendung fragt dort höchstens einmal am Tag eine einzige Datei
+ab:
+
+```text
+https://updates.agenturtool.de/stable/updates.json
+```
+
+Die Datei entsteht im Releaselauf aus den fertigen Paketen
+(`apps/desktop/scripts/updatefeed.mjs`) und liegt dem Release bei — so
+stammen veröffentlichte Prüfsummen und Feed aus demselben Lauf. Sie enthält
+Version, Datum, einen Satz für das Banner sowie je Paket Adresse, Größe und
+SHA-256.
+
+**Die Reihenfolge ist die Regel:**
+
+1. Die drei Pakete auf die Website laden, unter genau die Adressen, die in
+   `updates.json` stehen (`…/stable/AgenturTool-<Version>-<arch>.<ext>`).
+2. Prüfen, dass jede dieser Adressen die Datei wirklich ausliefert.
+3. Erst dann `updates.json` hochladen und ersetzen.
+
+Ein Feed, der auf einen 404 zeigt, ist schlimmer als gar keiner: Jede
+laufende Installation zeigt dann ein Banner, dessen Knopf ins Leere führt.
+
+Die Datei wird ohne Zwischenspeicher ausgeliefert (`Cache-Control:
+no-cache`, kurze TTL); sonst sieht ein Teil der Kunden tagelang die alte
+Version. Die Pakete dürfen dagegen lange zwischengespeichert werden — ihre
+Adressen enthalten die Version.
+
+Von Hand erzeugen lässt sich der Feed genauso, etwa für einen Testkanal:
+
+```bash
+node apps/desktop/scripts/updatefeed.mjs \
+  --dir apps/desktop/release --version 1.4.0 \
+  --notes "Verbesserte Exporte und Fehlerkorrekturen." \
+  --base-url https://updates.agenturtool.de/stable
+```
+
+Vor dem Umstellen des echten Feeds lässt sich der ganze Weg mit einer
+Testadresse prüfen — `AGENTUR_TOOL_UPDATE_FEED` zeigt dann dorthin, und nur
+dieser Host gilt für Downloads:
+
+```bash
+AGENTUR_TOOL_UPDATE_FEED=https://test.agenturtool.de/updates.json pnpm dev:desktop
+```
+
+Der Host im Feed und der Host der Downloads müssen zusammenpassen: Die
+Anwendung nimmt Adressen nur von `updates.agenturtool.de`,
+`agenturtool.de` und `www.agenturtool.de` an (`apps/desktop/src/config.ts`).
+Eine neue Domain ist deshalb eine Codeänderung und keine Serverkonfiguration
+— das ist Absicht.
 
 ## Automatische Freigabekriterien
 
@@ -92,6 +150,10 @@ SmartScreen-Ruf besitzen. Der Workflow kann die Authenticode-Gültigkeit
 erzwingen, nicht Microsofts externe Reputationsbewertung.
 
 ## Manuelles Update
+
+Die laufende Anwendung meldet die neue Fassung von selbst — als Banner und
+unter Einstellungen → Updates, mit Größe und Prüfsumme zum Vergleichen.
+„Update laden" öffnet das Paket im Browser; installiert wird von Hand.
 
 Vor dem Update über die Anwendung ein Backup erzeugen. Anschließend das neue
 DMG beziehungsweise den neuen NSIS-Installer über die bestehende Installation

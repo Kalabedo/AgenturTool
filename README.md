@@ -128,9 +128,12 @@ das gespeicherte Rechteck auf keinem angeschlossenen Bildschirm mehr — der
 zweite Monitor ist nicht da —, öffnet die Anwendung wieder mittig, statt
 außerhalb des Sichtbaren zu erscheinen.
 
-Nach außen spricht sie nicht. Über die beiden Chromium-Schalter hinaus
-weist ein Filter jede Anfrage ab, die nicht an die eigene Rückschleife
-geht; abgewiesene Versuche stehen im Protokoll.
+Nach außen spricht das Fenster nicht. Über die beiden Chromium-Schalter
+hinaus weist ein Filter jede Anfrage ab, die nicht an die eigene
+Rückschleife geht; abgewiesene Versuche stehen im Protokoll. Die
+Updateprüfung (siehe „Aktualisieren") und der eingerichtete E-Mail-Versand
+gehen nicht diesen Weg, sondern vom Hauptprozess aus — jeweils zu genau
+einer festen Adresse.
 
 Der Server hört auf `127.0.0.1` und auf einem Port, den das Betriebssystem
 bei jedem Start neu vergibt. Es gibt keinen festen Port, um den sich eine
@@ -304,11 +307,36 @@ ohne Importfähigkeit vorzutäuschen.
 
 ### Aktualisieren
 
-AgenturTool sucht nicht im Netz nach Updates. Vor einem Update empfiehlt sich
-ein Backup über die Anwendung; danach wird das neue signierte Paket über die
-bestehende Installation installiert. Die Daten liegen außerhalb der
-Anwendung und bleiben dabei erhalten. Beim ersten Start der neuen Version
-entsteht vor möglichen Datenbankmigrationen automatisch ein weiteres Backup.
+AgenturTool **sagt Bescheid, wenn es eine neue Fassung gibt, und lädt und
+installiert sie nicht selbst.** Höchstens einmal in 24 Stunden holt der
+Hauptprozess eine kleine Textdatei von der eigenen Website:
+
+```text
+https://updates.agenturtool.de/stable/updates.json
+```
+
+Darin stehen die aktuelle Version, ein Satz dazu und je Paket Adresse,
+Größe und SHA-256-Prüfsumme. Ist die Fassung neuer als die installierte,
+erscheint ein schmales Banner über der Kopfzeile: **„AgenturTool 1.4 ist
+verfügbar · Was ist neu? · Update laden · Später"**. „Update laden" öffnet
+das Paket im Browser des Rechners; „Später" blendet die Meldung bis zur
+nächsten Fassung aus.
+
+Unter **Einstellungen → Updates** stehen die installierte Fassung, der
+Zeitpunkt der letzten Prüfung, Größe und Prüfsumme des Pakets sowie die
+Schalter „Jetzt nach Updates suchen" und „Täglich nach Updates suchen".
+Denselben Weg gibt es im Menü unter „Nach Updates suchen …".
+
+Übertragen wird dabei nur die installierte Version und das Betriebssystem —
+keine Kunden-, Rechnungs- oder Nutzungsdaten. Wer auch das nicht will,
+nimmt den Haken heraus oder setzt `AGENTUR_TOOL_UPDATE_FEED=aus`; die
+Anwendung fragt dann nie von sich aus.
+
+Installiert wird von Hand: Vor einem Update empfiehlt sich ein Backup über
+die Anwendung; danach wird das neue signierte Paket über die bestehende
+Installation installiert. Die Daten liegen außerhalb der Anwendung und
+bleiben dabei erhalten. Beim ersten Start der neuen Version entsteht vor
+möglichen Datenbankmigrationen automatisch ein weiteres Backup.
 
 ### Anmeldung
 

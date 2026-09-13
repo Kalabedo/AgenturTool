@@ -7,6 +7,11 @@
  * jede Anfrage nach außen entweder überflüssig oder unerwünscht, und die
  * Unterscheidung braucht niemand zu treffen.
  *
+ * Dass die Anwendung selbst nach Updates sieht, ändert daran nichts: Diese
+ * eine Anfrage stellt der Hauptprozess mit Nodes `fetch`, an dieser
+ * Session und damit am Fenster vorbei (`update/update-service.ts`). Was
+ * das Fenster darf, bleibt hier vollständig beschrieben.
+ *
  * Zwei Chromium-Schalter in `main.ts` nehmen den größten Teil weg, aber
  * eben nicht alles: Gemessen blieb ein Versuch beim Start übrig. Dieser
  * Filter schließt die Lücke — dieselbe Sperre, die der PDF-Renderer für

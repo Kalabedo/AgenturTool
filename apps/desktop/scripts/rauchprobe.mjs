@@ -124,6 +124,10 @@ const [command, args] = target.endsWith('.js')
 
 const childEnvironment = { ...process.env };
 delete childEnvironment.AGENTUR_TOOL_DEV_URL;
+// Die Rauchprobe belegt, dass beim Start nichts den Rechner verlässt. Die
+// Updateprüfung würde genau das tun — und zwar zu Recht, nur eben nicht
+// hier. Sie wird deshalb abgeschaltet und unten daraufhin geprüft.
+childEnvironment.AGENTUR_TOOL_UPDATE_FEED = 'aus';
 
 const app = spawn(command, [...args, `--user-data-dir=${dataDir}`], {
   cwd: desktopDir,
@@ -280,6 +284,12 @@ async function probeFreshInstall() {
   const pdf = await call('GET', `/api/invoices/${String(draft.id)}/pdf`);
   check(pdf.subarray(0, 5).toString('latin1') === '%PDF-', 'Das PDF trägt die richtige Signatur.');
   check(pdf.length > 20_000, `Das PDF ist ${String(Math.round(pdf.length / 1024))} kB groß.`);
+
+  const update = await call('GET', '/api/app/update');
+  check(
+    update.state === 'abgeschaltet' && update.available === null,
+    'Die Updateprüfung ist verdrahtet und in diesem Lauf abgeschaltet.',
+  );
 
   const summary = await call('POST', '/api/backup/export');
   check(

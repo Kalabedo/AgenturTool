@@ -3,6 +3,7 @@ import { PDF_RENDERER_HOST, type PdfRenderer } from '../pdf/pdf-renderer';
 import { MAIL_HANDOFF_HOST, type MailHandoff } from '../mail/mail-handoff';
 import { SECRET_STORE_HOST, type SecretStore } from '../mail/secret-store';
 import { THEME_HOST, type ThemeHost } from '../app-theme/theme-host';
+import { UPDATE_HOST, type UpdateHost } from '../app-update/update-host';
 
 /** Was der Gastgeber der Anwendung mitbringen kann. */
 export interface HostOptions {
@@ -44,6 +45,15 @@ export interface HostOptions {
    * das zu melden wäre.
    */
   themeHost?: ThemeHost;
+
+  /**
+   * Wer nach einer neueren Fassung sieht.
+   *
+   * Nur die Desktop-Anwendung hat einen: Sie ist die einzige Form, die
+   * installiert wird und deshalb veralten kann. Bleibt es leer, meldet der
+   * Endpunkt „nicht unterstützt", und die Oberfläche zeigt nichts davon.
+   */
+  updateHost?: UpdateHost;
 }
 
 /**
@@ -66,6 +76,7 @@ export class HostModule {
       { provide: MAIL_HANDOFF_HOST, useValue: options.mailHandoff ?? null },
       { provide: SECRET_STORE_HOST, useValue: options.secretStore ?? null },
       { provide: THEME_HOST, useValue: options.themeHost ?? null },
+      { provide: UPDATE_HOST, useValue: options.updateHost ?? null },
     ];
 
     return {

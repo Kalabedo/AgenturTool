@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useMatch } from 'react-router-dom';
 
 import { ThemeToggle } from '../components/ThemeToggle.js';
 import { LogoutButton } from '../features/auth/LogoutButton.js';
+import { UpdateBanner } from '../features/updates/UpdateBanner.js';
 
 const NAVIGATION = [
   { to: '/', label: 'Dashboard', end: true },
@@ -61,6 +62,11 @@ export function AppLayout({ error }: { error?: ReactNode }): JSX.Element {
       >
         Zum Inhalt springen
       </a>
+
+      {/* Über der Kopfzeile und nicht darin: Das Banner erscheint selten,
+          und wenn es erscheint, soll es die gewohnte Geometrie der
+          Navigation nicht verschieben. */}
+      <UpdateBanner />
 
       <header className="border-b border-border bg-surface">
         {/* Die Kopfzeile behält über alle Routen dieselbe Geometrie. Ihre

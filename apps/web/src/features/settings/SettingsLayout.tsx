@@ -8,6 +8,7 @@ const TABS = [
   { to: '/settings/mail', label: 'E-Mail' },
   { to: '/settings/tax-advisor', label: 'Steuerberater-Export' },
   { to: '/settings/backup', label: 'Backup' },
+  { to: '/settings/updates', label: 'Updates' },
 ];
 
 export function SettingsLayout(): JSX.Element {
