@@ -87,7 +87,7 @@ export function AppLayout({ error }: { error?: ReactNode }): JSX.Element {
                     'focus:outline-none focus-visible:ring-2 focus-visible:ring-focus',
                     isActive
                       ? 'bg-surface-raised font-medium text-ink'
-                      : 'text-ink-muted hover:bg-surface-sunken hover:text-ink',
+                      : 'text-ink-muted hover:bg-surface-hover hover:text-ink',
                   ].join(' ')
                 }
               >

@@ -302,7 +302,7 @@ export function InvoiceListPage(): JSX.Element {
               </thead>
               <tbody className="divide-y divide-border">
                 {result.items.map((invoice) => (
-                  <tr key={invoice.id} className="hover:bg-surface-sunken">
+                  <tr key={invoice.id} className="hover:bg-surface-hover">
                     <td className="px-4 py-3">
                       <Link
                         to={`/invoices/${invoice.id}`}

@@ -92,7 +92,7 @@ export function TimeEntryTable({
             {day.entries.map((entry) => (
               <tr
                 key={entry.id}
-                className={entry.id === editingId ? 'bg-surface-raised' : 'hover:bg-surface-sunken'}
+                className={entry.id === editingId ? 'bg-surface-raised' : 'hover:bg-surface-hover'}
               >
                 <td className="px-4 py-2.5 text-right tabular-nums text-ink-muted">
                   {formatTimeOfDay(entry.startMinutes)}

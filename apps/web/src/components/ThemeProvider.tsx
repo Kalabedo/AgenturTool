@@ -94,7 +94,7 @@ export function ThemeProvider({ children }: { children: ReactNode }): JSX.Elemen
     // Die Farbe der Browserleiste auf dem Telefon soll zur Kopfzeile passen.
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta !== null) {
-      meta.setAttribute('content', resolved === 'dark' ? '#0f172a' : '#ffffff');
+      meta.setAttribute('content', resolved === 'dark' ? '#18191b' : '#ffffff');
     }
   }, [resolved]);
 
