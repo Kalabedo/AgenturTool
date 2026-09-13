@@ -143,7 +143,7 @@ Eine neue Domain ist deshalb eine Codeänderung und keine Serverkonfiguration
 - gültige Authenticode-Signatur für Windows-Installer und Anwendung;
 - erfolgreicher Start direkt aus dem DMG beziehungsweise nach stiller
   NSIS-Installation;
-- zweiter Start mit derselben Datenablage samt Rechnung, PDF und Start-Backup;
+- zweiter Start mit derselben Datenablage samt Rechnung, PDF und Tagessicherung;
 - keine von der Anwendung ausgehende Netzwerkanfrage.
 
 Eine neue Windows-Signatur kann trotz gültigem Zertifikat anfangs noch keinen

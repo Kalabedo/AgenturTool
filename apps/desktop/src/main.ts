@@ -17,8 +17,9 @@ import path from 'node:path';
 import { BrowserWindow, app, dialog, nativeTheme, session, shell } from 'electron';
 import type { INestApplication } from '@nestjs/common';
 import { bootstrap } from '@agentur-tool/api/dist/main';
-import type { BackupSummary } from '@agentur-tool/shared';
-import { pdfTimeoutMs, updateFeedConfig } from './config';
+import type { BackupReason, BackupSummary } from '@agentur-tool/shared';
+import { BackupSchedule, backupDirectory } from './backup-schedule';
+import { forcedDailyBackup, pdfTimeoutMs, updateFeedConfig } from './config';
 import { prepareDatabase } from './database';
 import { buildMenu } from './menu';
 import { ElectronMailHandoff, SafeStorageSecretStore } from './mail';
@@ -50,6 +51,7 @@ app.commandLine.appendSwitch('disable-component-update');
 
 let api: INestApplication | null = null;
 let updates: UpdateService | null = null;
+let backups: BackupSchedule | null = null;
 let window: BrowserWindow | null = null;
 let apiUrl = '';
 let stateDir = '';
@@ -93,6 +95,9 @@ app.on('before-quit', (event) => {
   event.preventDefault();
   quitting = true;
   updates?.stop();
+  // Vor `api.close()`: Die Sicherung braucht den laufenden Server, und ein
+  // Zeitgeber, der danach noch feuert, fände ihn nicht mehr.
+  backups?.stop();
   void api.close().finally(() => {
     app.quit();
   });
@@ -183,7 +188,7 @@ async function start(): Promise<void> {
       // starten und installieren" geklickt hat, wartet auf das Update und
       // nicht auf eine zweite Rückfrage.
       createBackup: async () => {
-        await createBackupArchive();
+        await createBackupArchive('update');
       },
       installPackage: installUpdate,
     });
@@ -229,6 +234,19 @@ async function start(): Promise<void> {
     // Erst nachdem das Fenster steht: Der Start gehört der Anwendung, nicht
     // der Updateprüfung. Danach genügt ein Blick in 24 Stunden (D41).
     updates.start();
+
+    // Die Tagessicherung (D55). Sie hängt am Start, weil diese Anwendung
+    // nicht durchläuft — ein nächtlicher Zeitplan liefe auf einem Rechner,
+    // der nachts aus ist, nie. Der Zeitgeber merkt sich nichts: Wann zuletzt
+    // gesichert wurde, steht im Ordner.
+    backups = new BackupSchedule({
+      directory: backupDirectory(paths.dataDir),
+      databaseFile: paths.databaseFile,
+      createBackup: () => createBackupArchive('taeglich'),
+      log,
+      force: forcedDailyBackup(),
+    });
+    backups.start();
 
     // Im Entwicklungsbetrieb zeigt das Fenster auf den Vite-Server, damit
     // Änderungen an der Oberfläche sofort nachladen. Der Server läuft
@@ -455,18 +473,20 @@ async function installUpdate(ready: { filePath: string; version: string }): Prom
 /**
  * Ein Archiv, ohne jemanden zu fragen.
  *
- * Denselben Weg nehmen drei Auslöser: der Knopf in den Einstellungen, der
- * Menüpunkt und die Installation eines Updates. Nur der Menüpunkt zeigt
- * hinterher einen Dialog.
+ * Denselben Weg nehmen vier Auslöser: der Knopf in den Einstellungen, der
+ * Menüpunkt, die Tagessicherung und die Installation eines Updates. Nur der
+ * Menüpunkt zeigt hinterher einen Dialog. Der Anlass geht mit, damit er
+ * später am Dateinamen abzulesen ist — beim Zurückspielen will man wissen,
+ * woher ein Archiv kommt.
  */
-async function createBackupArchive(): Promise<BackupSummary> {
+async function createBackupArchive(reason: BackupReason): Promise<BackupSummary> {
   if (api === null) {
     throw new Error('Der Server läuft nicht; es kann kein Backup entstehen.');
   }
 
   const { BackupService } = await import('@agentur-tool/api/dist/backup/backup.service');
   const service = api.get(BackupService);
-  const summary = await service.createBackup();
+  const summary = await service.createBackup({ reason });
   log(`Backup erstellt: ${summary.filename}`);
   return summary;
 }
@@ -481,7 +501,7 @@ async function createBackupArchive(): Promise<BackupSummary> {
 async function createBackup(): Promise<void> {
   if (api === null) return;
 
-  const summary = await createBackupArchive();
+  const summary = await createBackupArchive('manuell');
   const paths = resolvePaths();
   const showInFolder = 1;
   const answer = await dialog.showMessageBox({

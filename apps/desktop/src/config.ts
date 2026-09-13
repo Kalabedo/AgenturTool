@@ -1,7 +1,7 @@
 /**
  * Die Konfiguration der Desktop-Anwendung.
  *
- * Zwei Werte aus der Umgebung, und beide brauchen eine Prüfung.
+ * Drei Werte aus der Umgebung; die ersten beiden brauchen eine Prüfung.
  *
  * Beim Zeitlimit, weil `Number('dreißig')` gleich `NaN` ist und ein
  * Zeitlimit von `NaN` in `setTimeout` sofort abbricht — jedes PDF schlüge
@@ -12,6 +12,8 @@
  * Beim Updatefeed, weil dort die einzige Adresse steht, mit der diese
  * Anwendung von sich aus spricht (D43). Ein Tippfehler darf sie nicht
  * irgendwohin zeigen lassen.
+ *
+ * Der dritte ist ein Schalter für die Rauchprobe und sonst nichts.
  */
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -95,4 +97,23 @@ export function updateFeedConfig(
   }
 
   return { url: parsed.toString(), allowedHosts: [parsed.hostname] };
+}
+
+/**
+ * Soll die Tagessicherung sofort und ohne Drossel laufen?
+ *
+ * Nur für die Rauchprobe, die die gepackte Anwendung für ein paar Sekunden
+ * startet: Eine Minute Wartezeit erlebt sie nie, und das Archiv desselben
+ * Tages liegt zu diesem Zeitpunkt längst da. Ohne diesen Schalter bliebe
+ * die automatische Sicherung genau dort ungeprüft, wo sich die
+ * Modulauflösung vom Repository unterscheidet — im Paket.
+ *
+ * Absichtlich ohne Fehlermeldung bei unbekanntem Wert: Ein Schalter, der
+ * nur „an" kennt, kann nichts falsch verstehen, und ein Start darf daran
+ * nicht scheitern.
+ */
+export function forcedDailyBackup(
+  raw: string | undefined = process.env.AGENTUR_TOOL_BACKUP_TAEGLICH,
+): boolean {
+  return raw?.trim() === 'erzwingen';
 }

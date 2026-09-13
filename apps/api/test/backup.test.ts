@@ -3,8 +3,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import yauzl from 'yauzl';
 import { PrismaClient } from '@prisma/client';
-import { BACKUP_FORMAT_VERSION, DISCOUNT_TYPE, backupFilename } from '@agentur-tool/shared';
+import {
+  BACKUP_FORMAT_VERSION,
+  DISCOUNT_TYPE,
+  backupFilename,
+  type BackupManifest,
+} from '@agentur-tool/shared';
 import { StorageConfig } from '../src/common/config.service';
 import { BackupService } from '../src/backup/backup.service';
 import { resolveSqliteFile } from '../src/backup/database-file';
@@ -116,14 +122,55 @@ async function seedData(): Promise<{ pdfPath: string; assetPath: string; pdfHash
   return { pdfPath, assetPath, pdfHash };
 }
 
+/** Das Manifest aus einem Archiv, ohne es auszupacken. */
+async function readManifest(archivePath: string): Promise<BackupManifest> {
+  return new Promise<BackupManifest>((resolve, reject) => {
+    yauzl.open(archivePath, { lazyEntries: true }, (error, zip) => {
+      if (error !== null || zip === undefined) {
+        reject(error ?? new Error(`${archivePath} lässt sich nicht öffnen.`));
+        return;
+      }
+
+      zip.on('entry', (entry: yauzl.Entry) => {
+        if (entry.fileName !== 'manifest.json') {
+          zip.readEntry();
+          return;
+        }
+
+        zip.openReadStream(entry, (streamError, stream) => {
+          if (streamError !== null || stream === undefined) {
+            reject(streamError ?? new Error('manifest.json lässt sich nicht lesen.'));
+            return;
+          }
+
+          const chunks: Buffer[] = [];
+          stream.on('data', (chunk: Buffer) => chunks.push(chunk));
+          stream.on('error', reject);
+          stream.on('end', () => {
+            zip.close();
+            resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')) as BackupManifest);
+          });
+        });
+      });
+
+      zip.on('end', () => reject(new Error(`${archivePath} enthält kein manifest.json.`)));
+      zip.on('error', reject);
+      zip.readEntry();
+    });
+  });
+}
+
 describe('Backup erstellen', () => {
   it('schreibt ein Archiv mit Manifest, Datenbank und Dateien', async () => {
     await seedData();
 
-    const summary = await backup.createBackup(new Date('2026-03-02T09:15:00Z'));
+    const summary = await backup.createBackup({
+      now: new Date('2026-03-02T09:15:00Z'),
+      reason: 'taeglich',
+    });
 
-    expect(summary.filename).toBe(backupFilename(new Date('2026-03-02T09:15:00Z')));
-    expect(summary.filename).toBe('agentur-tool-backup-20260302-091500.zip');
+    expect(summary.filename).toBe(backupFilename(new Date('2026-03-02T09:15:00Z'), 'taeglich'));
+    expect(summary.filename).toBe('agentur-tool-backup-20260302-091500-taeglich.zip');
     expect(summary.counts).toEqual({ invoices: 1, documents: 1, assets: 1, customers: 1 });
     expect(summary.sizeBytes).toBeGreaterThan(0);
 
@@ -147,23 +194,181 @@ describe('Backup erstellen', () => {
     await seedData();
     const now = new Date('2026-03-02T09:15:00Z');
 
-    const first = await backup.createBackup(now);
-    const second = await backup.createBackup(now);
+    const first = await backup.createBackup({ now });
+    const second = await backup.createBackup({ now });
 
-    expect(first.filename).toBe('agentur-tool-backup-20260302-091500.zip');
-    expect(second.filename).toBe('agentur-tool-backup-20260302-091500-1.zip');
+    expect(first.filename).toBe('agentur-tool-backup-20260302-091500-manuell.zip');
+    expect(second.filename).toBe('agentur-tool-backup-20260302-091500-manuell-1.zip');
     expect(fs.existsSync(path.join(backup.directory, first.filename))).toBe(true);
     expect(fs.existsSync(path.join(backup.directory, second.filename))).toBe(true);
   });
 
   it('listet die vorhandenen Archive, neueste zuerst', async () => {
     await seedData();
-    await backup.createBackup(new Date('2026-03-01T08:00:00Z'));
-    await backup.createBackup(new Date('2026-03-02T08:00:00Z'));
+    await backup.createBackup({ now: new Date('2026-03-01T08:00:00Z') });
+    await backup.createBackup({ now: new Date('2026-03-02T08:00:00Z') });
 
     const list = await backup.list();
     expect(list).toHaveLength(2);
     expect(list[0]?.filename).toContain('20260302');
+  });
+
+  it('schreibt den Anlass in Namen, Manifest und Übersicht', async () => {
+    await seedData();
+
+    const summary = await backup.createBackup({
+      now: new Date('2026-03-02T09:15:00Z'),
+      reason: 'migration',
+    });
+
+    expect(summary.reason).toBe('migration');
+    expect(summary.filename).toContain('-migration');
+
+    const manifest = await readManifest(path.join(backup.directory, summary.filename));
+    expect(manifest.reason).toBe('migration');
+    // Die Übersicht liest den Anlass aus dem Namen: Sie darf kein Archiv
+    // öffnen müssen, um eine Liste zu zeigen.
+    expect((await backup.list())[0]?.reason).toBe('migration');
+  });
+
+  it('liest ein Archiv aus einer älteren Fassung ohne Anlass', async () => {
+    await seedData();
+    const summary = await backup.createBackup({ now: new Date('2026-03-02T09:15:00Z') });
+
+    // So hieß ein Archiv, bevor der Anlass im Namen stand.
+    const alt = 'agentur-tool-backup-20260301-080000.zip';
+    fs.renameSync(path.join(backup.directory, summary.filename), path.join(backup.directory, alt));
+
+    const list = await backup.list();
+    expect(list).toHaveLength(1);
+    expect(list[0]?.filename).toBe(alt);
+    expect(list[0]?.reason).toBeNull();
+    expect(list[0]?.createdAt).toBe('2026-03-01T08:00:00.000Z');
+  });
+
+  it('nimmt den Zeitpunkt aus dem Namen, nicht aus der Änderungszeit', async () => {
+    await seedData();
+    const summary = await backup.createBackup({ now: new Date('2026-03-02T09:15:00Z') });
+
+    // Ein Sync in die Cloud oder ein zurückkopierter Ordner setzt die
+    // Änderungszeit auf „jetzt". Der Zeitpunkt der Sicherung ändert sich
+    // dadurch nicht.
+    const archive = path.join(backup.directory, summary.filename);
+    const spaeter = new Date('2027-01-01T00:00:00Z');
+    fs.utimesSync(archive, spaeter, spaeter);
+
+    expect((await backup.list())[0]?.createdAt).toBe('2026-03-02T09:15:00.000Z');
+  });
+
+  it('dünnt zu alte Archive aus und sagt, welche', async () => {
+    await seedData();
+
+    // Vier Archive aus vier aufeinanderfolgenden Tagen vor drei Jahren:
+    // Nach der Regel bleiben die jüngsten drei.
+    fs.mkdirSync(backup.directory, { recursive: true });
+    const alte = [
+      '2023-01-01T02:00:00Z',
+      '2023-01-02T02:00:00Z',
+      '2023-01-03T02:00:00Z',
+      '2023-01-04T02:00:00Z',
+    ].map((iso) => backupFilename(new Date(iso), 'taeglich'));
+
+    for (const name of alte) {
+      fs.writeFileSync(path.join(backup.directory, name), 'kein echtes Archiv');
+    }
+
+    const summary = await backup.createBackup({ now: new Date('2026-03-02T09:15:00Z') });
+
+    // Die neue Sicherung zählt als jüngste mit; von den vier alten bleiben
+    // damit nur noch zwei übrig.
+    expect(summary.removed).toEqual(expect.arrayContaining([alte[0], alte[1]]));
+    expect(summary.removed).not.toContain(summary.filename);
+    for (const entfernt of summary.removed) {
+      expect(fs.existsSync(path.join(backup.directory, entfernt))).toBe(false);
+    }
+  });
+
+  it('entfernt beim Ausdünnen nie die eben erzeugte Sicherung', async () => {
+    await seedData();
+
+    // Die Sicherung vor einem Update ist die wertvollste überhaupt — und
+    // sie entsteht in einem Ordner, der voller alter Archive sein kann.
+    fs.mkdirSync(backup.directory, { recursive: true });
+    for (let tag = 1; tag <= 20; tag += 1) {
+      const name = backupFilename(
+        new Date(`2023-01-${String(tag).padStart(2, '0')}T02:00:00Z`),
+        'taeglich',
+      );
+      fs.writeFileSync(path.join(backup.directory, name), 'kein echtes Archiv');
+    }
+
+    const summary = await backup.createBackup({
+      now: new Date('2026-03-02T09:15:00Z'),
+      reason: 'update',
+    });
+
+    expect(fs.existsSync(path.join(backup.directory, summary.filename))).toBe(true);
+    expect(summary.removed).not.toContain(summary.filename);
+  });
+
+  it('rührt ein fremdes Archiv im Ordner nicht an', async () => {
+    await seedData();
+
+    fs.mkdirSync(backup.directory, { recursive: true });
+    const fremd = path.join(backup.directory, 'urlaubsfotos.zip');
+    fs.writeFileSync(fremd, 'gehört jemand anderem');
+    for (let tag = 1; tag <= 20; tag += 1) {
+      const name = backupFilename(
+        new Date(`2023-01-${String(tag).padStart(2, '0')}T02:00:00Z`),
+        'taeglich',
+      );
+      fs.writeFileSync(path.join(backup.directory, name), 'kein echtes Archiv');
+    }
+
+    const summary = await backup.createBackup({ now: new Date('2026-03-02T09:15:00Z') });
+
+    expect(summary.removed.length).toBeGreaterThan(0);
+    expect(fs.existsSync(fremd)).toBe(true);
+  });
+
+  it('verwirft ein Archiv, dessen Dateien nicht zum Manifest passen', async () => {
+    await seedData();
+
+    // Zwischen dem Hashen und dem Packen läuft die Anwendung weiter. Ändert
+    // sich dort eine Datei, passte das Archiv nicht mehr zu seinen eigenen
+    // Prüfsummen — und das fiele erst beim Wiederherstellen auf, also genau
+    // dann, wenn man es braucht. Von Hand ist dieser Moment ein Wettlauf;
+    // hier wird er hergestellt.
+    const gelogen = new (class extends BackupService {
+      protected override async collectFiles() {
+        const entries = await super.collectFiles();
+        return entries.map((entry) => ({ ...entry, sha256: 'a'.repeat(64) }));
+      }
+    })(prisma as never, storage);
+
+    await expect(gelogen.createBackup()).rejects.toThrow(/während der Sicherung geändert/u);
+
+    // Kein halbes Archiv im Ordner, keine Reste im Arbeitsverzeichnis.
+    expect(fs.existsSync(backup.directory) ? fs.readdirSync(backup.directory) : []).toEqual([]);
+    expect(fs.readdirSync(path.join(dataDir, 'tmp'))).toEqual([]);
+  });
+
+  it('bricht ab, wenn eine Datei mitten im Packen verschwindet', async () => {
+    const { assetPath } = await seedData();
+
+    // Dasselbe in Grün, nur dass die Datei ganz weg ist: yazl meldet den
+    // Fehler auf dem ZipFile, nicht auf seinem Ausgabestrom. Ohne Zuhörer
+    // dort wäre das kein abgebrochenes Backup, sondern ein beendeter Prozess.
+    const verschwindend = new (class extends BackupService {
+      protected override async collectFiles() {
+        const entries = await super.collectFiles();
+        fs.rmSync(assetPath, { force: true });
+        return entries;
+      }
+    })(prisma as never, storage);
+
+    await expect(verschwindend.createBackup()).rejects.toThrow();
+    expect(fs.readdirSync(path.join(dataDir, 'tmp'))).toEqual([]);
   });
 
   it('weist einen Dateinamen mit Pfadanteilen ab', () => {
