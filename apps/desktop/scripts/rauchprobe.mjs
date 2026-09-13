@@ -128,6 +128,12 @@ delete childEnvironment.AGENTUR_TOOL_DEV_URL;
 // Updateprüfung würde genau das tun — und zwar zu Recht, nur eben nicht
 // hier. Sie wird deshalb abgeschaltet und unten daraufhin geprüft.
 childEnvironment.AGENTUR_TOOL_UPDATE_FEED = 'aus';
+// Die Tagessicherung wartet im Betrieb eine Minute und höchstens einmal je
+// Kalendertag. Beides erlebt die Rauchprobe nie: Sie prüft ein paar Sekunden
+// lang, und der erste Lauf hat schon ein Archiv desselben Tages angelegt.
+// Der Schalter nimmt Wartezeit und Drossel heraus, damit der zweite Lauf
+// belegen kann, dass die automatische Sicherung auch im Paket funktioniert.
+childEnvironment.AGENTUR_TOOL_BACKUP_TAEGLICH = 'erzwingen';
 
 const app = spawn(command, [...args, `--user-data-dir=${dataDir}`], {
   cwd: desktopDir,
@@ -313,9 +319,42 @@ async function probeReopen() {
   const pdf = await call('GET', `/api/invoices/${String(invoice.id)}/pdf`);
   check(pdf.subarray(0, 5).toString('latin1') === '%PDF-', 'Das gespeicherte PDF ist lesbar.');
 
-  const backup = await call('GET', '/api/backup/status');
-  check(backup.backups.length >= 2, 'Beim zweiten Start ist ein Migrations-Backup entstanden.');
+  // Das Archiv aus dem ersten Lauf muss den Neustart überlebt haben — und
+  // es darf keines dazugekommen sein, nur weil die Anwendung ein zweites Mal
+  // gestartet ist. Vorher entstand hier bei jedem Start ein vollständiges
+  // Archiv; genau das soll nicht mehr passieren.
+  const daily = await waitForDailyBackup();
+  check(
+    daily.some((entry) => entry.reason === 'manuell'),
+    'Das Archiv aus dem ersten Start ist nach dem Neustart noch da.',
+  );
+  check(
+    daily.filter((entry) => entry.reason === 'migration').length === 0,
+    'Ohne ausstehende Migration entsteht beim Start kein weiteres Archiv.',
+  );
+  check(
+    daily.some((entry) => entry.reason === 'taeglich'),
+    'Die Tagessicherung läuft auch im gepackten Baum.',
+  );
   check(blocked.length === 0, 'Keine Anfrage hat den Rechner verlassen wollen.');
+}
+
+/**
+ * Wartet, bis die Tagessicherung durch ist.
+ *
+ * Sie läuft nebenher und braucht einen Moment; ein einzelner Blick auf die
+ * Liste wäre ein Wettlauf. Dafür ist die Prüfung danach eindeutig: Entweder
+ * das Archiv ist da oder es ist nach dreißig Sekunden nicht gekommen.
+ */
+async function waitForDailyBackup() {
+  const deadline = Date.now() + 30_000;
+
+  for (;;) {
+    const status = await call('GET', '/api/backup/status');
+    if (status.backups.some((entry) => entry.reason === 'taeglich')) return status.backups;
+    if (Date.now() > deadline) return status.backups;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
 }
 
 async function probe() {

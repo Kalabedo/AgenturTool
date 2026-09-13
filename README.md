@@ -75,7 +75,7 @@ Weitere Befehle:
 | `pnpm db:studio`                | Daten im Browser ansehen                                      |
 | `pnpm db:verify`                | Prüft, dass alle CHECK-Constraints und Trigger vorhanden sind |
 | `pnpm db:reset`                 | Datenbank verwerfen und neu aufbauen                          |
-| `pnpm backup`                   | Archiv unter `data/backups/` erzeugen                         |
+| `pnpm backup`                   | Archiv unter `data/backups/` erzeugen und alte ausdünnen      |
 | `pnpm restore <archiv> --force` | Datenbank und `data/` aus einem Archiv wiederherstellen       |
 | `pnpm user:set <e-mail>`        | Benutzer anlegen oder sein Passwort ändern                    |
 | `pnpm paket`                    | Die Anwendung für dieses System packen                        |
@@ -109,8 +109,10 @@ und den Browser für die PDF-Erzeugung.
 
 Linux-Pakete dienen nur der Rauchprobe in CI und werden nicht veröffentlicht.
 
-Beim ersten Start legt sie Datenbank und Grundeinstellungen selbst an. Bei
-jedem weiteren Start entsteht vor den Migrationen automatisch ein Backup.
+Beim ersten Start legt sie Datenbank und Grundeinstellungen selbst an.
+Gesichert wird danach von selbst: einmal am Tag beim Start, vor Änderungen an
+der Datenbank und vor jedem Update. Der Ordner wächst dabei nicht ins
+Unendliche — ältere Archive werden nach Generationen ausgedünnt.
 
 Die Daten liegen außerhalb der Anwendung und überleben jedes Update:
 
@@ -121,7 +123,10 @@ Die Daten liegen außerhalb der Anwendung und überleben jedes Update:
 
 Darin: `db.sqlite`, `assets/` (Logos), `invoices/<Jahr>/` (die ausgestellten
 PDFs) und `backups/`. Das Menü führt unter „Ablage" direkt dorthin und legt
-auf Wunsch ein Archiv an.
+auf Wunsch ein Archiv an. In `backups/` bleiben alle Sicherungen der letzten
+7 Tage, danach eine je Woche für 8 Wochen und eine je Monat für 12 Monate;
+die jüngsten drei bleiben in jedem Fall. Ein Archiv, das nicht von
+AgenturTool stammt, wird nie angefasst.
 
 Fenstergröße und -position bleiben über Sitzungen hinweg erhalten. Liegt
 das gespeicherte Rechteck auf keinem angeschlossenen Bildschirm mehr — der
@@ -182,8 +187,9 @@ node apps/desktop/scripts/rauchprobe.mjs \
 ```
 
 Mit einem festen Datenverzeichnis prüft ein zweiter Lauf zusätzlich, dass
-Rechnung, PDF und Start-Backup ein Update beziehungsweise einen Neustart
-überleben:
+Rechnung, PDF und das vorhandene Archiv ein Update beziehungsweise einen
+Neustart überleben — und dass die Tagessicherung auch im Paket läuft, ohne
+dass bei jedem Start ein weiteres Archiv entsteht:
 
 ```bash
 node apps/desktop/scripts/rauchprobe.mjs <anwendung> --data-dir /tmp/agentur-tool-test
@@ -351,8 +357,9 @@ nicht will, nimmt den Haken heraus oder setzt
 `AGENTUR_TOOL_UPDATE_FEED=aus`; die Anwendung fragt dann nie von sich aus.
 
 Die Daten liegen außerhalb der Anwendung und bleiben bei jedem Update
-erhalten. Beim ersten Start der neuen Fassung entsteht vor möglichen
-Datenbankmigrationen automatisch ein weiteres Backup.
+erhalten. Unmittelbar vor der Installation entsteht ein Backup, und beim
+ersten Start der neuen Fassung noch eines, falls die Datenbank migriert
+werden muss.
 
 ### Anmeldung
 

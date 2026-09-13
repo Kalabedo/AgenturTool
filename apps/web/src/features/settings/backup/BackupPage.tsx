@@ -1,7 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { formatBytes, type BackupStatusResponse, type BackupSummary } from '@agentur-tool/shared';
+import {
+  BACKUP_REASON_LABELS,
+  formatBytes,
+  type BackupStatusResponse,
+  type BackupSummary,
+} from '@agentur-tool/shared';
 import { apiClient } from '../../../lib/apiClient.js';
 import { queryKeys } from '../../../lib/queryKeys.js';
+import { Badge } from '../../../components/ui/Badge.js';
 import { Button } from '../../../components/ui/Button.js';
 import { Card } from '../../../components/ui/Card.js';
 import { EmptyState } from '../../../components/ui/EmptyState.js';
@@ -17,7 +23,7 @@ import { useDocumentTitle } from '../../../lib/useDocumentTitle.js';
  *
  * Erzeugen und Herunterladen sind zwei Schritte, weil das Archiv unter
  * `data/backups` liegen bleibt: Ein abgebrochener Download kostet dann
- * nichts, und der nächtliche Cron auf dem Server benutzt denselben Weg.
+ * nichts, und die Tagessicherung benutzt denselben Weg.
  *
  * Zurückspielen steht hier bewusst nur als Anleitung: Die Wiederherstellung
  * ersetzt das Datenverzeichnis unter der laufenden Anwendung. Ein Knopf
@@ -39,7 +45,15 @@ export function BackupPage(): JSX.Element {
     onSuccess: async (summary) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.backup });
       toast.success(
-        `Backup erstellt: ${summary.counts.invoices} Rechnungen und ${summary.counts.documents} PDFs gesichert.`,
+        `Backup erstellt: ${summary.counts.invoices} Rechnungen und ${summary.counts.documents} PDFs gesichert.` +
+          // Was die Aufbewahrung entfernt hat, gehört in dieselbe Meldung:
+          // Ein Archiv, das verschwindet, ohne dass es jemand sagt, ist
+          // genau die Überraschung, die man bei Sicherungen nicht will.
+          (summary.removed.length === 0
+            ? ''
+            : ` ${String(summary.removed.length)} ältere ${
+                summary.removed.length === 1 ? 'Archiv wurde' : 'Archive wurden'
+              } dabei ausgedünnt.`),
       );
     },
   });
@@ -53,6 +67,20 @@ export function BackupPage(): JSX.Element {
   });
 
   const error = [create.error, download.error].find((candidate) => candidate !== null);
+
+  // Anzahl und belegter Platz stehen im Kopf der Karte: Die Summe steht
+  // schon in der Liste, und die Frage „wie viel liegt da eigentlich" ist
+  // die erste, die jemand an diese Seite hat.
+  const archivesDescription =
+    status.data === undefined
+      ? undefined
+      : status.data.backups.length === 0
+        ? status.data.directory
+        : `${String(status.data.backups.length)} ${
+            status.data.backups.length === 1 ? 'Archiv' : 'Archive'
+          } · ${formatBytes(
+            status.data.backups.reduce((sum, entry) => sum + entry.sizeBytes, 0),
+          )} · ${status.data.directory}`;
 
   return (
     <div className="space-y-6">
@@ -73,6 +101,15 @@ export function BackupPage(): JSX.Element {
             Das Archiv enthält ein Manifest mit einer Prüfsumme je Datei. Beim Zurückspielen wird
             jede davon geprüft, bevor etwas ersetzt wird.
           </p>
+          {/* Was von selbst geschieht, soll man nachlesen können — sonst
+              wundert man sich über Archive, die man nicht angelegt hat, und
+              über andere, die verschwunden sind. */}
+          <p className="text-sm text-ink-muted">
+            Von selbst entsteht eine Sicherung einmal am Tag beim Start, vor Änderungen an der
+            Datenbank und vor jedem Update. Aufbewahrt werden alle Sicherungen der letzten 7 Tage,
+            danach eine je Woche für 8 Wochen und eine je Monat für 12 Monate; was älter ist, wird
+            entfernt. Die jüngsten drei Archive bleiben immer.
+          </p>
           {/* Die Rückmeldung steht unten als Meldung: Das neue Archiv taucht
               in der Liste darunter auf, und die Zählung dazu muss nicht
               dauerhaft neben dem Knopf stehen bleiben. */}
@@ -89,7 +126,7 @@ export function BackupPage(): JSX.Element {
         </div>
       </Card>
 
-      <Card title="Vorhandene Archive" description={status.data?.directory}>
+      <Card title="Vorhandene Archive" description={archivesDescription}>
         {status.isError ? (
           <ErrorNotice
             error={status.error}
@@ -101,7 +138,7 @@ export function BackupPage(): JSX.Element {
         ) : status.data.backups.length === 0 ? (
           <EmptyState
             title="Noch kein Backup"
-            description="Ein Backup, das es nicht gibt, hilft im Ernstfall nicht. Das erste ist ein Klick."
+            description="Ein Backup, das es nicht gibt, hilft im Ernstfall nicht. Das erste ist ein Klick — spätestens beim nächsten Start entsteht es von selbst."
           />
         ) : (
           <ul className="divide-y divide-border text-sm">
@@ -111,6 +148,7 @@ export function BackupPage(): JSX.Element {
                 className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2"
               >
                 <span className="truncate font-medium text-ink">{entry.filename}</span>
+                {entry.reason !== null && <Badge>{BACKUP_REASON_LABELS[entry.reason]}</Badge>}
                 <span className="whitespace-nowrap text-ink-subtle">
                   {new Date(entry.createdAt).toLocaleString('de-DE')}
                 </span>

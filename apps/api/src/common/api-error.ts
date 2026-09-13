@@ -124,6 +124,17 @@ export class ApiError extends HttpException {
   }
 
   /**
+   * Die Sicherung konnte nicht geschrieben werden — kein Platz mehr, eine
+   * Datei hat sich mitten im Vorgang geändert. 500, weil die Ursache nie in
+   * der Anfrage liegt; mit eigener Meldung, weil „Unerwarteter Serverfehler"
+   * genau hier der unbrauchbarste Satz wäre: Wer sichern wollte, muss
+   * erfahren, woran es lag.
+   */
+  static backupFailed(message: string): ApiError {
+    return new ApiError(API_ERROR_CODE.INTERNAL_ERROR, message, HttpStatus.INTERNAL_SERVER_ERROR);
+  }
+
+  /**
    * Verletzung der Sperre finalisierter Rechnungen. 409 statt 403, weil es
    * nicht an fehlender Berechtigung liegt, sondern am Zustand des Dokuments.
    */

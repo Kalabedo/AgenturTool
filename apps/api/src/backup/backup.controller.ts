@@ -12,13 +12,13 @@ export class BackupController {
    *
    * Erzeugen und Herunterladen sind zwei Schritte, weil das Archiv nicht nur
    * für den Browser entsteht: Es bleibt unter `data/backups` liegen, damit
-   * ein nächtlicher Cron dieselbe Funktion benutzen kann und ein
-   * abgebrochener Download nichts kostet.
+   * die Tagessicherung und der Weg über die Kommandozeile dieselbe Funktion
+   * benutzen können und ein abgebrochener Download nichts kostet.
    */
   @Post('export')
   @HttpCode(HttpStatus.CREATED)
   export(): Promise<BackupSummary> {
-    return this.backup.createBackup();
+    return this.backup.createBackup({ reason: 'manuell' });
   }
 
   @Get('status')

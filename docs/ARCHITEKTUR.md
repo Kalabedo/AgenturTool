@@ -63,6 +63,7 @@ sie hier korrigiert und nicht nur im Code.
 | D52 | Rechnungsdesigner        | **Vier mitgelieferte Designs plus Regler, kein freies CSS.** Jeder Regler ist ein Wert im `templateSnapshot`, den der Template-Code liest — eigenes CSS müsste mit eingefroren werden, sonst sähe eine alte Rechnung nach einem Umbau anders aus. Die Dichte ist eine Auswahl aus drei Stufen und kein stufenloser Regler, damit die Seitenumbrüche aller Kombinationen prüfbar bleiben                                                                                                                    |
 | D53 | Dunkelmodus              | **Hell, Dunkel, Automatisch — gespeichert im Browser, nicht auf dem Server.** Ein Erscheinungsbild ist eine Eigenschaft des Geräts; der Umweg über den Server brächte bei jedem Laden das Aufblitzen zurück, das die Vorabsetzung in `index.html` gerade vermeidet. Das Fenster bekommt die Wahl zusätzlich über die API in die Fensterdatei, weil Electron `backgroundColor` nur bei der Erzeugung setzen kann. Die Rechnungsvorschau bleibt in jedem Modus weiß: Sie zeigt Papier, kein Stück Oberfläche |
 | D54 | Updates                  | **Melden, laden, installieren — jeder Schritt auf Klick.** Der Hauptprozess holt höchstens einmal in 24 Stunden eine Feed-Datei von der eigenen HTTPS-Domain, lädt das Paket erst nach einem Klick, prüft Größe, SHA-256 und die Signatur des Betriebssystems, erzeugt vor der Installation ein Backup und startet nur nach ausdrücklicher Bestätigung neu. Nichts davon geschieht im Hintergrund (Abschnitt 28)                                                                                           |
+| D55 | Sicherungsrhythmus       | **Ereignisse statt Uhrzeit, Generationen statt Wachstum.** Ein Archiv entsteht einmal am Tag beim Start, vor tatsächlich ausstehenden Migrationen und vor jeder Updateinstallation; aufbewahrt werden alle Sicherungen der letzten 7 Tage, dann eine je Woche (8) und eine je Monat (12), mindestens aber die jüngsten 3. Die Ausnahme von „nichts geschieht im Hintergrund" (D54) ist bewusst und eng: Es entsteht eine Datei auf der eigenen Platte, nichts verlässt den Rechner (Abschnitt 17)          |
 
 Zu D21: Rechnungs-, Leistungs- und Fälligkeitsdatum sind Kalendertage, keine
 Zeitpunkte. Als `DateTime` müsste an jeder Grenze zwischen Browser, API und
@@ -1474,7 +1475,8 @@ Reihenfolge:
 2. **Pfade festlegen.** `DATA_DIR` ist `userData/Daten`, nicht `userData`
    selbst: Dort legt Chromium seine Caches, Cookies und eigenen Datenbanken
    ab, und „Datenordner zeigen" soll Rechnungen zeigen.
-3. **Die Datenbank vorbereiten** (`database.ts`): Backup, solange schon
+3. **Die Datenbank vorbereiten** (`database.ts`): Backup, sobald eine
+   Migration aussteht, solange schon
    eine da ist, sonst eine leere Datei — Prisma 6 legt sie bei
    `migrate deploy` nicht zuverlässig selbst an. Dann die Migrationen, dann
    die idempotenten Grunddaten. Genau der Ablauf, der vorher im
@@ -1571,8 +1573,10 @@ Eigenheiten ist in der Entwicklung beantwortet und im Paket neu zu stellen.
 Sie läuft gegen den Paketbaum (`--nur-baum`) wie gegen das fertig gepackte
 Programm. Unter macOS wird dafür das DMG geprüft und eingehängt, unter Windows
 der NSIS-Installer still installiert. Ein zweiter Start mit demselben
-Datenverzeichnis prüft zusätzlich Rechnung, PDF und das automatische
-Migrations-Backup.
+Datenverzeichnis prüft zusätzlich, dass Rechnung, PDF und das Archiv aus dem
+ersten Lauf den Neustart überleben, dass ohne ausstehende Migration **kein**
+weiteres Archiv entsteht und dass die Tagessicherung auch im gepackten Baum
+läuft.
 
 ---
 
@@ -1587,15 +1591,19 @@ Stress noch versteht.
 - **Konsistenz:** Datenbank per `VACUUM INTO` in eine Kopie schreiben —
   ein einfaches `cp` auf eine WAL-Datenbank kann korrupt sein.
 - **Ergebnis:** ein `.zip`/`.tar.gz` mit Zeitstempel.
-- **Auslösung:** Button in den Einstellungen (Download), zusätzlich ein
-  `pnpm backup`-Skript und im VPS-Betrieb ein nächtlicher Cron mit
-  Aufbewahrung (z. B. 14 täglich / 8 wöchentlich / 12 monatlich).
+- **Auslösung:** Button in den Einstellungen (Download), der Menüpunkt
+  „Backup erstellen …", das `pnpm backup`-Skript — und dreimal von selbst
+  (D55): einmal am Tag beim Start, vor tatsächlich ausstehenden Migrationen
+  und vor jeder Updateinstallation.
+- **Aufbewahrung:** alle Sicherungen der letzten 7 Tage, danach eine je
+  Kalenderwoche für 8 Wochen, danach eine je Monat für 12 Monate; was älter
+  ist, fällt weg. Die jüngsten 3 Archive bleiben immer.
 - **Offsite:** Sync des Backup-Ordners (z. B. `restic`/`rclone` auf einen
-  S3-kompatiblen Speicher oder in einen Cloud-Ordner). 3-2-1-Regel.
+  S3-kompatiblen Speicher oder in einen Cloud-Ordner). 3-2-1-Regel. Bleibt
+  Sache des Benutzers — die Anwendung spricht von sich aus mit niemandem.
 - **Restore:** `pnpm restore <archiv>` — App stoppen, `data/` ersetzen,
   Migrationen anwenden, starten. Restore muss **einmal getestet** werden;
   ein ungetestetes Backup ist kein Backup.
-- Automatisches Backup zusätzlich vor jeder Migration.
 
 **Umgesetzt in Schritt 12.** Ein paar Festlegungen, die dabei anfielen:
 
@@ -1621,6 +1629,59 @@ Stress noch versteht.
 - **Kein Restore-Knopf im Browser.** Die Wiederherstellung ersetzt das
   Datenverzeichnis unter der laufenden Anwendung — das ist ein Skript, keine
   Schaltfläche. Die Einstellungsseite zeigt stattdessen den Befehl.
+
+**Nachgezogen für den Desktop-Betrieb (D55).** Die Absätze oben stammten aus
+einer Zeit, in der ein VPS im Hintergrund stand. Auf einem Arbeitsplatzrechner
+gibt es keinen Cron, und die Anwendung läuft nicht durch:
+
+- **Der Zeitpunkt hängt an einem Ereignis, nicht an einer Uhrzeit.** Ein
+  Zeitplan für drei Uhr morgens liefe auf einem Rechner, der nachts aus ist,
+  nie. Die Tagessicherung entsteht deshalb beim Start, nachdem Fenster und
+  Server stehen — der ruhigste Moment, in dem niemand darauf wartet. Ein
+  stündlicher Blick danach fängt die Sitzung ab, die zwei Wochen offen bleibt.
+  Beim Beenden zu sichern wäre die andere Möglichkeit gewesen und ist
+  verworfen: Es verzögert das Schließen sichtbar, und ein hartes Beenden
+  bricht mitten im Archiv ab.
+- **Der Zeitgeber merkt sich nichts.** Wann zuletzt gesichert wurde, steht im
+  Ordner — das jüngste Archiv sagt es. Eine eigene Zustandsdatei wäre eine
+  zweite Wahrheit, die veralten kann; so heilt sich die Drossel selbst, wenn
+  jemand den Ordner leert, und eine abgebrochene Sicherung wird beim nächsten
+  Start einfach wiederholt.
+- **Vor Migrationen nur, wenn welche anstehen.** Vorher sicherte jeder Start
+  mit vorhandener Datenbank — bei fünf Starts am Tag fünf vollständige Kopien
+  für fünfmal denselben Schemastand. Das war die Hauptquelle des wachsenden
+  Ordners.
+- **Der Anlass steht im Dateinamen** (`…-taeglich.zip`, `…-migration.zip`,
+  `…-update.zip`, `…-manuell.zip`) und zusätzlich im Manifest. Im Namen, weil
+  die Übersicht ihn zeigen soll, ohne jedes Archiv zu öffnen; im Manifest,
+  weil ein Archiv auch außerhalb dieses Ordners erzählen können soll, wozu es
+  entstanden ist. Das Feld ist optional — die Formatversion bleibt bei 1.
+- **Aufbewahrung in Kalenderfächern, nicht in Altersfenstern.** „Älter als
+  7 × 24 Stunden" hinge am Zeitpunkt des Laufs: Derselbe Ordner ergäbe je nach
+  Uhrzeit ein anderes Ergebnis, und ein zweiter Lauf löschte mehr als der
+  erste. Je Wochen- und Monatsfach bleibt das **älteste** Archiv; bliebe das
+  jüngste, verdrängte jede neue Sicherung die bisher behaltene.
+- **Gelöscht wird nur, was dem eigenen Namensmuster entspricht.**
+  `Daten/backups` ist ein Ordner, den Benutzer synchronisieren und in den sie
+  selbst Archive legen. Ein fremdes `.zip` bleibt liegen.
+- **Der Zeitpunkt eines Archivs kommt aus dem Namen, nicht aus der
+  Änderungszeit.** Jede Kopie des Ordners — genau der Offsite-Sync, den dieser
+  Abschnitt empfiehlt — setzt alle Änderungszeiten auf „jetzt". Die
+  Aufbewahrung hielte danach jedes Archiv für taggleich und löschte nichts
+  mehr; die Drossel hielte jeden Tag für erledigt.
+- **Erst nach `tmp`, dann umbenennen.** Ein abgebrochener Vorgang hinterließ
+  vorher ein abgeschnittenes ZIP in `backups/`, das in der Übersicht wie eine
+  gültige Sicherung aussah. Seit die Anwendung von selbst sichert, fiele das
+  niemandem mehr auf. Liegengebliebenes unter `data/tmp` räumt die nächste
+  Sicherung weg.
+- **Die Prüfsummen entstehen beim Packen.** Zwischen dem Hashen und dem
+  Schreiben liegt Zeit, und die Anwendung läuft weiter; änderte sich in dieser
+  Lücke eine Datei, enthielte das Archiv Inhalt, der nicht zu seinem eigenen
+  Manifest passt — und das fiele erst beim Wiederherstellen auf. Jede Datei
+  läuft deshalb durch einen mitrechnenden Strom und wird am Ende gegen das
+  Manifest gehalten. Lieber keine Sicherung als eine, die nur so aussieht.
+- **Vor dem Schreiben wird der freie Platz geprüft.** Eine Sicherung, die die
+  Platte füllt, richtet mehr Schaden an als eine, die es nicht gibt.
 
 **Der Restore-Test ist durchgeführt** (Abschnitt 23, Punkt 9), zweifach: als
 automatischer Test (`apps/api/test/backup.test.ts`) und einmal von Hand am
