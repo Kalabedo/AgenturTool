@@ -166,6 +166,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      # Für das Feed-Skript; die übrigen Schritte brauchen den Quellbaum nicht.
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - uses: actions/download-artifact@v4
         with:
           pattern: signed-*
@@ -175,6 +180,17 @@ jobs:
         run: |
           cd dist
           sha256sum AgenturTool-*.dmg AgenturTool-*.exe > SHA256SUMS
+
+      # Die Datei, die die installierte Anwendung später abfragt. Sie liegt
+      # dem Release bei, damit veröffentlichte Prüfsummen und Feed aus
+      # demselben Lauf stammen; auf die Website kommt sie zuletzt und erst,
+      # wenn die Pakete dort schon liegen (docs/RELEASE.md).
+      - name: Updatefeed erzeugen
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          node apps/desktop/scripts/updatefeed.mjs --dir dist --version "${TAG#v}"
+          cat dist/updates.json
       - name: Entwurfs-Release anlegen oder aktualisieren
         env:
           GH_TOKEN: ${{ github.token }}

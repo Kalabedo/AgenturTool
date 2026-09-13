@@ -17,13 +17,21 @@ import path from 'node:path';
 import { BrowserWindow, app, dialog, nativeTheme, session, shell } from 'electron';
 import type { INestApplication } from '@nestjs/common';
 import { bootstrap } from '@agentur-tool/api/dist/main';
-import { pdfTimeoutMs } from './config';
+import type { BackupSummary } from '@agentur-tool/shared';
+import { pdfTimeoutMs, updateFeedConfig } from './config';
 import { prepareDatabase } from './database';
 import { buildMenu } from './menu';
 import { ElectronMailHandoff, SafeStorageSecretStore } from './mail';
 import { blockOutboundRequests } from './network';
 import { resolvePaths } from './paths';
 import { ElectronPdfRenderer } from './pdf-renderer';
+import {
+  canInstall,
+  cleanupUpdateLeftovers,
+  installMacUpdate,
+  startWindowsInstaller,
+} from './update/install';
+import { UpdateService } from './update/update-service';
 import { readWindowState, saveWindowState } from './window-state';
 
 // Vor allem anderen: Der Name bestimmt, wo `userData` liegt — auf einem
@@ -41,6 +49,7 @@ app.commandLine.appendSwitch('disable-background-networking');
 app.commandLine.appendSwitch('disable-component-update');
 
 let api: INestApplication | null = null;
+let updates: UpdateService | null = null;
 let window: BrowserWindow | null = null;
 let apiUrl = '';
 let stateDir = '';
@@ -83,6 +92,7 @@ app.on('before-quit', (event) => {
 
   event.preventDefault();
   quitting = true;
+  updates?.stop();
   void api.close().finally(() => {
     app.quit();
   });
@@ -96,12 +106,21 @@ app.on('before-quit', (event) => {
  */
 const devUrl = process.env.AGENTUR_TOOL_DEV_URL;
 
+/**
+ * Das Protokoll.
+ *
+ * Auf der Standardausgabe und auf Modulebene, weil außer dem Start auch die
+ * Installation eines Updates hineinschreibt. Die Rauchprobe liest mit: Sie
+ * entscheidet anhand dieser Zeilen, ob eine Anfrage nach außen gehen wollte
+ * (`scripts/rauchprobe.mjs`).
+ */
+function log(message: string): void {
+  process.stdout.write(`${message}\n`);
+}
+
 async function start(): Promise<void> {
   const paths = resolvePaths();
   stateDir = paths.stateDir;
-  const log = (message: string): void => {
-    process.stdout.write(`${message}\n`);
-  };
 
   // Nichts verlässt diesen Rechner. Vor dem ersten Fenster, damit auch
   // dessen erste Anfrage schon durch den Filter geht.
@@ -140,6 +159,35 @@ async function start(): Promise<void> {
     // die Rückschleife, und wer am Rechner sitzt, ist angemeldet.
     process.env.AUTH_ENABLED ??= 'false';
 
+    // Reste der vorigen Installation: das alte Bundle, aus dem dieser
+    // Prozess gerade nicht mehr läuft (`update/install.ts`).
+    cleanupUpdateLeftovers(app.getPath('exe'), log);
+
+    // Die einzige Adresse, mit der diese Anwendung von sich aus spricht
+    // (D41, D43). Der Dienst wird vor dem Server gebaut, weil der Server ihn
+    // als Gastgeberdienst bekommt — und weil ein Fehler in der Konfiguration
+    // beim Start auffallen soll und nicht beim ersten Klick.
+    updates = new UpdateService({
+      currentVersion: app.getVersion(),
+      stateDir: paths.stateDir,
+      updatesDir: paths.updatesDir,
+      feed: updateFeedConfig(),
+      platform: process.platform,
+      arch: process.arch,
+      log,
+      openExternal: (url) => shell.openExternal(url),
+      revealPackage: (filePath) => {
+        shell.showItemInFolder(filePath);
+      },
+      // Unmittelbar vor der Installation und ohne Dialog: Wer gerade „Neu
+      // starten und installieren" geklickt hat, wartet auf das Update und
+      // nicht auf eine zweite Rückfrage.
+      createBackup: async () => {
+        await createBackupArchive();
+      },
+      installPackage: installUpdate,
+    });
+
     const running = await bootstrap({
       pdfRenderer: new ElectronPdfRenderer(pdfTimeoutMs(), (url) => {
         log(`Anfrage aus dem Dokument abgewiesen: ${url}`);
@@ -149,6 +197,7 @@ async function start(): Promise<void> {
       // eingerichtet und ausgelöst hat (D43, D45).
       mailHandoff: new ElectronMailHandoff(log),
       secretStore: SafeStorageSecretStore.create(log),
+      updateHost: updates,
       themeHost: {
         setPreference: (preference) => {
           /*
@@ -171,7 +220,15 @@ async function start(): Promise<void> {
     // muss wissen, wohin sie ihre Anfragen schickt.
     log(`AGENTUR_TOOL_URL ${apiUrl}`);
 
-    buildMenu({ dataDir: paths.dataDir, onBackup: createBackup });
+    buildMenu({
+      dataDir: paths.dataDir,
+      onBackup: createBackup,
+      onCheckForUpdates: checkForUpdates,
+    });
+
+    // Erst nachdem das Fenster steht: Der Start gehört der Anwendung, nicht
+    // der Updateprüfung. Danach genügt ein Blick in 24 Stunden (D41).
+    updates.start();
 
     // Im Entwicklungsbetrieb zeigt das Fenster auf den Vite-Server, damit
     // Änderungen an der Oberfläche sofort nachladen. Der Server läuft
@@ -261,6 +318,160 @@ function openWindow(url: string): void {
 }
 
 /**
+ * Der Menüpunkt „Nach Updates suchen …".
+ *
+ * Dieselbe Prüfung wie in den Einstellungen, nur mit nativer Rückmeldung:
+ * Wer sie im Menü auslöst, hat die Oberfläche gerade nicht vor Augen und
+ * erwartet eine Antwort dort, wo er geklickt hat. Ohne Rückmeldung bliebe
+ * der Punkt wirkungslos, sobald nichts Neues da ist.
+ */
+async function checkForUpdates(): Promise<void> {
+  if (updates === null) return;
+
+  const status = await updates.check();
+
+  if (status.state === 'abgeschaltet') {
+    await dialog.showMessageBox({
+      type: 'info',
+      message: 'Die Updateprüfung ist abgeschaltet.',
+      detail: 'Diese Installation fragt den Updatefeed nicht ab.',
+    });
+    return;
+  }
+
+  if (status.state === 'fehler') {
+    await dialog.showMessageBox({
+      type: 'warning',
+      message: 'Die Updateprüfung ist fehlgeschlagen.',
+      detail: status.error ?? 'Unbekannter Fehler.',
+    });
+    return;
+  }
+
+  // Schon geladen? Dann ist die nächste Handlung die Installation.
+  if (status.state === 'bereit' && status.ready !== null) {
+    const install = 0;
+    const answer = await dialog.showMessageBox({
+      type: 'info',
+      message: `AgenturTool ${status.ready.version} ist bereit.`,
+      detail:
+        'Vor der Installation wird automatisch ein Backup erstellt. Die ' +
+        'Anwendung startet danach neu — ungespeicherte Änderungen in einem ' +
+        'Rechnungsentwurf gehen dabei verloren.',
+      buttons: ['Neu starten und installieren', 'Später'],
+      defaultId: install,
+      cancelId: 1,
+    });
+
+    if (answer.response === install) {
+      const result = await updates.install();
+      // Auch ein gescheitertes Backup gehört hierher: Der Zustand heißt
+      // dann weiter „bereit", die Installation hat aber nicht
+      // stattgefunden, und im Menü gibt es keine zweite Stelle, an der das
+      // zu sehen wäre.
+      if (result.error !== null) {
+        dialog.showErrorBox('Die Installation ist fehlgeschlagen', result.error);
+      }
+    }
+    return;
+  }
+
+  if (status.available === null) {
+    await dialog.showMessageBox({
+      type: 'info',
+      message: `AgenturTool ${status.currentVersion} ist aktuell.`,
+    });
+    return;
+  }
+
+  const load = 0;
+  const answer = await dialog.showMessageBox({
+    type: 'info',
+    message: `AgenturTool ${status.available.version} ist verfügbar.`,
+    detail:
+      `${status.available.notes ?? 'Neue Fassung vom ' + status.available.releasedAt}\n\n` +
+      (status.available.download === null
+        ? 'Für dieses System gibt es kein eigenes Paket; der Knopf öffnet die ' +
+          'Versionshinweise im Browser.'
+        : 'Das Paket wird geladen. Installiert wird erst nach einem weiteren ' +
+          'Klick, und vorher entsteht ein Backup.'),
+    buttons: ['Update laden', 'Später'],
+    defaultId: load,
+    cancelId: 1,
+  });
+
+  if (answer.response !== load) return;
+
+  if (status.available.download === null) {
+    await updates.openDownload();
+    return;
+  }
+
+  // Der Fortschritt steht danach in der Oberfläche; hier genügt der Anstoß.
+  await updates.download();
+  window?.focus();
+}
+
+/**
+ * Die Installation und der Neustart danach.
+ *
+ * Der plattformabhängige Teil des Updatewegs (Abschnitt 28 der
+ * Architektur): Auf macOS tauscht die Anwendung ihr eigenes Bundle aus und
+ * startet sich neu; unter Windows übernimmt das der signierte
+ * NSIS-Installer, dem sie dafür das Feld räumt. Beide Wege enden damit,
+ * dass an derselben Stelle die neue Fassung läuft.
+ *
+ * `app.relaunch()` vor `app.quit()`: Electron startet den nächsten Prozess
+ * erst, wenn dieser beendet ist — auf macOS liegt am selben Pfad dann schon
+ * die neue Anwendung. Unter Windows startet der Installer sie mit
+ * `--force-run` selbst, und ein zweiter Start wäre einer zu viel.
+ *
+ * `app.quit()` und nicht `app.exit()`: Beendet wird über den
+ * `before-quit`-Haken, der die Nest-Anwendung schließt und damit die
+ * offenen Prisma-Verbindungen. Eine Installation, die die Datenbank mitten
+ * im Schreiben unterbricht, wäre ein teuer bezahlter Neustart.
+ */
+async function installUpdate(ready: { filePath: string; version: string }): Promise<boolean> {
+  if (!canInstall(process.platform)) return false;
+
+  const context = {
+    filePath: ready.filePath,
+    version: ready.version,
+    exePath: app.getPath('exe'),
+    log,
+  };
+
+  if (process.platform === 'darwin') {
+    if (!(await installMacUpdate(context))) return false;
+    app.relaunch();
+  } else if (!(await startWindowsInstaller(context))) {
+    return false;
+  }
+
+  app.quit();
+  return true;
+}
+
+/**
+ * Ein Archiv, ohne jemanden zu fragen.
+ *
+ * Denselben Weg nehmen drei Auslöser: der Knopf in den Einstellungen, der
+ * Menüpunkt und die Installation eines Updates. Nur der Menüpunkt zeigt
+ * hinterher einen Dialog.
+ */
+async function createBackupArchive(): Promise<BackupSummary> {
+  if (api === null) {
+    throw new Error('Der Server läuft nicht; es kann kein Backup entstehen.');
+  }
+
+  const { BackupService } = await import('@agentur-tool/api/dist/backup/backup.service');
+  const service = api.get(BackupService);
+  const summary = await service.createBackup();
+  log(`Backup erstellt: ${summary.filename}`);
+  return summary;
+}
+
+/**
  * Ein Archiv von Hand.
  *
  * Denselben Weg nimmt der Knopf in den Einstellungen; hier steht er im
@@ -270,10 +481,7 @@ function openWindow(url: string): void {
 async function createBackup(): Promise<void> {
   if (api === null) return;
 
-  const { BackupService } = await import('@agentur-tool/api/dist/backup/backup.service');
-  const service = api.get(BackupService);
-  const summary = await service.createBackup();
-
+  const summary = await createBackupArchive();
   const paths = resolvePaths();
   const showInFolder = 1;
   const answer = await dialog.showMessageBox({

@@ -10,6 +10,7 @@ export const queryKeys = {
   company: ['company'] as const,
   templateSettings: ['template-settings'] as const,
   backup: ['backup'] as const,
+  appUpdate: ['app', 'update'] as const,
   customers: {
     all: ['customers'] as const,
     list: (search: string, archived: string) => ['customers', 'list', search, archived] as const,

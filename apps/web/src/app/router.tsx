@@ -54,6 +54,9 @@ const mailSettingsPage = async () => ({
 const backupPage = async () => ({
   Component: (await import('../features/settings/backup/BackupPage')).BackupPage,
 });
+const updatePage = async () => ({
+  Component: (await import('../features/settings/updates/UpdatePage')).UpdatePage,
+});
 const taxAdvisorExportPage = async () => ({
   Component: (await import('../features/settings/tax-advisor/TaxAdvisorExportPage'))
     .TaxAdvisorExportPage,
@@ -87,6 +90,7 @@ export const router = createBrowserRouter([
           { path: 'tax-advisor', lazy: taxAdvisorExportPage },
           { path: 'mail', lazy: mailSettingsPage },
           { path: 'backup', lazy: backupPage },
+          { path: 'updates', lazy: updatePage },
         ],
       },
       { path: '*', element: <NotFoundPage /> },

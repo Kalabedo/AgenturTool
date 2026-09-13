@@ -27,6 +27,14 @@ export interface AppPaths {
   dataDir: string;
   /** Electrons eigener Zustand — Caches, Cookies, Fenstergrößen. */
   stateDir: string;
+  /**
+   * Geladene Updatepakete.
+   *
+   * Neben dem Zustand der Installation und ausdrücklich nicht in `Daten/`:
+   * Ein Installer ist kein Geschäftsdatum, gehört in kein Backup und darf
+   * beim Aufräumen jederzeit verschwinden.
+   */
+  updatesDir: string;
   /** Die SQLite-Datei. */
   databaseFile: string;
 }
@@ -68,6 +76,7 @@ export function resolvePaths(): AppPaths {
     prismaCli: require.resolve('prisma/build/index.js', { paths: [apiDir] }),
     dataDir,
     stateDir,
+    updatesDir: path.join(stateDir, 'Updates'),
     databaseFile: path.join(dataDir, 'db.sqlite'),
   };
 }

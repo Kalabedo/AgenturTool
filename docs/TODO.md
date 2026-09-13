@@ -25,19 +25,25 @@ Deutschland und anschließend auf einer breiteren Nutzung in der EU.
   - Später zusätzlich einen Eintrag im Microsoft Store prüfen. Den Mac App
     Store erst nach einer technischen Prüfung der Sandbox-Anforderungen
     verfolgen.
-  - Einen sicheren Updatekanal für stabile Releases aufbauen und nur dessen
-    feste Domain in der Netzwerk-Erlaubnisliste freigeben.
-  - Beim Start höchstens einmal täglich nach einer neuen Version suchen; dabei
-    werden keine Kunden-, Rechnungs- oder Nutzungsdaten übertragen.
-  - Bei einem verfügbaren Update ein nicht störendes Banner mit Version,
+  - ✅ Einen sicheren Updatekanal für stabile Releases aufgebaut: eine
+    Feed-Datei auf fester HTTPS-Domain, erzeugt von der Releasepipeline;
+    nur diese wenigen Hosts sind im Hauptprozess erlaubt.
+  - ✅ Beim Start höchstens einmal täglich nach einer neuen Version suchen;
+    übertragen werden nur Version und Betriebssystem.
+  - ✅ Bei einem verfügbaren Update ein nicht störendes Banner mit Version,
     Kurzbeschreibung, „Was ist neu?“ und „Update laden“ anzeigen.
-  - Downloadfortschritt und danach „Neu starten und installieren“ anbieten;
-    niemals mitten in der Arbeit automatisch neu starten.
-  - Unmittelbar vor der Installation automatisch ein Backup erzeugen.
-  - Zusätzlich unter Einstellungen die installierte Version, „Nach Updates
-    suchen“ und die Einstellung „Automatisch nach Updates suchen“ anbieten.
-  - Signatur, Prüfsumme und Versionsmanifest vor der Installation prüfen und
-    Updatefehler verständlich sowie wiederholbar behandeln.
+  - ✅ Unter Einstellungen → Updates die installierte Version, „Jetzt nach
+    Updates suchen“, „Täglich nach Updates suchen“ sowie Größe und
+    SHA-256 des Pakets zeigen; derselbe Punkt steht im Menü.
+  - ✅ Installation aus der Anwendung heraus: Downloadfortschritt im Banner,
+    „Neu starten und installieren“, Backup unmittelbar davor, Prüfung von
+    Prüfsumme und Signatur vor dem Austausch, verständliche und
+    wiederholbare Fehlermeldungen. Der Weg von Hand bleibt daneben
+    bestehen.
+  - Noch offen: den Weg mit zwei echten Releases auf macOS ARM64, macOS x64
+    und Windows x64 durchspielen (Prüfliste in `RELEASE.md`), ungespeicherte
+    Entwürfe vor dem Neustart erkennen statt nur darauf hinzuweisen, und ein
+    Rückweg auf die vorige Fassung.
 
 - [ ] **Onboarding für den ersten Start**
   - Geführte Einrichtung für Unternehmensdaten, Steuerangaben,

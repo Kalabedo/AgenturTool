@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@agentur-tool/api": "workspace:*",
+    "@agentur-tool/shared": "workspace:*",
     "@nestjs/common": "^11.2.3",
     "@prisma/client": "^6.2.0"
   },

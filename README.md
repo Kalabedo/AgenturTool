@@ -128,9 +128,12 @@ das gespeicherte Rechteck auf keinem angeschlossenen Bildschirm mehr — der
 zweite Monitor ist nicht da —, öffnet die Anwendung wieder mittig, statt
 außerhalb des Sichtbaren zu erscheinen.
 
-Nach außen spricht sie nicht. Über die beiden Chromium-Schalter hinaus
-weist ein Filter jede Anfrage ab, die nicht an die eigene Rückschleife
-geht; abgewiesene Versuche stehen im Protokoll.
+Nach außen spricht das Fenster nicht. Über die beiden Chromium-Schalter
+hinaus weist ein Filter jede Anfrage ab, die nicht an die eigene
+Rückschleife geht; abgewiesene Versuche stehen im Protokoll. Die
+Updateprüfung (siehe „Aktualisieren") und der eingerichtete E-Mail-Versand
+gehen nicht diesen Weg, sondern vom Hauptprozess aus — jeweils zu genau
+einer festen Adresse.
 
 Der Server hört auf `127.0.0.1` und auf einem Port, den das Betriebssystem
 bei jedem Start neu vergibt. Es gibt keinen festen Port, um den sich eine
@@ -304,11 +307,52 @@ ohne Importfähigkeit vorzutäuschen.
 
 ### Aktualisieren
 
-AgenturTool sucht nicht im Netz nach Updates. Vor einem Update empfiehlt sich
-ein Backup über die Anwendung; danach wird das neue signierte Paket über die
-bestehende Installation installiert. Die Daten liegen außerhalb der
-Anwendung und bleiben dabei erhalten. Beim ersten Start der neuen Version
-entsteht vor möglichen Datenbankmigrationen automatisch ein weiteres Backup.
+AgenturTool aktualisiert sich auf Wunsch selbst — aber nur auf Wunsch. Der
+Ablauf besteht aus drei Schritten, und jeder braucht einen Klick:
+
+1. **Melden.** Höchstens einmal in 24 Stunden holt der Hauptprozess eine
+   kleine Textdatei von der eigenen Website:
+
+   ```text
+   https://updates.agenturtool.de/stable/updates.json
+   ```
+
+   Darin stehen die aktuelle Version, ein Satz dazu und je Paket Adresse,
+   Größe und SHA-256-Prüfsumme. Ist sie neuer als die installierte Fassung,
+   erscheint ein schmales Banner über der Kopfzeile: **„AgenturTool 1.4 ist
+   verfügbar · Was ist neu? · Update laden · Später"**.
+
+2. **Laden.** „Update laden" holt das Paket im Hintergrund; der Fortschritt
+   steht im Banner, und die Arbeit läuft weiter. Anschließend prüft die
+   Anwendung Größe und Prüfsumme gegen den Feed. Stimmt etwas nicht, wird das
+   Paket verworfen und nichts angefasst.
+
+3. **Installieren und neu starten.** Aus dem Banner wird **„AgenturTool 1.4
+   ist bereit · Neu starten und installieren · Später"**. Dahinter läuft
+   immer dieselbe Reihenfolge: automatisches Backup, Prüfung der Signatur
+   durch das Betriebssystem, Austausch der Installation, Neustart. Unter
+   macOS ersetzt die Anwendung ihr eigenes Bundle und startet sich wieder;
+   unter Windows übernimmt das der signierte Installer.
+
+Neu gestartet wird nie von selbst. Vor dem Neustart fragt ein Dialog nach und
+weist darauf hin, dass ungespeicherte Änderungen in einem Rechnungsentwurf
+dabei verloren gehen.
+
+Unter **Einstellungen → Updates** stehen die installierte Fassung, der
+Zeitpunkt der letzten Prüfung, Größe und Prüfsumme des Pakets, der ganze
+Ablauf in Worten sowie die Schalter „Jetzt nach Updates suchen" und „Täglich
+nach Updates suchen". Dort liegen auch die Wege von Hand: „Paket im Ordner
+zeigen" und „Stattdessen im Browser laden". Denselben Einstieg gibt es im
+Menü unter „Nach Updates suchen …".
+
+Übertragen wird bei der Prüfung nur die installierte Version und das
+Betriebssystem — keine Kunden-, Rechnungs- oder Nutzungsdaten. Wer auch das
+nicht will, nimmt den Haken heraus oder setzt
+`AGENTUR_TOOL_UPDATE_FEED=aus`; die Anwendung fragt dann nie von sich aus.
+
+Die Daten liegen außerhalb der Anwendung und bleiben bei jedem Update
+erhalten. Beim ersten Start der neuen Fassung entsteht vor möglichen
+Datenbankmigrationen automatisch ein weiteres Backup.
 
 ### Anmeldung
 

@@ -13,10 +13,10 @@
 - **Offline-Versprechen:** keine dauernde Verbindung und keine wiederkehrende
   Online-Aktivierung. Neben einer einmaligen Aktivierung muss eine signierte
   Lizenzdatei einen vollständig offline möglichen Weg bieten.
-- **Updatearchitektur:** eigener, signierter Updatefeed auf einer festen
-  HTTPS-Domain. Die Anwendung prüft und installiert über den
+- **Updatearchitektur:** eigener Updatefeed auf einer festen HTTPS-Domain,
+  signierte Pakete. Die Anwendung prüft, lädt und installiert über den
   Electron-Hauptprozess, erzeugt vorher ein Backup und startet nur mit
-  Zustimmung des Nutzers neu.
+  Zustimmung des Nutzers neu. Umgesetzt; siehe Architektur Abschnitt 28.
 - **Stabile App-Identität:** Produktname `AgenturTool`, App-ID
   `de.agenturtool.app`, bestehende Datenverzeichnisse und dieselben
   Signaturidentitäten ändern sich nach dem öffentlichen Release nicht.
@@ -131,6 +131,14 @@ Release-Pipeline vorgesehen.
 
 ## Update-Erlebnis in der Anwendung
 
+> **Stand der Umsetzung:** Der Ablauf unten ist gebaut (D54, Architektur
+> Abschnitt 28) — Prüfung, Banner, Download mit Fortschritt, Prüfsumme und
+> Signatur, Backup, Austausch und Neustart. Getestet ist er bis zum
+> Austausch: Der braucht zwei veröffentlichte Fassungen und steht als
+> Prüfliste in [`RELEASE.md`](RELEASE.md), sobald es sie gibt. Nicht gebaut
+> ist ein Rückweg auf die vorige Fassung nach einer geglückten Installation;
+> dafür gibt es das Backup und das vorige Release auf der Website.
+
 ### Zustände
 
 1. **Keine neue Version:** keine Meldung.
@@ -167,13 +175,15 @@ Nach dem Download:
 
 ## Technischer Updatekanal
 
-Die bestehende Release-Pipeline veröffentlicht derzeit ausschließlich auf
-GitHub Releases und erzeugt noch keine Metadaten für einen Auto-Updater. Für
-bezahlte Downloads sollte der stabile Kanal langfristig unter einer eigenen
-Domain liegen, zum Beispiel:
+Die Release-Pipeline erzeugt neben den signierten Paketen die Feed-Datei und
+legt sie dem Release bei (`apps/desktop/scripts/updatefeed.mjs`). Auf die
+Website kommt sie zuletzt und erst, wenn die Pakete dort schon liegen; der
+Ablauf steht in [`RELEASE.md`](RELEASE.md). Der stabile Kanal liegt unter
+der eigenen Domain:
 
 ```text
-https://updates.agenturtool.de/stable/<plattform>/<architektur>/...
+https://updates.agenturtool.de/stable/updates.json
+https://updates.agenturtool.de/stable/AgenturTool-<Version>-<arch>.<ext>
 ```
 
 Der Updatefeed enthält nur:
@@ -214,13 +224,27 @@ schmale, typisierte Brücke. Externe Inhalte werden nie im App-Fenster geladen.
 - [ ] Merchant of Record und Lizenzmodell auswählen.
 - [ ] Produkt-, Datenschutz-, Widerrufs- und Supportseiten erstellen.
 - [ ] Lizenzformat und Offline-Verhalten definieren.
-- [ ] Updatefeed und getrennte Stable-/Test-Kanäle aufbauen.
-- [ ] Releasepipeline um Updater-Artefakte und atomare Veröffentlichung
-      erweitern.
-- [ ] Electron-Hauptprozess um Updateprüfung und Installation ergänzen.
-- [ ] Updatezustand über eine sichere Preload-Brücke an React geben.
-- [ ] Banner, Einstellungsseite und ungespeicherte-Änderungen-Schutz bauen.
-- [ ] Backup vor Update und Wiederanlauf nach Migration testen.
+- [x] Updatefeed aufbauen; ein Testkanal lässt sich über
+      `AGENTUR_TOOL_UPDATE_FEED` gegen dieselbe Anwendung prüfen.
+- [x] Releasepipeline erzeugt die Feed-Datei aus den fertigen Paketen.
+- [ ] Releasepipeline um Updater-Artefakte (macOS-ZIP) und atomare
+      Veröffentlichung erweitern — erst nötig, wenn installiert statt nur
+      gemeldet wird.
+- [x] Electron-Hauptprozess um die Updateprüfung ergänzen.
+- [x] Installation aus der Anwendung heraus, mit Backup davor: macOS
+      tauscht das eigene Bundle aus, Windows startet den signierten
+      Installer; beide starten danach neu.
+- [x] Updatezustand über die vorhandene API-Brücke an React geben — ein
+      Preload-Skript gibt es nicht, das Fenster spricht ohnehin HTTP mit dem
+      eigenen Server.
+- [x] Banner und Einstellungsseite bauen.
+- [x] Hinweis auf ungespeicherte Änderungen im Dialog vor dem Neustart.
+- [ ] Ungespeicherte Entwürfe erkennen, statt nur auf sie hinzuweisen.
+- [ ] Backup vor Update und Wiederanlauf nach Migration auf allen drei
+      Zielen mit zwei echten Releases durchspielen (Prüfliste in
+      `RELEASE.md`).
+- [ ] Rückweg auf die vorige Fassung, falls ein Update sich als untauglich
+      erweist.
 - [ ] Vollständigen Updatepfad auf macOS ARM64, macOS x64 und Windows x64
       testen.
 - [ ] Website-Verkauf veröffentlichen.
