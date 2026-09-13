@@ -61,7 +61,7 @@ function StatTile({
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-focus',
         tone === 'warning'
           ? 'border-attention-border bg-attention-surface hover:bg-attention-surface'
-          : 'border-border bg-surface hover:bg-surface-sunken',
+          : 'border-border bg-surface hover:bg-surface-hover',
       ].join(' ')}
     >
       <p className="text-sm text-ink-muted">{label}</p>

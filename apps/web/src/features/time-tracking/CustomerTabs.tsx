@@ -39,7 +39,7 @@ export function CustomerTabs({ customers, activeId, onSelect }: CustomerTabsProp
               'transition-colors focus:outline-none focus:ring-2 focus:ring-focus',
               active
                 ? 'border-ink bg-inverse text-on-inverse'
-                : 'border-border bg-surface text-ink-muted hover:border-border-strong hover:bg-surface-sunken',
+                : 'border-border bg-surface text-ink-muted hover:border-border-strong hover:bg-surface-hover',
             ].join(' ')}
           >
             <span className="text-sm font-medium">{customer.customerName}</span>

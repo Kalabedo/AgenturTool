@@ -41,7 +41,7 @@ export function SegmentedControl<T extends string>({
             className={[
               'whitespace-nowrap rounded px-3 py-1.5 text-sm transition-colors',
               'focus:outline-none focus-visible:ring-2 focus-visible:ring-focus',
-              active ? 'bg-inverse text-on-inverse' : 'text-ink-muted hover:bg-surface-sunken',
+              active ? 'bg-inverse text-on-inverse' : 'text-ink-muted hover:bg-surface-hover',
             ].join(' ')}
           >
             {option.label}

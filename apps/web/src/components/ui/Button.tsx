@@ -27,7 +27,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const VARIANTS: Record<Variant, string> = {
   primary: 'bg-inverse text-on-inverse hover:bg-inverse-hover focus:ring-focus',
   secondary:
-    'border border-border-strong bg-surface text-ink-muted hover:bg-surface-sunken focus:ring-focus',
+    'border border-border-strong bg-surface text-ink-muted hover:bg-surface-hover focus:ring-focus',
   danger:
     'border border-danger-border bg-surface text-danger-ink hover:bg-danger-surface focus:ring-danger-border',
   ghost: 'text-ink-muted hover:bg-surface-raised hover:text-ink focus:ring-focus',

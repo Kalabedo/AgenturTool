@@ -122,7 +122,7 @@ export function CustomerListPage(): JSX.Element {
             </thead>
             <tbody className="divide-y divide-border">
               {customers.data.map((customer) => (
-                <tr key={customer.id} className="hover:bg-surface-sunken">
+                <tr key={customer.id} className="hover:bg-surface-hover">
                   <td className="px-4 py-3">
                     <Link
                       to={`/customers/${customer.id}`}

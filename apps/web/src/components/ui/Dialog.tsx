@@ -70,7 +70,7 @@ export function Dialog({
       className={[
         'm-auto rounded-lg border border-border bg-surface p-0',
         size === 'wide' ? 'w-[min(64rem,calc(100vw-2rem))]' : 'w-[min(40rem,calc(100vw-2rem))]',
-        'text-ink shadow-xl backdrop:bg-inverse/40',
+        'text-ink shadow-xl backdrop:bg-scrim',
       ].join(' ')}
     >
       {/* Der Inhalt scrollt in sich selbst, damit eine lange Feldliste den

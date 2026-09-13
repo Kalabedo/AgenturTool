@@ -216,7 +216,11 @@ function openWindow(url: string): void {
     minHeight: 600,
     title: 'AgenturTool',
     show: false,
-    backgroundColor: dark ? '#020617' : '#f8fafc',
+    // Die beiden Werte sind die Grundfläche aus index.css in hex —
+    // `--color-surface-sunken`, hell wie dunkel. Electron legt die Farbe
+    // bei der Erzeugung des Fensters fest und nimmt keine Variable
+    // entgegen; wer die Marke dort verschiebt, zieht sie hier nach.
+    backgroundColor: dark ? '#101113' : '#f8fafc',
     webPreferences: {
       // Das Fenster zeigt eine gewöhnliche Webanwendung von der eigenen
       // Rückschleife. Sie braucht keinen Zugang zu Node und bekommt ihn

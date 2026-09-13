@@ -28,6 +28,18 @@
   --color-surface-sunken: var(--color-slate-50);
   --color-surface-raised: var(--color-slate-100);
 
+  /*
+   * Die Fläche unter dem Zeiger.
+   *
+   * Im Hellen ist das dieselbe Farbe wie „sunken" — deshalb stand dort
+   * bisher auch dieselbe Marke. Im Dunkeln müssen die beiden aber
+   * auseinandergehen: Eine Tabellenzeile, die beim Überfahren dunkler
+   * wird, sieht aus, als schalte sie sich ab. Ein eigener Name lässt
+   * jede Seite dieselbe Klasse behalten und trotzdem in beiden Sätzen
+   * das Richtige tun.
+   */
+  --color-surface-hover: var(--color-slate-50);
+
   --color-border: var(--color-slate-200);
   --color-border-strong: var(--color-slate-300);
 
@@ -43,6 +55,13 @@
   --color-on-inverse: var(--color-white);
 
   --color-focus: var(--color-slate-300);
+
+  /*
+   * Der Schleier hinter einem Dialog. Er verdunkelt, in beiden Sätzen —
+   * vorher lieh sich das Backdrop die Marke „inverse", die im Dunkeln
+   * hell ist und die Seite dahinter aufhellte statt zurückzunehmen.
+   */
+  --color-scrim: color-mix(in oklab, var(--color-slate-900) 40%, transparent);
 
   /* Hinweis (amber): etwas fehlt oder braucht Aufmerksamkeit. */
   --color-attention-surface: var(--color-amber-50);
@@ -71,46 +90,80 @@
  * damit dunkelste Ebene, „raised" die hellste. Die Schrift läuft
  * entsprechend andersherum. Deshalb reicht es, die Variablen zu tauschen —
  * jede Utility zeigt auf die Variable, nicht auf den Wert.
+ *
+ * Warum hier Zahlen stehen und keine Palettennamen wie im hellen Satz:
+ * Tailwinds Grautöne sind allesamt eingefärbt — slate zieht ins Blaue,
+ * stone ins Braune. Auf einer weißen Seite sieht man das kaum; großflächig
+ * im Dunkeln wird aus der leichten Neigung ein nächtliches Blau, das nach
+ * Editor aussieht und nicht nach Buchhaltung. Die Leiter unten ist deshalb
+ * selbst gesetzt: ein Farbton (264°), eine fast verschwindende Sättigung
+ * (0.002–0.008) und nur die Helligkeit als Stufe. Das Ergebnis liest sich
+ * als Grau, behält aber einen Hauch Kühle — ein rechnerisch reines Grau
+ * wirkt auf großen Flächen stumpf.
+ *
+ * oklch und nicht hex, weil in oklch die erste Zahl der empfundenen
+ * Helligkeit entspricht: Gleiche Abstände ergeben gleich große Sprünge,
+ * und eine Stufe lässt sich verschieben, ohne die Nachbarn nachzurechnen.
  */
 [data-theme='dark'] {
-  --color-surface: var(--color-slate-900);
-  --color-surface-sunken: var(--color-slate-950);
-  --color-surface-raised: var(--color-slate-800);
-
-  --color-border: var(--color-slate-700);
-  --color-border-strong: var(--color-slate-600);
-
-  --color-ink: var(--color-slate-100);
-  --color-ink-muted: var(--color-slate-300);
-  --color-ink-subtle: var(--color-slate-400);
-  --color-ink-faint: var(--color-slate-500);
-
-  /* Im Dunkeln ist die auffällige Fläche die helle. */
-  --color-inverse: var(--color-slate-100);
-  --color-inverse-hover: var(--color-white);
-  --color-on-inverse: var(--color-slate-900);
-
-  --color-focus: var(--color-slate-500);
+  /* Seite, Karte, Zeiger, hervorgehobener Streifen: vier Stufen aufwärts. */
+  --color-surface-sunken: oklch(0.178 0.004 264);
+  --color-surface: oklch(0.215 0.004 264);
+  --color-surface-hover: oklch(0.248 0.005 264);
+  --color-surface-raised: oklch(0.285 0.006 264);
 
   /*
-   * Die Tonfarben werden gedämpft und die Schrift aufgehellt: Ein
-   * amber-50 auf Dunkel leuchtet wie eine Warnleuchte, und amber-900
-   * wäre darauf nicht mehr zu lesen.
+   * Ränder tragen im Dunkeln die Gliederung allein: Ein Schatten ist auf
+   * dunklem Grund nicht zu sehen, eine Karte hebt sich nur noch durch
+   * ihre Kante und ihre Fläche ab. Deshalb liegen beide Randstufen
+   * deutlich über der Karte, statt sie bloß anzudeuten.
    */
-  --color-attention-surface: color-mix(in oklab, var(--color-amber-400) 14%, transparent);
-  --color-attention-border: color-mix(in oklab, var(--color-amber-400) 34%, transparent);
-  --color-attention-ink: var(--color-amber-200);
+  --color-border: oklch(0.325 0.006 264);
+  --color-border-strong: oklch(0.405 0.008 264);
 
-  --color-danger-surface: color-mix(in oklab, var(--color-rose-500) 14%, transparent);
-  --color-danger-border: color-mix(in oklab, var(--color-rose-500) 40%, transparent);
-  --color-danger-ink: var(--color-rose-300);
-  --color-danger-strong: var(--color-rose-400);
+  /*
+   * Die Schrift bleibt unter reinem Weiß. Weiß auf fast Schwarz überstrahlt
+   * die eigenen Buchstabenränder und ermüdet beim Lesen einer langen
+   * Rechnungsliste; 0.948 liest sich als Weiß, ohne zu flimmern.
+   */
+  --color-ink: oklch(0.948 0.003 264);
+  --color-ink-muted: oklch(0.8 0.004 264);
+  --color-ink-subtle: oklch(0.69 0.005 264);
+  --color-ink-faint: oklch(0.62 0.006 264);
 
-  --color-success-surface: color-mix(in oklab, var(--color-emerald-500) 16%, transparent);
-  --color-success-ink: var(--color-emerald-300);
+  /* Im Dunkeln ist die auffällige Fläche die helle. */
+  --color-inverse: oklch(0.93 0.003 264);
+  --color-inverse-hover: oklch(0.98 0.002 264);
+  --color-on-inverse: oklch(0.2 0.004 264);
 
-  --color-info-surface: color-mix(in oklab, var(--color-sky-500) 16%, transparent);
-  --color-info-ink: var(--color-sky-200);
+  --color-focus: oklch(0.62 0.012 264);
+
+  /* Dunkler als die tiefste Fläche, damit der Dialog wirklich davorsteht. */
+  --color-scrim: color-mix(in oklab, oklch(0.09 0.004 264) 68%, transparent);
+
+  /*
+   * Die Tonfarben: gedämpfte Flächen, aufgehellte Schrift.
+   *
+   * Ein amber-50 auf Dunkel leuchtet wie eine Warnleuchte, und amber-900
+   * wäre darauf nicht mehr zu lesen. Die Flächen sind deshalb dunkle,
+   * getönte Grautöne auf der Höhe von „raised" — sie liegen in der
+   * Flächenleiter und stechen nicht aus ihr heraus. Die Farbe steckt in
+   * der Schrift und im Rand, wo wenig davon schon genügt.
+   */
+  --color-attention-surface: oklch(0.268 0.026 75);
+  --color-attention-border: oklch(0.4 0.055 75);
+  --color-attention-ink: oklch(0.86 0.08 82);
+
+  --color-danger-surface: oklch(0.272 0.03 20);
+  --color-danger-border: oklch(0.43 0.08 20);
+  --color-danger-ink: oklch(0.81 0.1 20);
+  --color-danger-strong: oklch(0.7 0.14 22);
+
+  --color-success-surface: oklch(0.278 0.026 162);
+  --color-success-ink: oklch(0.84 0.09 162);
+
+  --color-info-surface: oklch(0.282 0.026 240);
+  --color-info-ink: oklch(0.85 0.06 240);
 }
 
 html {

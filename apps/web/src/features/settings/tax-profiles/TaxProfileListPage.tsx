@@ -92,7 +92,7 @@ export function TaxProfileListPage(): JSX.Element {
             </thead>
             <tbody className="divide-y divide-border">
               {profiles.data.map((profile) => (
-                <tr key={profile.id} className="hover:bg-surface-sunken">
+                <tr key={profile.id} className="hover:bg-surface-hover">
                   <td className="px-4 py-3">
                     <Link
                       to={`/settings/tax-profiles/${profile.id}`}
