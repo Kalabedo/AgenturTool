@@ -307,36 +307,52 @@ ohne Importfähigkeit vorzutäuschen.
 
 ### Aktualisieren
 
-AgenturTool **sagt Bescheid, wenn es eine neue Fassung gibt, und lädt und
-installiert sie nicht selbst.** Höchstens einmal in 24 Stunden holt der
-Hauptprozess eine kleine Textdatei von der eigenen Website:
+AgenturTool aktualisiert sich auf Wunsch selbst — aber nur auf Wunsch. Der
+Ablauf besteht aus drei Schritten, und jeder braucht einen Klick:
 
-```text
-https://updates.agenturtool.de/stable/updates.json
-```
+1. **Melden.** Höchstens einmal in 24 Stunden holt der Hauptprozess eine
+   kleine Textdatei von der eigenen Website:
 
-Darin stehen die aktuelle Version, ein Satz dazu und je Paket Adresse,
-Größe und SHA-256-Prüfsumme. Ist die Fassung neuer als die installierte,
-erscheint ein schmales Banner über der Kopfzeile: **„AgenturTool 1.4 ist
-verfügbar · Was ist neu? · Update laden · Später"**. „Update laden" öffnet
-das Paket im Browser des Rechners; „Später" blendet die Meldung bis zur
-nächsten Fassung aus.
+   ```text
+   https://updates.agenturtool.de/stable/updates.json
+   ```
+
+   Darin stehen die aktuelle Version, ein Satz dazu und je Paket Adresse,
+   Größe und SHA-256-Prüfsumme. Ist sie neuer als die installierte Fassung,
+   erscheint ein schmales Banner über der Kopfzeile: **„AgenturTool 1.4 ist
+   verfügbar · Was ist neu? · Update laden · Später"**.
+
+2. **Laden.** „Update laden" holt das Paket im Hintergrund; der Fortschritt
+   steht im Banner, und die Arbeit läuft weiter. Anschließend prüft die
+   Anwendung Größe und Prüfsumme gegen den Feed. Stimmt etwas nicht, wird das
+   Paket verworfen und nichts angefasst.
+
+3. **Installieren und neu starten.** Aus dem Banner wird **„AgenturTool 1.4
+   ist bereit · Neu starten und installieren · Später"**. Dahinter läuft
+   immer dieselbe Reihenfolge: automatisches Backup, Prüfung der Signatur
+   durch das Betriebssystem, Austausch der Installation, Neustart. Unter
+   macOS ersetzt die Anwendung ihr eigenes Bundle und startet sich wieder;
+   unter Windows übernimmt das der signierte Installer.
+
+Neu gestartet wird nie von selbst. Vor dem Neustart fragt ein Dialog nach und
+weist darauf hin, dass ungespeicherte Änderungen in einem Rechnungsentwurf
+dabei verloren gehen.
 
 Unter **Einstellungen → Updates** stehen die installierte Fassung, der
-Zeitpunkt der letzten Prüfung, Größe und Prüfsumme des Pakets sowie die
-Schalter „Jetzt nach Updates suchen" und „Täglich nach Updates suchen".
-Denselben Weg gibt es im Menü unter „Nach Updates suchen …".
+Zeitpunkt der letzten Prüfung, Größe und Prüfsumme des Pakets, der ganze
+Ablauf in Worten sowie die Schalter „Jetzt nach Updates suchen" und „Täglich
+nach Updates suchen". Dort liegen auch die Wege von Hand: „Paket im Ordner
+zeigen" und „Stattdessen im Browser laden". Denselben Einstieg gibt es im
+Menü unter „Nach Updates suchen …".
 
-Übertragen wird dabei nur die installierte Version und das Betriebssystem —
-keine Kunden-, Rechnungs- oder Nutzungsdaten. Wer auch das nicht will,
-nimmt den Haken heraus oder setzt `AGENTUR_TOOL_UPDATE_FEED=aus`; die
-Anwendung fragt dann nie von sich aus.
+Übertragen wird bei der Prüfung nur die installierte Version und das
+Betriebssystem — keine Kunden-, Rechnungs- oder Nutzungsdaten. Wer auch das
+nicht will, nimmt den Haken heraus oder setzt
+`AGENTUR_TOOL_UPDATE_FEED=aus`; die Anwendung fragt dann nie von sich aus.
 
-Installiert wird von Hand: Vor einem Update empfiehlt sich ein Backup über
-die Anwendung; danach wird das neue signierte Paket über die bestehende
-Installation installiert. Die Daten liegen außerhalb der Anwendung und
-bleiben dabei erhalten. Beim ersten Start der neuen Version entsteht vor
-möglichen Datenbankmigrationen automatisch ein weiteres Backup.
+Die Daten liegen außerhalb der Anwendung und bleiben bei jedem Update
+erhalten. Beim ersten Start der neuen Fassung entsteht vor möglichen
+Datenbankmigrationen automatisch ein weiteres Backup.
 
 ### Anmeldung
 

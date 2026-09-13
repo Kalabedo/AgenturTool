@@ -1,14 +1,19 @@
 /**
- * Verträge rund um die Updateprüfung (D41, D43).
+ * Verträge rund um Updates (D41, D43, D54).
  *
- * Die Anwendung aktualisiert sich nicht selbst. Sie sieht nach, ob es eine
- * neuere Fassung gibt, und sagt es — laden und installieren tut der
- * Benutzer. Das ist bewusst so: Ein Installationsvorgang, der eine laufende
- * Anwendung mit offenen Rechnungsentwürfen ersetzt, braucht mehr
- * Zusicherungen (Backup, Migrationslauf, Wiederanlauf), als eine
- * Versionsanzeige rechtfertigt. Der Weg dorthin ist damit nicht verbaut:
- * Der Feed unten trägt Prüfsumme und Größe bereits mit, weil ein Updater
- * genau die braucht.
+ * Der vollständige Weg, in der Reihenfolge, in der ihn der Benutzer erlebt:
+ *
+ * 1. **Prüfen** — der Hauptprozess holt den Feed, höchstens einmal am Tag.
+ * 2. **Melden** — ein Banner nennt Version und Kurzbeschreibung.
+ * 3. **Laden** — auf Klick, mit Fortschritt; die Arbeit läuft weiter.
+ * 4. **Prüfen** — Größe, SHA-256 aus dem Feed und die Signatur des
+ *    Betriebssystems. Erst danach gilt das Paket als bereit.
+ * 5. **Sichern** — unmittelbar vor der Installation entsteht ein Backup.
+ * 6. **Installieren und neu starten** — nur auf ausdrücklichen Klick.
+ *
+ * Nichts davon geschieht heimlich: Geladen wird erst nach einem Klick,
+ * installiert erst nach einem zweiten, und neu gestartet wird nie mitten
+ * in der Arbeit.
  *
  * Der Feed ist eine einzelne JSON-Datei auf der eigenen Domain. Kein
  * GitHub-Release-Endpunkt: Die Downloads sollen später hinter Lizenz- und
@@ -77,7 +82,13 @@ export type UpdateState =
   | 'aktuell'
   /** Es gibt eine neuere Fassung. */
   | 'verfuegbar'
-  /** Die letzte Prüfung ist gescheitert. */
+  /** Das Paket wird geladen; `progress` sagt, wie weit. */
+  | 'laedt'
+  /** Geladen und geprüft. Es fehlt nur noch der Klick auf „Installieren". */
+  | 'bereit'
+  /** Backup und Installation laufen; die Anwendung beendet sich danach. */
+  | 'installiert'
+  /** Die letzte Prüfung, der Download oder die Installation ist gescheitert. */
   | 'fehler';
 
 /** Die neuere Fassung, so wie die Oberfläche sie zeigt. */
@@ -90,6 +101,30 @@ export interface AvailableUpdate {
   download: UpdateDownload | null;
 }
 
+/** Wie weit der Download ist. */
+export interface UpdateProgress {
+  transferredBytes: number;
+  /** Die erwartete Größe aus dem Feed — nie `0`, sonst gäbe es keinen Balken. */
+  totalBytes: number;
+  /** Gerundet auf ganze Prozent, damit die Oberfläche nicht zappelt. */
+  percent: number;
+}
+
+/** Ein geladenes, geprüftes Paket. */
+export interface ReadyUpdate {
+  version: string;
+  /** Wo es liegt — die Oberfläche zeigt den Pfad für den Fall der Fälle. */
+  filePath: string;
+  sizeBytes: number;
+  /**
+   * Kann die Anwendung es selbst installieren und neu starten?
+   *
+   * macOS und Windows: ja. Auf allem anderen bleibt der Weg über den
+   * Dateimanager — es gibt dort auch kein Paket.
+   */
+  installable: boolean;
+}
+
 export interface UpdateStatus {
   state: UpdateState;
   /** Die installierte Fassung. */
@@ -99,7 +134,11 @@ export interface UpdateStatus {
   /** Zeitpunkt der letzten erfolgreichen Prüfung, ISO-8601. */
   lastCheckedAt: string | null;
   available: AvailableUpdate | null;
-  /** Klartext der letzten gescheiterten Prüfung. */
+  /** Nur während `laedt`. */
+  progress: UpdateProgress | null;
+  /** Nur ab `bereit`. */
+  ready: ReadyUpdate | null;
+  /** Klartext des letzten Fehlschlags — Prüfung, Download oder Installation. */
   error: string | null;
   /** Die Adresse, die gefragt wird — damit sie niemand erraten muss. */
   feedUrl: string | null;

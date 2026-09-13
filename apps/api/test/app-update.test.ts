@@ -27,8 +27,22 @@ const STATUS: UpdateStatus = {
       sha256: 'c'.repeat(64),
     },
   },
+  progress: null,
+  ready: null,
   error: null,
   feedUrl: 'https://updates.agenturtool.de/stable/updates.json',
+};
+
+const READY: UpdateStatus = {
+  ...STATUS,
+  state: 'bereit',
+  ready: {
+    version: '1.4.0',
+    filePath:
+      '/Users/tom/Library/Application Support/AgenturTool/Updates/AgenturTool-1.4.0-arm64.dmg',
+    sizeBytes: 98_000_000,
+    installable: true,
+  },
 };
 
 function host(overrides: Partial<UpdateHost> = {}): UpdateHost {
@@ -36,6 +50,10 @@ function host(overrides: Partial<UpdateHost> = {}): UpdateHost {
     status: () => STATUS,
     check: async () => STATUS,
     setAutomatic: (automatic) => ({ ...STATUS, automatic }),
+    download: async () => ({ ...STATUS, state: 'laedt' }),
+    cancelDownload: () => STATUS,
+    install: async () => ({ ...READY, state: 'installiert' }),
+    revealDownload: () => true,
     openDownload: async () => true,
     ...overrides,
   };
@@ -63,7 +81,45 @@ describe('Updatezustand', () => {
     expect(controller.settings({ automatic: false }).automatic).toBe(false);
   });
 
-  it('öffnet den Download', async () => {
+  it('gibt den Download frei und meldet den laufenden Zustand', async () => {
+    const controller = new AppUpdateController(host());
+
+    // Die Antwort kommt sofort, mit „laedt" — nicht erst nach hundert
+    // Megabyte.
+    await expect(controller.download()).resolves.toMatchObject({ state: 'laedt' });
+  });
+
+  it('bricht einen Download ab', () => {
+    const controller = new AppUpdateController(host());
+
+    expect(controller.cancel().state).toBe('verfuegbar');
+  });
+
+  it('installiert und meldet, dass die Anwendung sich beendet', async () => {
+    const steps: string[] = [];
+    const controller = new AppUpdateController(
+      host({
+        install: async () => {
+          steps.push('install');
+          return { ...READY, state: 'installiert' };
+        },
+      }),
+    );
+
+    await expect(controller.install()).resolves.toMatchObject({ state: 'installiert' });
+    expect(steps).toEqual(['install']);
+  });
+
+  it('zeigt das geladene Paket im Dateimanager', () => {
+    const controller = new AppUpdateController(host());
+
+    expect(controller.reveal()).toEqual({ revealed: true });
+    expect(() => new AppUpdateController(host({ revealDownload: () => false })).reveal()).toThrow(
+      'kein geladenes Paket',
+    );
+  });
+
+  it('öffnet den Download im Browser', async () => {
     const opened: boolean[] = [];
     const controller = new AppUpdateController(
       host({
@@ -74,14 +130,23 @@ describe('Updatezustand', () => {
       }),
     );
 
-    await expect(controller.download()).resolves.toEqual({ opened: true });
+    await expect(controller.open()).resolves.toEqual({ opened: true });
     expect(opened).toHaveLength(1);
   });
 
   it('antwortet mit 404, wenn es nichts zu laden gibt', async () => {
     const controller = new AppUpdateController(host({ openDownload: async () => false }));
 
-    await expect(controller.download()).rejects.toThrow('kein Paket zum Laden');
-    await expect(new AppUpdateController(null).download()).rejects.toThrow('kein Paket zum Laden');
+    await expect(controller.open()).rejects.toThrow('kein Paket zum Laden');
+    await expect(new AppUpdateController(null).open()).rejects.toThrow('kein Paket zum Laden');
+  });
+
+  it('bleibt ohne Gastgeber bei jedem Schritt sprachfähig', async () => {
+    const controller = new AppUpdateController(null);
+
+    await expect(controller.download()).resolves.toMatchObject({ state: 'nicht-unterstuetzt' });
+    await expect(controller.install()).resolves.toMatchObject({ state: 'nicht-unterstuetzt' });
+    expect(controller.cancel().state).toBe('nicht-unterstuetzt');
+    expect(() => controller.reveal()).toThrow('kein geladenes Paket');
   });
 });

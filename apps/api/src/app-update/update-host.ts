@@ -34,12 +34,36 @@ export interface UpdateHost {
   setAutomatic(automatic: boolean): UpdateStatus;
 
   /**
+   * Lädt das Paket — und kehrt zurück, sobald der Download läuft.
+   *
+   * Nicht erst, wenn er fertig ist: Hundert Megabyte dauern, und eine
+   * Anfrage, die so lange offen bleibt, ist eine Anfrage, die abbricht.
+   * Die Oberfläche fragt danach den Zustand ab und zeigt den Fortschritt.
+   */
+  download(): Promise<UpdateStatus>;
+
+  /** Bricht einen laufenden Download ab. */
+  cancelDownload(): UpdateStatus;
+
+  /**
+   * Backup, Installation, Neustart — in dieser Reihenfolge (D41).
+   *
+   * Auf dem Erfolgsweg beendet sich die Anwendung. Die Antwort erreicht
+   * die Oberfläche dann vielleicht nicht mehr, und das ist in Ordnung:
+   * Gleich darauf kommt die neue Fassung hoch und lädt sie neu.
+   */
+  install(): Promise<UpdateStatus>;
+
+  /** Zeigt das geladene Paket im Dateimanager. */
+  revealDownload(): boolean;
+
+  /**
    * Öffnet das Paket im Browser des Rechners.
    *
-   * `false` heißt „es gibt gerade nichts zu laden". Heruntergeladen wird im
-   * Browser und nicht in der Anwendung: Dort sieht der Benutzer, woher die
-   * Datei kommt, und die Anwendung muss keinen halb geladenen Installer
-   * verwalten.
+   * Der zweite Weg, und er bleibt: Wer der Anwendung den Austausch nicht
+   * anvertrauen will, lädt im Browser und installiert wie beim ersten Mal.
+   * Für ein System ohne eigenes Paket ist es der einzige Weg — dort führt
+   * er zu den Versionshinweisen. `false` heißt „es gibt gerade nichts".
    */
   openDownload(): Promise<boolean>;
 }

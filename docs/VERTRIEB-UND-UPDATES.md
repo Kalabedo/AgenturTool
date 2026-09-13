@@ -13,10 +13,10 @@
 - **Offline-Versprechen:** keine dauernde Verbindung und keine wiederkehrende
   Online-Aktivierung. Neben einer einmaligen Aktivierung muss eine signierte
   Lizenzdatei einen vollständig offline möglichen Weg bieten.
-- **Updatearchitektur:** eigener, signierter Updatefeed auf einer festen
-  HTTPS-Domain. Die Anwendung prüft und installiert über den
+- **Updatearchitektur:** eigener Updatefeed auf einer festen HTTPS-Domain,
+  signierte Pakete. Die Anwendung prüft, lädt und installiert über den
   Electron-Hauptprozess, erzeugt vorher ein Backup und startet nur mit
-  Zustimmung des Nutzers neu.
+  Zustimmung des Nutzers neu. Umgesetzt; siehe Architektur Abschnitt 28.
 - **Stabile App-Identität:** Produktname `AgenturTool`, App-ID
   `de.agenturtool.app`, bestehende Datenverzeichnisse und dieselben
   Signaturidentitäten ändern sich nach dem öffentlichen Release nicht.
@@ -131,14 +131,13 @@ Release-Pipeline vorgesehen.
 
 ## Update-Erlebnis in der Anwendung
 
-> **Stand der Umsetzung:** Gebaut ist die Meldung, nicht der Updater (D54,
-> Architektur Abschnitt 28). Die Anwendung prüft höchstens einmal in 24
-> Stunden, zeigt ein Banner und öffnet das Paket auf Klick im Browser;
-> geladen und installiert wird von Hand. Die Zustände „Download läuft" und
-> „Update bereit" unten beschreiben weiterhin das Ziel, sobald es einen
-> selbstinstallierenden Updater gibt — der braucht Backup vor der
-> Installation, Migrationslauf und Rückweg und ist deshalb ein eigenes
-> Vorhaben.
+> **Stand der Umsetzung:** Der Ablauf unten ist gebaut (D54, Architektur
+> Abschnitt 28) — Prüfung, Banner, Download mit Fortschritt, Prüfsumme und
+> Signatur, Backup, Austausch und Neustart. Getestet ist er bis zum
+> Austausch: Der braucht zwei veröffentlichte Fassungen und steht als
+> Prüfliste in [`RELEASE.md`](RELEASE.md), sobald es sie gibt. Nicht gebaut
+> ist ein Rückweg auf die vorige Fassung nach einer geglückten Installation;
+> dafür gibt es das Backup und das vorige Release auf der Website.
 
 ### Zustände
 
@@ -232,15 +231,20 @@ schmale, typisierte Brücke. Externe Inhalte werden nie im App-Fenster geladen.
       Veröffentlichung erweitern — erst nötig, wenn installiert statt nur
       gemeldet wird.
 - [x] Electron-Hauptprozess um die Updateprüfung ergänzen.
-- [ ] Installation aus der Anwendung heraus, mit Backup davor und
-      Wiederanlauf nach der Migration.
+- [x] Installation aus der Anwendung heraus, mit Backup davor: macOS
+      tauscht das eigene Bundle aus, Windows startet den signierten
+      Installer; beide starten danach neu.
 - [x] Updatezustand über die vorhandene API-Brücke an React geben — ein
       Preload-Skript gibt es nicht, das Fenster spricht ohnehin HTTP mit dem
       eigenen Server.
 - [x] Banner und Einstellungsseite bauen.
-- [ ] Schutz vor ungespeicherten Änderungen — nötig, sobald die Anwendung
-      für eine Installation selbst neu startet.
-- [ ] Backup vor Update und Wiederanlauf nach Migration testen.
+- [x] Hinweis auf ungespeicherte Änderungen im Dialog vor dem Neustart.
+- [ ] Ungespeicherte Entwürfe erkennen, statt nur auf sie hinzuweisen.
+- [ ] Backup vor Update und Wiederanlauf nach Migration auf allen drei
+      Zielen mit zwei echten Releases durchspielen (Prüfliste in
+      `RELEASE.md`).
+- [ ] Rückweg auf die vorige Fassung, falls ein Update sich als untauglich
+      erweist.
 - [ ] Vollständigen Updatepfad auf macOS ARM64, macOS x64 und Windows x64
       testen.
 - [ ] Website-Verkauf veröffentlichen.

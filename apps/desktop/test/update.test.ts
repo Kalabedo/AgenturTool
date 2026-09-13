@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -60,19 +61,35 @@ function answering(body: string, init: { status?: number; url?: string } = {}): 
 }
 
 let stateDir = '';
+let updatesDir = '';
 const opened: string[] = [];
+const revealed: string[] = [];
 const logged: string[] = [];
+/** Was der Gastgeber gemacht hat — Backup und Installation, in Reihenfolge. */
+let steps: string[] = [];
+let backupFails = false;
+let installable = true;
 
 function service(overrides: Partial<ConstructorParameters<typeof UpdateService>[0]> = {}) {
   return new UpdateService({
     currentVersion: '1.0.0',
     stateDir,
+    updatesDir,
     feed: FEED,
     platform: 'darwin',
     arch: 'arm64',
     log: (message) => logged.push(message),
     openExternal: async (url) => {
       opened.push(url);
+    },
+    revealPackage: (filePath) => revealed.push(filePath),
+    createBackup: async () => {
+      if (backupFails) throw new Error('Die Platte ist voll.');
+      steps.push('backup');
+    },
+    installPackage: async ({ version }) => {
+      steps.push(`install ${version}`);
+      return installable;
     },
     fetchImpl: answering(feedBody()),
     ...overrides,
@@ -81,8 +98,13 @@ function service(overrides: Partial<ConstructorParameters<typeof UpdateService>[
 
 beforeEach(() => {
   stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentur-tool-update-'));
+  updatesDir = path.join(stateDir, 'Updates');
   opened.length = 0;
+  revealed.length = 0;
   logged.length = 0;
+  steps = [];
+  backupFails = false;
+  installable = true;
 });
 
 afterEach(() => {
@@ -245,7 +267,7 @@ describe('Zustandsdatei', () => {
   it('fällt auf die Vorbelegung zurück, wenn es sie nicht gibt', () => {
     const state = readUpdateState(path.join(stateDir, 'leer'), FEED.allowedHosts);
 
-    expect(state).toEqual({ automatic: true, lastCheckedAt: null, lastFeed: null });
+    expect(state).toEqual({ automatic: true, lastCheckedAt: null, lastFeed: null, ready: null });
   });
 
   it('vergisst einen gemerkten Feed, dessen Host nicht mehr erlaubt ist', async () => {
@@ -261,5 +283,203 @@ describe('Zustandsdatei', () => {
     fs.writeFileSync(path.join(stateDir, 'aktualisierung.json'), '{kaputt', 'utf8');
 
     expect(readUpdateState(stateDir, FEED.allowedHosts).automatic).toBe(true);
+  });
+});
+
+/**
+ * Der vollständige Weg: laden, prüfen, sichern, installieren.
+ *
+ * Der Austausch des Bundles selbst braucht ein echtes macOS und ein
+ * signiertes Paket — er ist hier hereingereicht und protokolliert nur, dass
+ * er gerufen wurde. Alles davor und dazwischen ist echt: der Download, die
+ * Prüfsumme, die Zustandsdatei, die Reihenfolge von Backup und
+ * Installation.
+ */
+describe('UpdateService — der ganze Weg', () => {
+  const PAKET = Buffer.from('ein sehr kleines, aber vollständiges Installationspaket');
+  const PAKET_SHA = createHash('sha256').update(PAKET).digest('hex');
+
+  function fullFeed(version = '1.4.0', sha = PAKET_SHA): string {
+    return JSON.stringify({
+      formatVersion: 1,
+      version,
+      releasedAt: '2026-09-13',
+      notes: 'Schnellere Vorschau.',
+      notesUrl: 'https://agenturtool.de/releases',
+      downloads: {
+        'macos-arm64': {
+          url: `https://updates.agenturtool.de/stable/AgenturTool-${version}-arm64.dmg`,
+          sizeBytes: PAKET.byteLength,
+          sha256: sha,
+        },
+      },
+    });
+  }
+
+  /** Feed und Paket von derselben erfundenen Domain. */
+  function serving(version = '1.4.0', sha = PAKET_SHA): typeof fetch {
+    return (async (url: string) => {
+      if (url.endsWith('.json')) {
+        return new Response(fullFeed(version, sha), {
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(new Uint8Array(PAKET), {
+        headers: { 'Content-Length': String(PAKET.byteLength) },
+      });
+    }) as unknown as typeof fetch;
+  }
+
+  /** Wartet, bis der Zustand nicht mehr `laedt` ist. */
+  async function settled(updates: UpdateService): Promise<void> {
+    for (let attempt = 0; attempt < 200; attempt += 1) {
+      if (updates.status().state !== 'laedt') return;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    throw new Error(`Der Download endete nicht: ${updates.status().state}`);
+  }
+
+  it('lädt, prüft, sichert, installiert — in dieser Reihenfolge', async () => {
+    const updates = service({ fetchImpl: serving() });
+    await updates.check();
+
+    // Der Download kehrt sofort zurück, damit die Oberfläche einen
+    // Fortschritt zeigen kann statt auf eine Antwort zu warten.
+    const started = await updates.download();
+    expect(['laedt', 'bereit']).toContain(started.state);
+    await settled(updates);
+
+    const ready = updates.status();
+    expect(ready.state).toBe('bereit');
+    expect(ready.ready?.version).toBe('1.4.0');
+    expect(ready.ready?.installable).toBe(true);
+    expect(fs.readFileSync(ready.ready?.filePath ?? '')).toEqual(PAKET);
+    // Geladen ist noch nicht installiert: Bis hierher wurde nichts angefasst.
+    expect(steps).toEqual([]);
+
+    const installed = await updates.install();
+    expect(steps).toEqual(['backup', 'install 1.4.0']);
+    expect(installed.state).toBe('installiert');
+    expect(installed.ready).toBeNull();
+  });
+
+  it('verwirft ein Paket, dessen Prüfsumme nicht zum Feed passt', async () => {
+    const updates = service({ fetchImpl: serving('1.4.0', 'c'.repeat(64)) });
+    await updates.check();
+    await updates.download();
+    await settled(updates);
+
+    const status = updates.status();
+    expect(status.state).toBe('fehler');
+    expect(status.error).toContain('Prüfsumme');
+    expect(status.ready).toBeNull();
+    // Und nichts liegt im Verzeichnis, das wie ein Paket aussieht.
+    expect(fs.existsSync(updatesDir) ? fs.readdirSync(updatesDir) : []).toEqual([]);
+  });
+
+  it('installiert nichts, wenn das Backup fehlschlägt', async () => {
+    const updates = service({ fetchImpl: serving() });
+    await updates.check();
+    await updates.download();
+    await settled(updates);
+
+    backupFails = true;
+    const status = await updates.install();
+
+    expect(steps).toEqual([]);
+    expect(status.error).toContain('Backup');
+    // Das Paket bleibt liegen: Der nächste Versuch braucht keinen zweiten
+    // Download.
+    expect(status.state).toBe('bereit');
+    expect(status.ready?.version).toBe('1.4.0');
+  });
+
+  it('zeigt das Paket im Dateimanager, wenn es sich nicht selbst einspielen kann', async () => {
+    const updates = service({ fetchImpl: serving(), platform: 'linux', arch: 'x64' });
+    await updates.check();
+
+    // Ohne Paket für dieses System gibt es auch nichts zu laden.
+    const status = await updates.download();
+    expect(status.error).toContain('kein Paket');
+    expect(status.state).toBe('fehler');
+  });
+
+  it('behält das geladene Paket über einen Neustart', async () => {
+    const updates = service({ fetchImpl: serving() });
+    await updates.check();
+    await updates.download();
+    await settled(updates);
+
+    // Kein `fetchImpl`: Diese Instanz darf gar nicht fragen.
+    const nachStart = service({
+      fetchImpl: (() => {
+        throw new Error('Hier darf keine Anfrage hinausgehen.');
+      }) as unknown as typeof fetch,
+    });
+
+    const status = nachStart.status();
+    expect(status.state).toBe('bereit');
+    expect(status.ready?.version).toBe('1.4.0');
+  });
+
+  it('verwirft ein Paket, das die laufende Fassung nicht mehr überholt', async () => {
+    const updates = service({ fetchImpl: serving() });
+    await updates.check();
+    await updates.download();
+    await settled(updates);
+    const file = updates.status().ready?.filePath ?? '';
+
+    // Der Start nach dem Update: Jetzt läuft genau diese Fassung.
+    const nachUpdate = service({ currentVersion: '1.4.0', fetchImpl: serving() });
+
+    expect(nachUpdate.status().ready).toBeNull();
+    expect(fs.existsSync(file)).toBe(false);
+  });
+
+  it('lädt nicht zweimal, wenn das Paket schon bereit liegt', async () => {
+    const updates = service({ fetchImpl: serving() });
+    await updates.check();
+    await updates.download();
+    await settled(updates);
+
+    let requests = 0;
+    const zaehlend = serving();
+    const counting = (async (url: string, init?: RequestInit) => {
+      requests += 1;
+      return (zaehlend as unknown as (u: string, i?: RequestInit) => Promise<Response>)(url, init);
+    }) as unknown as typeof fetch;
+
+    const wieder = service({ fetchImpl: counting });
+    await wieder.download();
+
+    expect(requests).toBe(0);
+    expect(wieder.status().state).toBe('bereit');
+  });
+});
+
+describe('UpdateService — ein Feed, der Unsinn erzählt', () => {
+  it('lädt nichts von einer Adresse ohne Dateinamen', async () => {
+    const krumm = JSON.stringify({
+      formatVersion: 1,
+      version: '1.4.0',
+      releasedAt: '2026-09-13',
+      notes: null,
+      downloads: {
+        // Kein Paket, sondern ein Verzeichnis.
+        'macos-arm64': {
+          url: 'https://updates.agenturtool.de/stable/',
+          sizeBytes: 10,
+          sha256: SHA,
+        },
+      },
+    });
+
+    const updates = service({ fetchImpl: answering(krumm) });
+    await updates.check();
+    const status = await updates.download();
+
+    expect(status.state).toBe('fehler');
+    expect(status.error).toContain('Dateinamen');
+    expect(status.ready).toBeNull();
   });
 });

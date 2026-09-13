@@ -62,7 +62,7 @@ sie hier korrigiert und nicht nur im Code.
 | D51 | PDF/A-Prüfung            | **veraPDF in der CI**, feste Fassung, Java nur auf dem Bauserver — wie der KoSIT-Validator beim XML                                                                                                                                                                                                                                                                                                                                                                                                        |
 | D52 | Rechnungsdesigner        | **Vier mitgelieferte Designs plus Regler, kein freies CSS.** Jeder Regler ist ein Wert im `templateSnapshot`, den der Template-Code liest — eigenes CSS müsste mit eingefroren werden, sonst sähe eine alte Rechnung nach einem Umbau anders aus. Die Dichte ist eine Auswahl aus drei Stufen und kein stufenloser Regler, damit die Seitenumbrüche aller Kombinationen prüfbar bleiben                                                                                                                    |
 | D53 | Dunkelmodus              | **Hell, Dunkel, Automatisch — gespeichert im Browser, nicht auf dem Server.** Ein Erscheinungsbild ist eine Eigenschaft des Geräts; der Umweg über den Server brächte bei jedem Laden das Aufblitzen zurück, das die Vorabsetzung in `index.html` gerade vermeidet. Das Fenster bekommt die Wahl zusätzlich über die API in die Fensterdatei, weil Electron `backgroundColor` nur bei der Erzeugung setzen kann. Die Rechnungsvorschau bleibt in jedem Modus weiß: Sie zeigt Papier, kein Stück Oberfläche |
-| D54 | Updateprüfung            | **Melden, nicht installieren.** Der Hauptprozess holt höchstens einmal in 24 Stunden eine Feed-Datei von der eigenen HTTPS-Domain und zeigt das Ergebnis als Banner; geladen wird im Browser des Rechners, installiert von Hand. Ein selbstinstallierender Updater bräuchte Backup, Migrationslauf und Rückweg — das ist ein eigenes Vorhaben (Abschnitt 28)                                                                                                                                               |
+| D54 | Updates                  | **Melden, laden, installieren — jeder Schritt auf Klick.** Der Hauptprozess holt höchstens einmal in 24 Stunden eine Feed-Datei von der eigenen HTTPS-Domain, lädt das Paket erst nach einem Klick, prüft Größe, SHA-256 und die Signatur des Betriebssystems, erzeugt vor der Installation ein Backup und startet nur nach ausdrücklicher Bestätigung neu. Nichts davon geschieht im Hintergrund (Abschnitt 28)                                                                                           |
 
 Zu D21: Rechnungs-, Leistungs- und Fälligkeitsdatum sind Kalendertage, keine
 Zeitpunkte. Als `DateTime` müsste an jeder Grenze zwischen Browser, API und
@@ -2227,22 +2227,31 @@ verlieren, auf den es beim Nachweis ankommt.
 ## 28. Updates (D41, D54)
 
 Die Anwendung wird auf der eigenen Website verkauft und heruntergeladen
-(D38). Damit stellt sich eine Frage, die es bei einem Store nicht gibt: Wie
-erfährt jemand, dass es eine neue Fassung gibt?
+(D38). Damit stellen sich zwei Fragen, die es bei einem Store nicht gibt:
+Wie erfährt jemand, dass es eine neue Fassung gibt — und wie kommt sie auf
+seinen Rechner, ohne dass er ein DMG sucht und Ordner verschiebt?
 
-### Melden, nicht installieren
+### Drei Schritte, drei Klicks
 
-Gebaut ist die Meldung, nicht der Updater. Der Hauptprozess holt eine
-JSON-Datei, vergleicht die Version und zeigt ein Banner; „Update laden"
-öffnet das Paket im Browser, installiert wird wie beim ersten Mal.
+```text
+prüfen ──► verfügbar ──klick──► lädt ──► bereit ──klick──► installiert ──► Neustart
+             │                    │        │
+             └── Später           └─ Abbruch, Prüfsumme falsch, kein Netz …
+```
 
-Der Grund ist der Preis des anderen Wegs. Ein Updater, der die laufende
-Anwendung ersetzt, muss vorher ein Backup ziehen, die SQLite-Datei
-freigeben, den Migrationslauf des nächsten Starts überstehen und im
-Fehlerfall zurückkönnen — und er darf das alles nicht, während jemand eine
-Rechnung schreibt. Das ist ein eigenes Vorhaben mit eigenen Zusagen. Der
-Weg dorthin bleibt offen: Der Feed trägt Größe und SHA-256 jedes Pakets
-bereits mit, weil ein Updater genau die braucht.
+`check()`, `download()` und `install()` in
+`apps/desktop/src/update/update-service.ts` sind diese drei Schritte. Keiner
+läuft von selbst in den nächsten: Geladen wird erst nach einem Klick,
+installiert erst nach einem zweiten, und der Neustart kommt nie mitten in
+der Arbeit. Ein Update, das sich im Hintergrund einspielt, wäre bei einem
+Programm, in dem gerade eine Rechnung offen ist, der falsche Dienst am
+Benutzer — das ist der Grund für jede einzelne dieser Rückfragen.
+
+Was ausgehandelt wurde und was nicht: Der **Fortschritt** steht im Zustand
+und nicht in der Antwort auf `POST /api/app/update/download` — hundert
+Megabyte dauern, und eine Anfrage, die so lange offen bleibt, ist eine
+Anfrage, die abbricht. Die Oberfläche fragt während des Downloads jede
+Sekunde nach; sonst alle fünf Minuten.
 
 ### Der Feed
 
@@ -2278,14 +2287,91 @@ Adresse zu umgehen. Dieselbe Prüfung läuft über die gemerkte Fassung in der
 Zustandsdatei — die erlaubten Hosts können sich mit einer neuen Fassung der
 Anwendung ändern.
 
+### Warum drei Prüfungen und nicht eine
+
+Der Download landet unter `userData/Updates` — neben dem übrigen
+Installationszustand und ausdrücklich nicht in `Daten/`: Ein Installer ist
+kein Geschäftsdatum und gehört in kein Backup. Geschrieben wird in eine
+`.teil`-Datei, die erst nach allen Prüfungen ihren richtigen Namen bekommt;
+ein abgebrochener Lauf hinterlässt damit nie etwas, das wie ein fertiges
+Paket aussieht.
+
+1. **Die Größe** aus dem Feed, schon während des Schreibens. Wer mehr
+   schickt als angekündigt, wird mitten im Strom abgewiesen — sonst
+   entschiede ein fremder Server, wie voll die Platte wird.
+2. **Die SHA-256** aus dem Feed. Sie schließt den fehlerhaften Proxy und
+   den halben Download aus.
+3. **Die Signatur des Betriebssystems**, unmittelbar vor dem Austausch:
+   `codesign --verify --deep --strict` und `spctl --assess` auf dem Bundle
+   im eingehängten Abbild.
+
+Die dritte ist die eigentliche Sicherung, und sie ist der Grund, warum die
+ersten zwei nicht genügen: Feed und Prüfsumme liegen auf derselben Domain.
+Wer dort schreiben kann, fälscht beide. Was er nicht kann, ist eine
+Anwendung mit der Developer-ID zu signieren und notarisieren zu lassen.
+Geprüft wird deshalb gegen das Betriebssystem und nicht nur gegen die
+eigene Datei — und bevor irgendetwas an der bestehenden Installation
+angefasst wird.
+
+### Der Austausch
+
+**macOS.** Ein DMG installiert nichts; es ist ein Abbild, das man öffnet.
+Diesen Weg geht die Anwendung deshalb selbst: `hdiutil attach` (nur lesend,
+ohne Fenster), Signatur prüfen, die Fassung im `Info.plist` mit der
+erwarteten vergleichen, mit `ditto` neben die eigene Installation kopieren —
+`ditto` und nicht `cp`, weil eine Signatur, die den Kopiervorgang nicht
+übersteht, keine mehr ist — und dann zwei `rename` auf demselben Volume:
+das alte Bundle beiseite, das neue an seine Stelle. Es gibt keinen
+Zwischenzustand, in dem `AgenturTool.app` halb aus zwei Fassungen besteht;
+scheitert der zweite Schritt, kommt der erste zurück.
+
+Das alte Bundle bleibt bis zum nächsten Start liegen — aus ihm läuft der
+Prozess, der gerade austauscht, und ohne asar-Archiv (D35) liest er seine
+Dateien einzeln bis zum Ende nach. Aufgeräumt wird deshalb beim nächsten
+Start (`cleanupUpdateLeftovers`), wenn niemand mehr darin steht.
+
+Zwei Fälle tauschen bewusst nichts aus: ein Pfad unter `AppTranslocation`
+— dann hat Gatekeeper die Anwendung in ein schreibgeschütztes Abbild
+gelegt, weil sie noch im Downloadordner steckt, und der Austausch träfe
+eine Kopie, die es beim nächsten Start nicht mehr gibt — und ein
+Programmordner ohne Schreibrecht. In beiden Fällen zeigt die Anwendung das
+geladene Paket im Dateimanager und sagt, was zu tun ist.
+
+**Windows.** Der signierte NSIS-Installer kann das selbst. Er wird still
+gestartet (`/S`) und mit `--force-run`, worauf er die Anwendung nach dem
+Austausch wieder öffnet — dieselben Schalter, die auch `electron-updater`
+benutzt. Die Anwendung beendet sich unmittelbar danach; ein laufendes
+Programm lässt sich nicht überschreiben.
+
+**Beendet wird über `app.quit()`**, nicht `app.exit()`: Der
+`before-quit`-Haken schließt die Nest-Anwendung und damit die offenen
+Prisma-Verbindungen. Eine Installation, die die Datenbank mitten im
+Schreiben unterbricht, wäre ein teuer bezahlter Neustart.
+
+### Das Backup davor
+
+Vor jeder Installation, ohne Rückfrage und ohne Ausnahme: dasselbe Archiv,
+das der Knopf unter Einstellungen → Backup erzeugt. Schlägt es fehl, wird
+nicht installiert — die Meldung sagt, woran es lag, und das geladene Paket
+bleibt liegen, damit der nächste Versuch keinen zweiten Download braucht.
+Ein Update ist der einzige Vorgang, der der Datenbank eine fremde Fassung
+vorsetzt; davor gehört eine Sicherung, die niemand erst anfordern muss.
+
 ### Was den Rechner verlässt (D43)
 
-Ein `GET` auf die Feed-Adresse, in der Kennung Version und Betriebssystem.
+Zwei Anfragen, beide an dieselbe Domain: der `GET` auf die Feed-Adresse und
+der `GET` auf das Paket. In der Kennung stehen Version und Betriebssystem.
 Keine Rechnerkennung, keine Kunden-, Rechnungs- oder Nutzungsdaten, keine
-Telemetrie. Die Prüfung läuft frühestens zehn Sekunden nach dem Start und
-höchstens einmal in 24 Stunden; der Zeitpunkt steht in
-`aktualisierung.json` neben der Fensterdatei und überlebt deshalb auch den
-Neustart. Abschalten lässt sich das an zwei Stellen: der Haken unter
+Telemetrie. Beides läuft im Hauptprozess mit Nodes `fetch` — am Filter des
+Fensters vorbei, der weiterhin jede Anfrage außerhalb der Rückschleife
+abweist (D36). Das Fenster selbst spricht mit niemandem; es bekommt nur den
+Zustand.
+
+Die Prüfung läuft frühestens zehn Sekunden nach dem Start und höchstens
+einmal in 24 Stunden; der Zeitpunkt steht in `aktualisierung.json` neben der
+Fensterdatei und überlebt deshalb auch den Neustart. Ebenso das geladene
+Paket: Wer „Später" wählt, soll beim nächsten Start nicht erneut laden
+müssen. Abschalten lässt sich das an zwei Stellen: der Haken unter
 Einstellungen → Updates und `AGENTUR_TOOL_UPDATE_FEED=aus` für eine ganze
 Installation. Die Rauchprobe setzt genau diese Variable und prüft, dass der
 Endpunkt „abgeschaltet" meldet — das Versprechen „keine Anfrage nach außen"
@@ -2296,20 +2382,35 @@ gilt dort unverändert.
 Über die API, nicht über IPC — dieselbe schmale Brücke wie beim
 PDF-Renderer, der Mail-Übergabe und dem Erscheinungsbild (`HostOptions`).
 Das Fenster lädt die Oberfläche ohnehin über HTTP vom eigenen Server, ein
-Preload-Skript gibt es nicht. `GET /api/app/update` liefert den Zustand,
-`POST /api/app/update/check` fragt sofort, `PUT /api/app/update/settings`
-schaltet die selbsttätige Prüfung, und `POST /api/app/update/download`
-öffnet das Paket im Browser. Ohne Gastgeber — der Browserbetrieb bei
-`pnpm dev` — meldet der Endpunkt „nicht unterstützt", und die Oberfläche
-zeigt nichts davon: Eine Weboberfläche aktualisiert man, indem man sie neu
-lädt.
+Preload-Skript gibt es nicht.
 
-Gezeigt wird es an drei Stellen: ein Banner über der Kopfzeile, solange es
-etwas Neues gibt und niemand „Später" geklickt hat (gemerkt im
-`localStorage`, je Fassung); die Seite Einstellungen → Updates mit
-Version, Datum, Größe, Prüfsumme und den Schaltern; und der Menüpunkt
-„Nach Updates suchen …", der mit einem nativen Dialog antwortet — wer ihn
-im Menü sucht, hat die Oberfläche gerade nicht vor Augen.
+| Route                                  | Schritt                                    |
+| -------------------------------------- | ------------------------------------------ |
+| `GET /api/app/update`                  | Zustand samt Fortschritt                   |
+| `POST /api/app/update/check`           | sofort prüfen                              |
+| `POST /api/app/update/download`        | Download beginnen                          |
+| `POST /api/app/update/download/cancel` | laufenden Download abbrechen               |
+| `POST /api/app/update/install`         | Backup, Installation, Neustart             |
+| `POST /api/app/update/reveal`          | geladenes Paket im Dateimanager zeigen     |
+| `POST /api/app/update/open`            | Paket im Browser laden — der Weg von Hand  |
+| `PUT /api/app/update/settings`         | selbsttätige Prüfung ein- oder ausschalten |
+
+Ohne Gastgeber — der Browserbetrieb bei `pnpm dev` — meldet jede davon
+„nicht unterstützt", und die Oberfläche zeigt nichts davon: Eine
+Weboberfläche aktualisiert man, indem man sie neu lädt.
+
+Gezeigt wird es an drei Stellen: das Banner über der Kopfzeile, das mit dem
+Zustand wechselt (verfügbar → lädt mit Balken → bereit → installiert); die
+Seite Einstellungen → Updates mit Version, Datum, Größe, Prüfsumme, Pfad des
+geladenen Pakets, dem Ablauf in Worten und den Wegen von Hand; und der
+Menüpunkt „Nach Updates suchen …", der mit nativen Dialogen durch denselben
+Ablauf führt — wer ihn im Menü sucht, hat die Oberfläche gerade nicht vor
+Augen.
+
+Der einzige Dialog, den dieser Weg erzwingt, steht vor dem Neustart: Er
+nennt das Backup, den Neustart und die ungespeicherten Änderungen in einem
+Rechnungsentwurf. Danach ist das Fenster weg — das soll niemanden
+überraschen.
 
 ---
 
@@ -2331,9 +2432,10 @@ Dokumente das Haus auch selbst: per SMTP oder über die Mail-Anwendung des
 Rechners, mit Vorlagen und einem Protokoll, das auch den gescheiterten
 Versuch festhält (Abschnitt 27).
 
-Zuletzt kam die Updateprüfung dazu: Die Anwendung sieht einmal am Tag auf
-der eigenen Domain nach, ob es eine neuere Fassung gibt, und sagt es —
-geladen und installiert wird von Hand (Abschnitt 28).
+Zuletzt kam der Updateweg dazu: Die Anwendung sieht einmal am Tag auf der
+eigenen Domain nach, ob es eine neuere Fassung gibt, lädt das Paket auf
+Klick, prüft Prüfsumme und Signatur, sichert die Daten und ersetzt sich
+selbst — jeder Schritt auf ausdrückliche Zustimmung (Abschnitt 28).
 
 Was bewusst offen bleibt, steht in Abschnitt 21 — unter anderem Mahnwesen,
 wiederkehrende Rechnungen, ZUGFeRD, das Lesen eingehender E-Rechnungen,

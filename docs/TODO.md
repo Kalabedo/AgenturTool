@@ -35,11 +35,15 @@ Deutschland und anschließend auf einer breiteren Nutzung in der EU.
   - ✅ Unter Einstellungen → Updates die installierte Version, „Jetzt nach
     Updates suchen“, „Täglich nach Updates suchen“ sowie Größe und
     SHA-256 des Pakets zeigen; derselbe Punkt steht im Menü.
-  - Noch offen: Installation aus der Anwendung heraus — Downloadfortschritt,
+  - ✅ Installation aus der Anwendung heraus: Downloadfortschritt im Banner,
     „Neu starten und installieren“, Backup unmittelbar davor, Prüfung von
-    Signatur und Prüfsumme vor der Installation und ein verständlicher,
-    wiederholbarer Umgang mit Updatefehlern. Bis dahin lädt der Benutzer das
-    Paket im Browser und installiert es wie beim ersten Mal.
+    Prüfsumme und Signatur vor dem Austausch, verständliche und
+    wiederholbare Fehlermeldungen. Der Weg von Hand bleibt daneben
+    bestehen.
+  - Noch offen: den Weg mit zwei echten Releases auf macOS ARM64, macOS x64
+    und Windows x64 durchspielen (Prüfliste in `RELEASE.md`), ungespeicherte
+    Entwürfe vor dem Neustart erkennen statt nur darauf hinzuweisen, und ein
+    Rückweg auf die vorige Fassung.
 
 - [ ] **Onboarding für den ersten Start**
   - Geführte Einrichtung für Unternehmensdaten, Steuerangaben,

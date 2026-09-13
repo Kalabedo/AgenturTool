@@ -1,7 +1,7 @@
 /**
  * Was die Anwendung über Updates behält.
  *
- * Drei Dinge, und jedes hat einen Grund, die Sitzung zu überleben:
+ * Vier Dinge, und jedes hat einen Grund, die Sitzung zu überleben:
  *
  * - **die Einstellung**, weil „nicht selbsttätig prüfen" sonst bei jedem
  *   Start wieder verfiele;
@@ -9,7 +9,9 @@
  *   sonst nur innerhalb einer Sitzung gälte — wer seine Anwendung täglich
  *   schließt, fragte sonst bei jedem Start neu an;
  * - **der zuletzt gesehene Feed**, weil das Banner dann sofort steht,
- *   statt erst nach der ersten erfolgreichen Anfrage des neuen Starts.
+ *   statt erst nach der ersten erfolgreichen Anfrage des neuen Starts;
+ * - **das geladene Paket**, weil „Später" sonst hundert Megabyte kostet,
+ *   die beim nächsten Start erneut über die Leitung gingen.
  *
  * Die Datei liegt in `stateDir` neben `fenster.json` — Zustand der
  * Installation, nicht der Buchhaltung. Ein Backup soll Rechnungen
@@ -17,7 +19,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { parseUpdateFeed, type UpdateFeed } from '@agentur-tool/shared';
+import { isStableVersion, parseUpdateFeed, type UpdateFeed } from '@agentur-tool/shared';
 
 const FILE = 'aktualisierung.json';
 
@@ -28,12 +30,23 @@ export interface UpdateState {
   lastCheckedAt: string | null;
   /** Der zuletzt gelesene Feed, unverändert wie er ankam. */
   lastFeed: UpdateFeed | null;
+  /**
+   * Das geladene, geprüfte Paket — Dateiname und Fassung.
+   *
+   * Auch das überlebt die Sitzung: Wer „Später" wählt und die Anwendung
+   * schließt, soll das Paket beim nächsten Start nicht erneut laden
+   * müssen. Gespeichert wird der Dateiname, nicht der ganze Pfad — das
+   * Verzeichnis kennt die Anwendung selbst, und nach einem Umzug des
+   * Benutzerordners wäre ein alter absoluter Pfad falsch.
+   */
+  ready: { version: string; file: string; sizeBytes: number } | null;
 }
 
 export const DEFAULT_UPDATE_STATE: UpdateState = {
   automatic: true,
   lastCheckedAt: null,
   lastFeed: null,
+  ready: null,
 };
 
 /**
@@ -66,7 +79,27 @@ export function readUpdateState(stateDir: string, allowedHosts: readonly string[
     automatic: stored.automatic !== false,
     lastCheckedAt: typeof stored.lastCheckedAt === 'string' ? stored.lastCheckedAt : null,
     lastFeed,
+    ready: readyFrom(stored.ready),
   };
+}
+
+/**
+ * Das gemerkte Paket — oder `null`.
+ *
+ * Der Dateiname wird auf einen einzelnen Namen begrenzt: Aus der
+ * Zustandsdatei kommt später ein Pfad, an dem installiert wird, und ein
+ * `..` darin hätte dort nichts zu suchen.
+ */
+function readyFrom(raw: unknown): UpdateState['ready'] {
+  if (typeof raw !== 'object' || raw === null) return null;
+  const candidate = raw as Record<string, unknown>;
+
+  const { version, file, sizeBytes } = candidate;
+  if (typeof version !== 'string' || !isStableVersion(version)) return null;
+  if (typeof file !== 'string' || file === '' || path.basename(file) !== file) return null;
+  if (typeof sizeBytes !== 'number' || !Number.isInteger(sizeBytes) || sizeBytes <= 0) return null;
+
+  return { version, file, sizeBytes };
 }
 
 /**

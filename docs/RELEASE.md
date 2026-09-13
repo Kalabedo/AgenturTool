@@ -1,10 +1,11 @@
 # Desktop-Releases
 
 Öffentliche Desktop-Pakete entstehen nur aus einem stabilen SemVer-Tag auf
-`main`. Die Anwendung aktualisiert sich nicht selbst — sie meldet nur, dass
-es eine neue Fassung gibt (D54). Der Lauf erzeugt neben den Paketen die
-Feed-Datei, die eine installierte Anwendung dafür abfragt; ausgeliefert wird
-sie über die eigene Website.
+`main`. Eine installierte Anwendung findet diese Pakete selbst: Sie fragt den
+Updatefeed, lädt auf Klick, prüft Prüfsumme und Signatur und ersetzt sich
+nach einem Backup selbst (D54, Architektur Abschnitt 28). Der Releaselauf
+erzeugt neben den Paketen die Feed-Datei; ausgeliefert wird sie über die
+eigene Website.
 
 ## Unterstützte Pakete
 
@@ -149,11 +150,36 @@ Eine neue Windows-Signatur kann trotz gültigem Zertifikat anfangs noch keinen
 SmartScreen-Ruf besitzen. Der Workflow kann die Authenticode-Gültigkeit
 erzwingen, nicht Microsofts externe Reputationsbewertung.
 
-## Manuelles Update
+## Update in der Anwendung
 
 Die laufende Anwendung meldet die neue Fassung von selbst — als Banner und
 unter Einstellungen → Updates, mit Größe und Prüfsumme zum Vergleichen.
-„Update laden" öffnet das Paket im Browser; installiert wird von Hand.
+„Update laden" holt das Paket, „Neu starten und installieren" erzeugt ein
+Backup, prüft die Signatur, ersetzt die Installation und startet neu. Was
+dabei im Einzelnen passiert, steht in Abschnitt 28 der Architektur.
+
+**Nach dem ersten Release eines neuen Kanals von Hand nachprüfen** — der Weg
+lässt sich nicht ohne zwei Fassungen testen:
+
+1. Eine ältere Fassung installieren (DMG beziehungsweise Installer aus dem
+   vorigen Release), starten und in den Einstellungen prüfen lassen.
+2. „Update laden" — der Fortschritt muss laufen und die Prüfung durchgehen.
+3. „Neu starten und installieren" — danach muss unter `Daten/backups` ein
+   frisches Archiv liegen, die Anwendung von selbst wieder hochkommen und
+   unter Einstellungen → Updates die neue Fassung stehen.
+4. Auf macOS zusätzlich prüfen, dass `/Applications/AgenturTool.app` die neue
+   Fassung ist und daneben kein `.agentur-tool-update-*` liegen bleibt.
+5. Den Fall ohne Schreibrecht mitprüfen: dieselbe Anwendung aus dem
+   Download-Ordner starten (Gatekeeper verschiebt sie dann) — die
+   Installation muss mit einem Hinweis auf den Dateimanager abbrechen und
+   nichts anfassen.
+
+## Manuelles Update
+
+Der Weg bleibt daneben bestehen — für den Fall, dass der Austausch
+fehlschlägt, oder für jemanden, der ihn nicht will: Unter Einstellungen →
+Updates führen „Paket im Ordner zeigen" und „Stattdessen im Browser laden"
+dorthin.
 
 Vor dem Update über die Anwendung ein Backup erzeugen. Anschließend das neue
 DMG beziehungsweise den neuen NSIS-Installer über die bestehende Installation

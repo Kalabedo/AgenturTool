@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { UpdateStatus } from '@agentur-tool/shared';
-import { shouldShowBanner } from '../src/features/updates/useUpdateStatus';
+import { bannerMode, shouldShowBanner } from '../src/features/updates/useUpdateStatus';
 
 /**
- * Wann das Updatebanner erscheint.
+ * Was das Banner in welchem Zustand zeigt.
  *
- * Die beiden Zusagen, an denen es hängt: Es erscheint, wenn es wirklich
- * etwas Neueres gibt — und es bleibt weg, wenn jemand „Später" geklickt
- * hat. Ein Banner, das nach jedem Seitenwechsel wiederkommt, ist keine
- * Information mehr, sondern eine Aufforderung.
+ * Daran hängen die Zusagen des ganzen Updatewegs: Es meldet eine neue
+ * Fassung, es bleibt während des Downloads stehen, es fragt nach der
+ * Installation — und es verschwindet auf „Später", bis es eine noch neuere
+ * Fassung gibt. Ein Banner, das nach jedem Seitenwechsel wiederkommt, ist
+ * keine Information mehr, sondern eine Aufforderung.
  */
 
 function status(overrides: Partial<UpdateStatus> = {}): UpdateStatus {
@@ -22,32 +23,93 @@ function status(overrides: Partial<UpdateStatus> = {}): UpdateStatus {
       releasedAt: '2026-09-13',
       notes: null,
       notesUrl: null,
-      download: null,
+      download: {
+        url: 'https://updates.agenturtool.de/stable/AgenturTool-1.4.0-arm64.dmg',
+        sizeBytes: 98_000_000,
+        sha256: 'a'.repeat(64),
+      },
     },
+    progress: null,
+    ready: null,
     error: null,
     feedUrl: 'https://updates.agenturtool.de/stable/updates.json',
     ...overrides,
   };
 }
 
-describe('shouldShowBanner', () => {
-  it('zeigt eine neue Fassung', () => {
-    expect(shouldShowBanner(status(), null)).toBe(true);
+const READY: UpdateStatus['ready'] = {
+  version: '1.4.0',
+  filePath:
+    '/Users/tom/Library/Application Support/AgenturTool/Updates/AgenturTool-1.4.0-arm64.dmg',
+  sizeBytes: 98_000_000,
+  installable: true,
+};
+
+describe('bannerMode', () => {
+  it('meldet eine neue Fassung', () => {
+    expect(bannerMode(status(), null)).toBe('verfuegbar');
+  });
+
+  it('zeigt den laufenden Download', () => {
+    expect(
+      bannerMode(
+        status({
+          state: 'laedt',
+          progress: { transferredBytes: 49_000_000, totalBytes: 98_000_000, percent: 50 },
+        }),
+        null,
+      ),
+    ).toBe('laedt');
+  });
+
+  it('fragt nach der Installation, sobald das Paket bereit ist', () => {
+    expect(bannerMode(status({ state: 'bereit', ready: READY }), null)).toBe('bereit');
+  });
+
+  it('bleibt während der Installation stehen', () => {
+    expect(bannerMode(status({ state: 'installiert', ready: READY }), null)).toBe('installiert');
+  });
+
+  it('lässt einen laufenden Download nicht wegklicken', () => {
+    // „Später" gilt für den Hinweis, nicht für einen Vorgang, den jemand
+    // gerade angestoßen hat.
+    expect(
+      bannerMode(
+        status({
+          state: 'laedt',
+          progress: { transferredBytes: 1, totalBytes: 98_000_000, percent: 0 },
+        }),
+        '1.4.0',
+      ),
+    ).toBe('laedt');
+    expect(bannerMode(status({ state: 'bereit', ready: READY }), '1.4.0')).toBe('bereit');
+  });
+
+  it('zeigt einen Fehlschlag dort, wo gerade der Fortschritt stand', () => {
+    expect(bannerMode(status({ state: 'fehler', error: 'Prüfsumme falsch.' }), null)).toBe(
+      'fehler',
+    );
+  });
+
+  it('schweigt bei einer gescheiterten Prüfung ohne Fund', () => {
+    // Die hat niemand ausgelöst; sie gehört in die Einstellungen.
+    expect(bannerMode(status({ state: 'fehler', available: null, error: 'kein Netz' }), null)).toBe(
+      'kein',
+    );
   });
 
   it('schweigt, solange nichts geladen ist', () => {
-    expect(shouldShowBanner(undefined, null)).toBe(false);
+    expect(bannerMode(undefined, null)).toBe('kein');
   });
 
   it('schweigt bei allen übrigen Zuständen', () => {
-    for (const state of ['aktuell', 'prueft', 'fehler', 'abgeschaltet', 'nicht-unterstuetzt']) {
-      expect(
-        shouldShowBanner(status({ state: state as UpdateStatus['state'], available: null }), null),
-      ).toBe(false);
+    for (const state of ['aktuell', 'prueft', 'abgeschaltet', 'nicht-unterstuetzt'] as const) {
+      expect(bannerMode(status({ state, available: null }), null)).toBe('kein');
     }
   });
 
   it('bleibt weg, wenn diese Fassung weggeklickt wurde', () => {
+    expect(bannerMode(status(), '1.4.0')).toBe('kein');
     expect(shouldShowBanner(status(), '1.4.0')).toBe(false);
   });
 

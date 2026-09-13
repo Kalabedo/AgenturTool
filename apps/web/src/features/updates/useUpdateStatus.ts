@@ -11,15 +11,21 @@ import { queryKeys } from '../../lib/queryKeys.js';
  * D43). Deshalb ist das hier eine gewöhnliche Abfrage auf der
  * Rückschleife und kostet nichts.
  *
- * Gefragt wird selten: Der Hauptprozess prüft höchstens einmal am Tag; ein
- * Abstand von fünf Minuten genügt, damit das Banner nach einer Prüfung im
- * Hintergrund von selbst auftaucht.
+ * Der Abstand richtet sich nach dem Zustand: Während eines Downloads jede
+ * Sekunde, damit der Balken läuft; sonst alle fünf Minuten, damit ein
+ * Update, das der Hauptprozess im Hintergrund gefunden hat, von selbst im
+ * Banner auftaucht.
  */
 export function useUpdateStatus(): UseQueryResult<UpdateStatus> {
   return useQuery({
     queryKey: queryKeys.appUpdate,
     queryFn: () => apiClient.get<UpdateStatus>('/app/update'),
-    refetchInterval: 5 * 60 * 1000,
+    refetchInterval: (query) => {
+      const state = query.state.data?.state;
+      return state === 'laedt' || state === 'prueft' || state === 'installiert'
+        ? 1_000
+        : 5 * 60 * 1000;
+    },
     // Ein fehlgeschlagener Abruf ist keine Meldung wert: Die Anwendung
     // funktioniert auch ohne zu wissen, ob es eine neue Fassung gibt.
     retry: false,
@@ -52,32 +58,124 @@ export function useUpdateSettings() {
 }
 
 /**
+ * Startet den Download im Hauptprozess.
+ *
+ * Die Antwort kommt sofort — mit dem Zustand `laedt`. Der Fortschritt
+ * kommt danach über `useUpdateStatus`, das währenddessen jede Sekunde
+ * nachfragt.
+ */
+export function useDownloadUpdate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => apiClient.post<UpdateStatus>('/app/update/download', {}),
+    onSuccess: (status) => {
+      queryClient.setQueryData(queryKeys.appUpdate, status);
+    },
+  });
+}
+
+/** Bricht einen laufenden Download ab. */
+export function useCancelDownload() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => apiClient.post<UpdateStatus>('/app/update/download/cancel', {}),
+    onSuccess: (status) => {
+      queryClient.setQueryData(queryKeys.appUpdate, status);
+    },
+  });
+}
+
+/**
+ * Sichern, installieren, neu starten.
+ *
+ * Die Anfrage bleibt im Erfolgsfall ohne Antwort: Die Anwendung beendet
+ * sich mitten darin und kommt als neue Fassung wieder. Ein Abbruch der
+ * Verbindung ist hier deshalb kein Fehler, sondern das erwartete Ende —
+ * die Oberfläche zeigt währenddessen „wird installiert" und wartet auf den
+ * Neustart.
+ */
+export function useInstallUpdate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => apiClient.post<UpdateStatus>('/app/update/install', {}),
+    onSuccess: (status) => {
+      queryClient.setQueryData(queryKeys.appUpdate, status);
+    },
+  });
+}
+
+/** Zeigt das geladene Paket im Dateimanager. */
+export function useRevealDownload() {
+  return useMutation({
+    mutationFn: () => apiClient.post<{ revealed: true }>('/app/update/reveal', {}),
+  });
+}
+
+/**
  * Öffnet das Paket im Browser des Rechners.
  *
  * Kein `<a href>`: Die Adresse steht im Hauptprozess, und das Fenster soll
  * sie weder kennen noch selbst ansteuern müssen — jede Anfrage nach außen
  * würde dort ohnehin abgewiesen.
  */
-export function useDownloadUpdate() {
+export function useOpenDownload() {
   return useMutation({
-    mutationFn: () => apiClient.post<{ opened: true }>('/app/update/download', {}),
+    mutationFn: () => apiClient.post<{ opened: true }>('/app/update/open', {}),
   });
 }
 
 /**
- * Soll das Banner erscheinen?
+ * Soll das Banner erscheinen, und wofür?
  *
- * Als eigene Funktion, weil daran zwei Zusagen hängen: Ein Update wird
- * gemeldet, und eine weggeklickte Meldung bleibt weg — bis zur nächsten
- * Fassung. Beides lässt sich so prüfen, ohne eine Seite zu rendern.
+ * Als eigene Funktion, weil daran die Zusagen des ganzen Wegs hängen: Ein
+ * Update wird gemeldet; ein laufender Download bleibt sichtbar; ein
+ * geladenes Paket fragt nach der Installation; und eine weggeklickte
+ * Meldung bleibt weg — bis zur nächsten Fassung. Alles davon lässt sich so
+ * prüfen, ohne eine Seite zu rendern.
+ *
+ * Weggeklickt wird nur der Hinweis „es gibt etwas Neues". Ein Download,
+ * den jemand angestoßen hat, verschwindet nicht aus der Anzeige, und ein
+ * geladenes Paket fragt nach dem nächsten Start wieder — es liegt ja da.
  */
+export type BannerMode = 'kein' | 'verfuegbar' | 'laedt' | 'bereit' | 'installiert' | 'fehler';
+
+export function bannerMode(
+  status: UpdateStatus | undefined,
+  dismissedVersion: string | null,
+): BannerMode {
+  if (status === undefined) return 'kein';
+
+  switch (status.state) {
+    case 'laedt':
+      return 'laedt';
+    case 'installiert':
+      return 'installiert';
+    case 'bereit':
+      return status.ready === null ? 'kein' : 'bereit';
+    case 'verfuegbar':
+      if (status.available === null) return 'kein';
+      return status.available.version === dismissedVersion ? 'kein' : 'verfuegbar';
+    case 'fehler':
+      // Ein Fehlschlag beim Laden oder Installieren gehört ins Banner: Dort
+      // stand gerade noch der Fortschritt. Eine gescheiterte Prüfung dagegen
+      // bleibt in den Einstellungen — sie hat niemand ausgelöst.
+      return status.available !== null && status.available.version !== dismissedVersion
+        ? 'fehler'
+        : 'kein';
+    default:
+      return 'kein';
+  }
+}
+
+/** Erscheint das Banner überhaupt? */
 export function shouldShowBanner(
   status: UpdateStatus | undefined,
   dismissedVersion: string | null,
 ): boolean {
-  if (status === undefined) return false;
-  if (status.state !== 'verfuegbar' || status.available === null) return false;
-  return status.available.version !== dismissedVersion;
+  return bannerMode(status, dismissedVersion) !== 'kein';
 }
 
 const DISMISS_KEY = 'agentur-tool.update-dismissed';
