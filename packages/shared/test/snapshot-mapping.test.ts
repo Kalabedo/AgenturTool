@@ -33,6 +33,7 @@ const company: CompanyResponse = {
   electronicAddress: 'hello@xyz-agentur.de',
   electronicAddressScheme: 'EM',
   defaultPaymentTermDays: 14,
+  defaultHourlyRateCents: 8500,
   logoAssetId: 7,
   logoUrl: '/api/assets/7',
   updatedAt: '2026-09-08T10:00:00.000Z',

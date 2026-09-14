@@ -1,0 +1,21 @@
+-- Standard-Stundensatz in den Firmendaten.
+--
+-- ---------------------------------------------------------------------------
+-- HANDGESCHRIEBEN. Bitte vor dem Ändern lesen.
+-- ---------------------------------------------------------------------------
+--
+-- Wie bei den vorangegangenen Spaltenerweiterungen: reines ALTER TABLE statt
+-- des von Prisma erzeugten `RedefineTables`. Ein Neuaufbau von "Company"
+-- verwürfe Company_singleton_check — die Regel, die diese Tabelle auf genau
+-- eine Zeile mit id = 1 festnagelt. SQLite fügt eine Spalte dagegen an, ohne
+-- die Tabelle anzufassen; Trigger, CHECKs und Indizes bleiben in Ruhe.
+-- `pnpm db:verify` prüft das im Anschluss nach.
+--
+-- Die Spalte ist NULL-fähig, und das ist die eigentliche Aussage: „noch
+-- nicht festgelegt" ist etwas anderes als „null Euro die Stunde". Ein
+-- DEFAULT 0 hätte beide Zustände verschmolzen, und die Einrichtung könnte
+-- nicht mehr erkennen, ob die Angabe noch aussteht.
+--
+-- Einheit ist Cent, wie bei jedem Geldbetrag im Schema (85,00 € = 8500).
+
+ALTER TABLE "Company" ADD COLUMN "defaultHourlyRateCents" INTEGER;
