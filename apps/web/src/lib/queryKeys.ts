@@ -8,6 +8,7 @@ export const queryKeys = {
   health: ['health'] as const,
   authSession: ['auth', 'session'] as const,
   company: ['company'] as const,
+  onboarding: ['onboarding'] as const,
   templateSettings: ['template-settings'] as const,
   backup: ['backup'] as const,
   appUpdate: ['app', 'update'] as const,

@@ -215,6 +215,7 @@ apps/web/src/
 ├── app/            Router, Provider, Layout, ErrorBoundary
 ├── features/
 │   ├── dashboard/
+│   ├── onboarding/ Geführte Einrichtung beim ersten Start (Abschnitt 29)
 │   ├── invoices/   list/ · editor/ (Form, ItemsTable, TotalsPanel, PreviewPane) · detail/
 │   ├── customers/
 │   ├── design/     Rechnungsdesigner: Auswahl, Regler, Live-Vorschau
@@ -225,7 +226,8 @@ apps/web/src/
 ```
 
 Routen: `/` · `/invoices` · `/invoices/new` · `/invoices/:id` ·
-`/invoices/:id/edit` · `/customers` · `/customers/:id` · `/settings/*`
+`/invoices/:id/edit` · `/customers` · `/customers/:id` · `/onboarding` ·
+`/settings/*`
 
 ### Bedienkonventionen
 
@@ -342,6 +344,7 @@ die zweite Spalte tatsächlich erscheint.
 ```
 apps/api/src/
 ├── company/        Singleton-Stammdaten + Logo
+├── onboarding/     Zustand der Einrichtung (Abschnitt 29)
 ├── customers/
 ├── tax-profiles/
 ├── template-settings/
@@ -379,20 +382,20 @@ Nest-spezifisch:
 
 ### Entitäten
 
-| Entität            | Zweck                                       | Kern                                                                                                                   |
-| ------------------ | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `Company`          | eigene Firmendaten (Singleton, `id = 1`)    | Name, Adresse, Kontakt, USt-ID, Steuernr., Kontoinhaber/IBAN/BIC, Logo-Ref, Standard-Zahlungsziel, Fußzeilentexte      |
-| `Customer`         | Rechnungsempfänger (Stammdaten)             | Nr., Firma, Ansprechpartner, Adresse, Land, E-Mail, USt-ID, Standard-Steuerprofil, Standard-Zahlungsziel, `archivedAt` |
-| `TaxProfile`       | konfigurierbare Steuerkonstellation         | Name, `kind`, Standardsatz, Hinweistext, Flags                                                                         |
-| `TemplateSettings` | Aussehen (Singleton in V1)                  | Template-Key, Akzentfarbe, Schrift, Sichtbarkeits-Flags, Footer, Standardtexte                                         |
-| `Invoice`          | Rechnungskopf + Snapshots + Status          | siehe unten                                                                                                            |
-| `InvoiceItem`      | Positionen                                  | Sortierung, Beschreibung, Menge, Einheit, Einzelpreis, Rabatt, Steuersatz, berechnete Beträge                          |
-| `NumberSequence`   | Zählerstand je Jahr/Dokumenttyp             | `scope`, `year`, `nextValue`                                                                                           |
-| `InvoiceDocument`  | erzeugte PDF-Datei                          | Invoice-Ref, Pfad, SHA-256, Bytes, `generatedAt`, `kind`                                                               |
-| `Asset`            | hochgeladene Dateien (Logo)                 | Pfad, MIME, Größe, Hash                                                                                                |
-| `InvoiceEvent`     | Verlaufsprotokoll (**Pflicht**, siehe Undo) | Invoice-Ref, Typ, Zeitpunkt, Metadaten-JSON                                                                            |
-| `TimeEntry`        | erfasste Arbeitszeit für einen Kunden       | Tag, Kunden-Ref, Beginn/Ende/Pause in Minuten (Viertelstundenraster), Tätigkeit                                        |
-| `AppSetting`       | Key-Value-Kleinkram                         | Key, JSON-Wert                                                                                                         |
+| Entität            | Zweck                                       | Kern                                                                                                                                    |
+| ------------------ | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `Company`          | eigene Firmendaten (Singleton, `id = 1`)    | Name, Adresse, Kontakt, USt-ID, Steuernr., Kontoinhaber/IBAN/BIC, Logo-Ref, Standard-Zahlungsziel, Standard-Stundensatz, Fußzeilentexte |
+| `Customer`         | Rechnungsempfänger (Stammdaten)             | Nr., Firma, Ansprechpartner, Adresse, Land, E-Mail, USt-ID, Standard-Steuerprofil, Standard-Zahlungsziel, `archivedAt`                  |
+| `TaxProfile`       | konfigurierbare Steuerkonstellation         | Name, `kind`, Standardsatz, Hinweistext, Flags                                                                                          |
+| `TemplateSettings` | Aussehen (Singleton in V1)                  | Template-Key, Akzentfarbe, Schrift, Sichtbarkeits-Flags, Footer, Standardtexte                                                          |
+| `Invoice`          | Rechnungskopf + Snapshots + Status          | siehe unten                                                                                                                             |
+| `InvoiceItem`      | Positionen                                  | Sortierung, Beschreibung, Menge, Einheit, Einzelpreis, Rabatt, Steuersatz, berechnete Beträge                                           |
+| `NumberSequence`   | Zählerstand je Jahr/Dokumenttyp             | `scope`, `year`, `nextValue`                                                                                                            |
+| `InvoiceDocument`  | erzeugte PDF-Datei                          | Invoice-Ref, Pfad, SHA-256, Bytes, `generatedAt`, `kind`                                                                                |
+| `Asset`            | hochgeladene Dateien (Logo)                 | Pfad, MIME, Größe, Hash                                                                                                                 |
+| `InvoiceEvent`     | Verlaufsprotokoll (**Pflicht**, siehe Undo) | Invoice-Ref, Typ, Zeitpunkt, Metadaten-JSON                                                                                             |
+| `TimeEntry`        | erfasste Arbeitszeit für einen Kunden       | Tag, Kunden-Ref, Beginn/Ende/Pause in Minuten (Viertelstundenraster), Tätigkeit                                                         |
+| `AppSetting`       | Key-Value-Kleinkram                         | Key, JSON-Wert                                                                                                                          |
 
 ### Beziehungen
 
@@ -1189,6 +1192,8 @@ GET    /api/health
 
 GET    /api/company                    PUT /api/company
 POST   /api/company/logo               DELETE /api/company/logo
+
+GET    /api/onboarding                 PUT  /api/onboarding   { status }
 
 GET    /api/customers?q=&archived=     POST /api/customers
 GET    /api/customers/:id              PATCH  /api/customers/:id
@@ -2475,6 +2480,64 @@ Rechnungsentwurf. Danach ist das Fenster weg — das soll niemanden
 
 ---
 
+## 29. Einrichtung beim ersten Start
+
+Eine frisch installierte Anwendung zeigt eine leere Rechnungsliste und einen
+Hinweis, dass Unternehmensdaten fehlen. Das ist richtig, aber es sagt nicht,
+was zu tun ist. Der geführte Ablauf unter `/onboarding` geht deshalb einmal
+die Angaben durch, die auf jeder Rechnung stehen: Unternehmensdaten,
+Steuerangaben samt Steuerprofil, Bankverbindung, die Vorgaben für neue
+Rechnungen — Zahlungsziel und Stundensatz — und zuletzt Logo und Aussehen.
+
+**Kein eigener Zwischenspeicher.** Jeder Schritt schreibt in dieselben
+Endpunkte wie die Einstellungsseiten: `/api/company`, `/api/tax-profiles`,
+`/api/template-settings`. Es gibt keinen Entwurfszustand einer halben
+Einrichtung, der beim Abbruch verfiele oder beim Wiederherstellen aus einem
+Backup mitgesichert werden müsste. Der Preis dafür ist, dass ein Schritt
+seine Felder vollständig gültig haben muss, bevor er speichert — ein PUT
+schreibt die Firmendaten als Ganzes.
+
+**Der Fortschritt wird abgeleitet.** Ob ein Schritt erledigt ist, steht
+nicht in einer Fortschrittstabelle, sondern in den Daten selbst: ein Merkmal
+je Schritt, das erste Feld, das ohne die Einrichtung leer bliebe
+(`packages/shared/src/onboarding.ts`). Ein mitgeführter Zähler wäre eine
+zweite Wahrheit und würde falsch: Wer die Bankverbindung später in den
+Einstellungen leert, hätte weiterhin einen Haken für etwas, das nicht mehr
+da ist. So geht der Schritt wieder auf.
+
+Gespeichert wird deshalb nur eine einzige Angabe, und die kann man den Daten
+nicht ansehen: die Haltung des Benutzers — `OPEN`, `SKIPPED` oder `DONE`, in
+`AppSetting` unter `onboarding.status`.
+
+**Von selbst nur bei leerer Datenbank und nur einmal je Programmstart.** Als
+leer gilt eine Datenbank ohne Kunden, Rechnungen und Zeiteinträge; die
+Grunddaten aus dem Seed zählen nicht mit, weil sie in jeder Installation
+stehen. Das Gedächtnis „schon einmal hingeführt" liegt im Frontend
+(`OnboardingGate`) und nicht in der Datenbank: Ohne es wäre die Weiche eine
+Falle — wer die Einrichtung offen lässt und in der Navigation weiterklickt,
+würde sofort zurückgeworfen.
+
+**Überspringen ist ein echtes Angebot.** Der Ablauf liegt im
+Anwendungsrahmen, die Navigation bleibt sichtbar, kein Schritt ist gesperrt,
+und die Schritte lassen sich in beliebiger Reihenfolge anspringen. Wer
+abbricht, findet die offenen Punkte als ruhige Liste auf dem Dashboard
+wieder, mit einem Weg zurück in den Ablauf und einem „Nicht mehr anzeigen".
+
+**Der Abschluss nennt zwei Listen, nicht eine.** Was § 14 UStG verlangt,
+verhindert das Ausstellen einer Rechnung. Was EN 16931 zusätzlich verlangt,
+verhindert nur den XML-Export. Beides in eine Liste zu werfen erzeugte
+entweder falsche Dringlichkeit oder falsche Sorglosigkeit. Die zweite Liste
+entsteht aus derselben Prüfung, die später der Export benutzt
+(`checkSellerEinvoiceReady`) — eine nachgebaute Liste liefe auseinander, und
+der Unterschied fiele erst an der ersten abgewiesenen XRechnung auf.
+
+Das Steuerprofil für Kleinunternehmer entsteht erst, wenn es jemand
+auswählt. Der Seed liefert es nicht mit: Er läuft bei jeder Installation,
+und ein viertes, in der Mehrzahl der Fälle ungenutztes Profil stünde in
+jeder Auswahlliste im Weg.
+
+---
+
 ## Stand
 
 Die Reihenfolge aus Abschnitt 20 ist abgearbeitet: Schritte 0 bis 14 sind
@@ -2493,10 +2556,14 @@ Dokumente das Haus auch selbst: per SMTP oder über die Mail-Anwendung des
 Rechners, mit Vorlagen und einem Protokoll, das auch den gescheiterten
 Versuch festhält (Abschnitt 27).
 
-Zuletzt kam der Updateweg dazu: Die Anwendung sieht einmal am Tag auf der
+Danach kam der Updateweg dazu: Die Anwendung sieht einmal am Tag auf der
 eigenen Domain nach, ob es eine neuere Fassung gibt, lädt das Paket auf
 Klick, prüft Prüfsumme und Signatur, sichert die Daten und ersetzt sich
 selbst — jeder Schritt auf ausdrückliche Zustimmung (Abschnitt 28).
+
+Zuletzt kam der Anfang dazu: Eine frisch installierte Anwendung führt einmal
+durch die Angaben, die auf jeder Rechnung stehen, und sagt am Ende, was für
+PDF und XRechnung noch fehlt (Abschnitt 29).
 
 Was bewusst offen bleibt, steht in Abschnitt 21 — unter anderem Mahnwesen,
 wiederkehrende Rechnungen, ZUGFeRD, das Lesen eingehender E-Rechnungen,

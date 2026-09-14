@@ -20,6 +20,7 @@ import { Card } from '../../components/ui/Card.js';
 import { ErrorNotice } from '../../components/ui/ErrorNotice.js';
 import { LoadingNote } from '../../components/ui/LoadingNote.js';
 import { PageHeader } from '../../components/ui/PageHeader.js';
+import { OnboardingChecklist } from '../onboarding/OnboardingChecklist.js';
 
 /**
  * Einstieg in die Anwendung.
@@ -97,6 +98,11 @@ export function DashboardPage(): JSX.Element {
   return (
     <div className="space-y-6">
       <PageHeader title="Dashboard" description="Was gerade offen ist" />
+
+      {/* Vor allem anderen, aber ohne Farbe: Die Einrichtung ist eine
+          Einladung und keine Warnung. Sie verschwindet von selbst, sobald
+          nichts mehr aussteht oder sie abgeschlossen wurde. */}
+      <OnboardingChecklist />
 
       {company.isSuccess && missing.length > 0 && (
         <div className="rounded-lg border border-attention-border bg-attention-surface p-5">

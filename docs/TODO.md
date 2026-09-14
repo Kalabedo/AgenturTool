@@ -45,14 +45,30 @@ Deutschland und anschließend auf einer breiteren Nutzung in der EU.
     Entwürfe vor dem Neustart erkennen statt nur darauf hinzuweisen, und ein
     Rückweg auf die vorige Fassung.
 
-- [ ] **Onboarding für den ersten Start**
-  - Geführte Einrichtung für Unternehmensdaten, Steuerangaben,
-    Bankverbindung, Standard-Zahlungsziel und Standard-Stundensatz.
-  - Auswahl eines passenden Steuerprofils, zum Beispiel Regelbesteuerung,
-    Kleinunternehmer oder Reverse Charge.
-  - Logo und Rechnungsdarstellung direkt im Ablauf einrichten.
-  - Fortschritt anzeigen und späteres Fortsetzen ermöglichen.
-  - Am Ende klar zeigen, welche Angaben für PDF und XRechnung noch fehlen.
+- [x] **Onboarding für den ersten Start**
+  - [x] Geführte Einrichtung für Unternehmensdaten, Steuerangaben,
+        Bankverbindung, Standard-Zahlungsziel und Standard-Stundensatz — fünf
+        Schritte unter `/onboarding`, jeder speichert sofort in die echten
+        Stammdaten.
+  - [x] Auswahl eines passenden Steuerprofils. Angeboten werden die
+        mitgelieferten Profile; das Profil für Kleinunternehmer entsteht erst
+        beim Anklicken, weil der Seed es sonst jeder Installation aufdrängte.
+  - [x] Logo und Rechnungsdarstellung direkt im Ablauf einrichten — Logo,
+        Vorlage, Akzentfarbe und Schrift. Die übrigen Regler bleiben dem
+        Designer vorbehalten.
+  - [x] Fortschritt anzeigen und späteres Fortsetzen ermöglichen. Der
+        Fortschritt wird aus den Daten abgeleitet und nicht mitgeschrieben:
+        Ein Schritt, dessen Angabe später wieder gelöscht wird, steht wieder
+        offen.
+  - [x] Am Ende klar zeigen, welche Angaben für PDF und XRechnung noch
+        fehlen — zwei getrennte Listen, weil die erste das Ausstellen
+        verhindert und die zweite nur den XML-Export.
+  - [x] Überspringbar an jeder Stelle; der Rest steht dann als Liste auf dem
+        Dashboard. Von selbst öffnet sich der Ablauf nur bei leerer
+        Datenbank und nur einmal je Programmstart.
+  - Offen geblieben: Die Einrichtung fragt **keine Kunden** ab. Ein Kunde
+    gehört zum ersten Auftrag und nicht zur Einrichtung — und wer beim
+    Einrichten einen erfindet, hat später eine Karteileiche.
 
 - [x] **Neue Rechnung auf Basis einer alten Rechnung**
   - [x] Bei einer bestehenden Rechnung die Aktion „Neue Rechnung auf Basis
@@ -70,16 +86,19 @@ Deutschland und anschließend auf einer breiteren Nutzung in der EU.
         Korrektur nach einem Storno die Angaben von damals braucht.
   - [x] Vor dem Erstellen verständlich anzeigen, welche alten Inhalte
         übernommen und welche Werte aktualisiert werden.
-  - Offen geblieben: **Stundensatz und Sprache** gibt es im Datenmodell noch
-    nicht. Der Stundensatz gehört zum Thema Projekte, die Sprache zum Punkt
-    „Rechnungssprachen Deutsch und Englisch“ weiter unten — beides wird dort
-    nachgezogen, statt hier vorweggenommen zu werden.
+  - Offen geblieben: die **Sprache** gibt es im Datenmodell noch nicht. Sie
+    gehört zum Punkt „Rechnungssprachen Deutsch und Englisch“ weiter unten
+    und wird dort nachgezogen, statt hier vorweggenommen zu werden.
+    Den **Stundensatz** gibt es inzwischen: `Company.defaultHourlyRateCents`,
+    angelegt mit dem Onboarding. Er ist der Vorschlag für den ganzen Betrieb;
+    ein Projekt darf ihn später überschreiben.
 
 - [ ] **Projekte**
   - Ein Projekt gehört zu genau einem Kunden und kann aktiv oder archiviert
     sein.
   - Projektname, Beschreibung, interner Status, Zeitraum und optionaler
-    Stundensatz beziehungsweise Budget.
+    Stundensatz beziehungsweise Budget. Der Stundensatz überschreibt dann
+    `Company.defaultHourlyRateCents` für die Zeiten dieses Projekts.
   - Zeiteinträge einem Projekt zuordnen.
   - Rechnungen und Zeitnachweise mit einem Projekt verknüpfen.
   - Projektansicht mit offenen und abgerechneten Zeiten, zugehörigen

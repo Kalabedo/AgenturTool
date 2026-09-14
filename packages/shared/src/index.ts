@@ -24,3 +24,4 @@ export * from './tax-advisor-export.js';
 export * from './mail.js';
 export * from './design-sample.js';
 export * from './update.js';
+export * from './onboarding.js';

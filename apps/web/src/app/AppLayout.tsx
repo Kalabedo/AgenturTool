@@ -4,6 +4,7 @@ import { Link, NavLink, Outlet, useMatch } from 'react-router-dom';
 import { ThemeToggle } from '../components/ThemeToggle.js';
 import { LogoutButton } from '../features/auth/LogoutButton.js';
 import { UpdateBanner } from '../features/updates/UpdateBanner.js';
+import { OnboardingGate } from '../features/onboarding/OnboardingGate.js';
 
 const NAVIGATION = [
   { to: '/', label: 'Dashboard', end: true },
@@ -53,6 +54,10 @@ export function AppLayout({ error }: { error?: ReactNode }): JSX.Element {
 
   return (
     <div className="min-h-screen bg-surface-sunken">
+      {/* Zeigt nichts an: Die Weiche entscheidet beim ersten Start einmalig,
+          ob die Einrichtung erscheint. */}
+      <OnboardingGate />
+
       {/* Erst mit der Tastatur sichtbar: Wer sich durch die Seite tabbt, soll
           die Navigation überspringen können, statt sie auf jeder Seite erneut
           durchlaufen zu müssen. */}
