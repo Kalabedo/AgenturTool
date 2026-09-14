@@ -33,7 +33,16 @@ export class WebModule {
           // statische Server einen unbekannten API-Pfad mit der index.html,
           // und ein Tippfehler in einer Route sähe im Frontend aus wie ein
           // kaputtes JSON.
-          exclude: ['/api/(.*)'],
+          //
+          // Die Schreibweise ist die von `path-to-regexp` ab Fassung 8, wie
+          // sie Express 5 mitbringt. Das früher übliche `/api/(.*)` lehnt
+          // diese Fassung ab — und zwar erst zur Laufzeit, bei der ersten
+          // Anfrage auf einen Pfad, der nicht die Wurzel ist. Die Anwendung
+          // startete also sauber, und wer im Fenster „Neu laden" wählte,
+          // während er auf `/invoices` stand, bekam statt der Oberfläche
+          // eine JSON-Fehlermeldung ohne Weg zurück. Die Rauchprobe fragt
+          // deshalb seither eine Unterseite ab (`probeSpaRouting`).
+          exclude: ['/api/*path'],
         }),
       ],
     };
