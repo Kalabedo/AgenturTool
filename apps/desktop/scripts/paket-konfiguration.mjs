@@ -1,3 +1,7 @@
+import fs from 'node:fs';
+
+const defaultExists = (candidate) => fs.existsSync(candidate);
+
 const NODE_TO_ELECTRON_PLATFORM = {
   darwin: 'darwin',
   linux: 'linux',
@@ -42,12 +46,22 @@ export function assertNativeBuildTarget(
 
 export function requiredReleaseEnvironment(platform) {
   if (platform === 'darwin') {
+    // Notarisiert wird mit einem App-Store-Connect-Schlüssel, nicht mit
+    // Apple-ID und app-spezifischem Passwort. Der Schlüssel hängt an keinem
+    // persönlichen Konto, überlebt einen Passwortwechsel und lässt sich
+    // einzeln widerrufen.
+    //
+    // Die Reihenfolge ist nicht beliebig: electron-builder prüft zuerst
+    // `APPLE_ID` und `APPLE_APP_SPECIFIC_PASSWORD` und bricht ab, sobald
+    // eine der beiden gesetzt ist, ohne dass die andere danebensteht. In
+    // der Umgebung eines Release-Laufs darf deshalb keine von beiden
+    // stehen — auch nicht aus Gewohnheit von einem früheren Weg.
     return [
       'CSC_LINK',
       'CSC_KEY_PASSWORD',
-      'APPLE_ID',
-      'APPLE_APP_SPECIFIC_PASSWORD',
-      'APPLE_TEAM_ID',
+      'APPLE_API_KEY',
+      'APPLE_API_KEY_ID',
+      'APPLE_API_ISSUER',
     ];
   }
 
@@ -58,9 +72,33 @@ export function requiredReleaseEnvironment(platform) {
   throw new Error(`Release-Pakete werden auf ${platform} nicht unterstützt.`);
 }
 
+// Variablen, deren Wert ein Dateipfad ist und keine Zeichenkette, die für
+// sich steht. `notarytool` bekommt den Schlüssel als Datei (`--key`), und
+// electron-builder reicht `APPLE_API_KEY` unverändert dorthin weiter.
+const RELEASE_FILE_ENVIRONMENT = {
+  darwin: ['APPLE_API_KEY'],
+  win32: [],
+};
+
 export function missingReleaseEnvironment(platform, env = process.env) {
   return requiredReleaseEnvironment(platform).filter((name) => {
     const value = env[name];
     return value === undefined || value.trim() === '';
+  });
+}
+
+/**
+ * Pfadvariablen, die auf nichts zeigen.
+ *
+ * Ohne diese Prüfung fiele der fehlende Schlüssel erst nach dem vollständigen
+ * Bau auf, beim Aufruf von `notarytool` — also nach einer halben Stunde.
+ * Genannt wird wie überall nur der Variablenname.
+ */
+export function unreadableReleaseFiles(platform, env = process.env, exists = defaultExists) {
+  const names = RELEASE_FILE_ENVIRONMENT[platform] ?? [];
+
+  return names.filter((name) => {
+    const value = env[name];
+    return value !== undefined && value.trim() !== '' && !exists(value);
   });
 }

@@ -27,32 +27,102 @@ gesetzter Tag ohne menschliche Freigabe Zugriff auf die Zertifikate erhält.
 
 Die Umgebung enthält ausschließlich diese Secrets:
 
-| Secret                        | Inhalt                                      |
-| ----------------------------- | ------------------------------------------- |
-| `MAC_CSC_LINK`                | Developer-ID-Application-Zertifikat als P12 |
-| `MAC_CSC_KEY_PASSWORD`        | Passwort der P12-Datei                      |
-| `APPLE_ID`                    | Apple-ID des Notarisierungszugangs          |
-| `APPLE_APP_SPECIFIC_PASSWORD` | app-spezifisches Apple-ID-Passwort          |
-| `APPLE_TEAM_ID`               | Apple-Developer-Team-ID                     |
-| `WINDOWS_CSC_LINK`            | Code-Signing-Zertifikat als PFX             |
-| `WINDOWS_CSC_KEY_PASSWORD`    | Passwort der PFX-Datei                      |
+| Secret                     | Inhalt                                        |
+| -------------------------- | --------------------------------------------- |
+| `MAC_CSC_LINK`             | Developer-ID-Application-Zertifikat als P12   |
+| `MAC_CSC_KEY_PASSWORD`     | Passwort der P12-Datei                        |
+| `APPLE_API_KEY_P8`         | App-Store-Connect-Schlüssel, Inhalt der `.p8` |
+| `APPLE_API_KEY_ID`         | Kennung des Schlüssels, zehnstellig           |
+| `APPLE_API_ISSUER`         | Issuer-ID des Teams, eine UUID                |
+| `WINDOWS_CSC_LINK`         | Windows-Signatur — Weg offen, siehe unten     |
+| `WINDOWS_CSC_KEY_PASSWORD` | Windows-Signatur — Weg offen, siehe unten     |
 
-P12 und PFX werden als einzeiliger Base64-Inhalt gespeichert. Beispiele:
+Die P12 wird als einzeiliger Base64-Inhalt gespeichert:
 
 ```bash
-# macOS
 base64 -i DeveloperIDApplication.p12 | pbcopy
 ```
 
-```powershell
-# Windows
-[Convert]::ToBase64String([IO.File]::ReadAllBytes('CodeSigning.pfx'))
-```
+Der Notarisierungsschlüssel dagegen im Klartext: Die heruntergeladene
+`AuthKey_XXXXXXXXXX.p8` ist PEM-Text und kommt mit allen Zeilen — von
+`-----BEGIN PRIVATE KEY-----` bis zur letzten — in das Secret.
 
-Die Workflows reichen nur die für den jeweiligen Runner benötigten Secrets als
-`CSC_LINK` und `CSC_KEY_PASSWORD` an electron-builder weiter. Werte gehören
-weder in Dateien noch in Workflow-Ausgaben. `pnpm paket --release` nennt bei
-einem Fehler ausschließlich die fehlenden Variablennamen.
+Die Workflows reichen nur die für den jeweiligen Runner benötigten Secrets
+weiter. Werte gehören weder in Dateien noch in Workflow-Ausgaben.
+`pnpm paket --release` nennt bei einem Fehler ausschließlich die fehlenden
+Variablennamen.
+
+## macOS-Zertifikat und Notarisierungszugang einrichten
+
+Einmalig, und bis auf den ersten Punkt nur auf einem Mac:
+
+1. **Rolle prüfen.** Developer-ID-Zertifikate darf allein der Account Holder
+   anlegen. Ein Admin sieht den Punkt nicht einmal.
+2. **CSR erzeugen.** Schlüsselbundverwaltung → Zertifikatsassistent →
+   _Zertifikat einer Zertifizierungsinstanz anfordern_, „Auf Festplatte
+   sichern", 2048 Bit RSA. Der private Schlüssel entsteht dabei lokal und
+   bleibt im Schlüsselbund dieses Rechners.
+3. **Zertifikat anlegen.** developer.apple.com → Certificates → **Developer ID
+   Application**. Nicht _Developer ID Installer_ — den braucht nur `.pkg`,
+   ausgeliefert wird DMG. CSR hochladen, `.cer` laden, doppelklicken.
+4. **Als P12 exportieren.** Zertifikat und privaten Schlüssel zusammen
+   markieren, „2 Objekte exportieren", starkes Passwort. Die Datei gehört
+   zusätzlich in den Passwortsafe: Apple kann den privaten Schlüssel nicht
+   erneut ausstellen, und mehr als fünf Developer-ID-Application-Zertifikate
+   gibt es je Account nicht.
+5. **Notarisierungsschlüssel anlegen.** App Store Connect → Benutzer und
+   Zugriff → Integrationen → Team-Keys, Rolle _Developer_. Die `.p8` lässt
+   sich genau einmal herunterladen. Issuer-ID und Key-ID stehen auf
+   derselben Seite.
+6. Prüfen, dass in App Store Connect keine unbestätigte Vereinbarung
+   offensteht — sonst scheitert die Notarisierung mit einer Meldung, die
+   nicht darauf hindeutet.
+
+Notarisiert wird bewusst mit dem App-Store-Connect-Schlüssel und nicht mit
+Apple-ID und app-spezifischem Passwort: Der Schlüssel hängt an keinem
+persönlichen Konto, überlebt einen Passwortwechsel und lässt sich einzeln
+widerrufen. `notarytool` nimmt ihn nur als Datei entgegen, deshalb legt der
+Workflow das Secret vor dem Bau kurz als Datei ab und entfernt sie danach.
+
+Wer lokal signiert, darf `APPLE_ID` und `APPLE_APP_SPECIFIC_PASSWORD` nicht
+gesetzt haben: electron-builder prüft sie zuerst und bricht ab, sobald eine
+von beiden allein in der Umgebung steht.
+
+## Windows-Signatur: offener Punkt
+
+**Der Windows-Job des Workflows ist so, wie er dasteht, nicht mehr
+befüllbar.** `WINDOWS_CSC_LINK` erwartet eine PFX-Datei mit exportierbarem
+privatem Schlüssel; seit dem 1. Juni 2023 verlangen die Baseline Requirements
+des CA/Browser-Forums für jedes Code-Signing-Zertifikat — OV wie EV —, dass
+der private Schlüssel auf zertifizierter Hardware erzeugt wird und
+nicht-exportierbar bleibt. Keine öffentlich vertraute CA gibt seitdem noch
+eine herunterladbare PFX heraus. Seit dem 1. März 2026 gilt zusätzlich eine
+Höchstlaufzeit von 460 Tagen, das Zertifikat ist also etwa jährlich zu
+erneuern.
+
+Vor dem ersten Windows-Release ist deshalb einer dieser Wege zu wählen:
+
+- **Azure Artifact Signing** (früher Trusted Signing). Etwa zehn Dollar im
+  Monat, keine Hardware, von electron-builder 25 über `win.azureSignOptions`
+  unmittelbar unterstützt. Voraussetzung ist eine geprüfte Organisation;
+  Einzelentwickler sind bislang auf die USA und Kanada beschränkt, und die
+  Organisationsprüfung verlangt etwa drei Jahre nachweisbare Geschäftshistorie.
+- **Cloud-HSM einer klassischen CA** (SSL.com eSigner, DigiCert KeyLocker,
+  GlobalSign, Certum). Teurer, dafür auch als Einzelperson zu bekommen. Die
+  Signatur läuft über ein Skript in `win.sign`.
+- **USB-Token.** Ein von GitHub gehosteter Runner sieht ihn nicht. Das hieße
+  eigener Runner oder Signieren von Hand — und damit das Ende des
+  geschlossenen Releaselaufs.
+
+Zwei Dinge hängen daran:
+
+- Bei kurzlebigen Cloud-Zertifikaten — bei Azure lebt jedes nur wenige Tage —
+  entscheidet allein der RFC-3161-Zeitstempel darüber, ob der Installer in
+  einem Monat noch gültig ist. Die Prüfung im Workflow sieht bisher nur
+  `Status`; sobald der Weg steht, gehört `TimeStamperCertificate` dazu.
+- Die Signaturidentität ist nach dem öffentlichen Release festgelegt (D43,
+  `VERTRIEB-UND-UPDATES.md`). Ein späterer Wechsel des Ausstellers setzt die
+  SmartScreen-Reputation zurück. Die Wahl fällt vor 1.0, nicht danach.
 
 ## Veröffentlichung
 

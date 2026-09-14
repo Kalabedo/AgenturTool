@@ -28,7 +28,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import crossSpawn from 'cross-spawn';
-import { missingReleaseEnvironment, parsePackageArguments } from './paket-konfiguration.mjs';
+import {
+  missingReleaseEnvironment,
+  parsePackageArguments,
+  unreadableReleaseFiles,
+} from './paket-konfiguration.mjs';
 
 const desktopDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = path.resolve(desktopDir, '../..');
@@ -40,6 +44,11 @@ if (options.release) {
   const missing = missingReleaseEnvironment(process.platform);
   if (missing.length > 0) {
     throw new Error(`Release-Zugangsdaten fehlen: ${missing.join(', ')}`);
+  }
+
+  const unreadable = unreadableReleaseFiles(process.platform);
+  if (unreadable.length > 0) {
+    throw new Error(`Release-Zugangsdaten zeigen auf keine Datei: ${unreadable.join(', ')}`);
   }
 }
 
