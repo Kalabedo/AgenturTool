@@ -25,6 +25,7 @@
  * ein fertiges Paket aussieht.
  */
 import crypto from 'node:crypto';
+import { once } from 'node:events';
 import fs from 'node:fs';
 import path from 'node:path';
 import { Readable } from 'node:stream';
@@ -43,6 +44,24 @@ export interface DownloadRequest {
 
 /** Die Endung der noch unfertigen Datei. */
 const PARTIAL_SUFFIX = '.teil';
+
+/**
+ * Wartet, bis ein Schreibstrom die Datei wirklich losgelassen hat.
+ *
+ * `fs.createWriteStream` öffnet die Datei erst im nächsten Durchlauf der
+ * Ereignisschleife. Bricht der Download vorher ab — bei einem bereits
+ * abgebrochenen Signal geschieht das sofort —, dann legt das nachlaufende
+ * `open()` die `.teil`-Datei an, *nachdem* der Fehlerzweig sie gelöscht
+ * hat. Sie bliebe als leere Datei liegen, und zwar ausgerechnet nach einem
+ * Abbruch, der nichts hinterlassen soll.
+ */
+async function settled(stream: fs.WriteStream): Promise<void> {
+  if (stream.closed) return;
+  stream.destroy();
+  // Der Strom ist bereits gescheitert; ein weiterer Fehler beim Schließen
+  // sagt nichts Neues und darf die eigentliche Meldung nicht verdrängen.
+  await once(stream, 'close').catch(() => undefined);
+}
 
 /**
  * Lädt das Paket und gibt seinen Pfad zurück.
@@ -88,6 +107,7 @@ export async function downloadPackage(request: DownloadRequest): Promise<string>
 
   const hash = crypto.createHash('sha256');
   let transferred = 0;
+  const sink = fs.createWriteStream(partial);
 
   try {
     await pipeline(
@@ -103,10 +123,12 @@ export async function downloadPackage(request: DownloadRequest): Promise<string>
           yield chunk;
         }
       },
-      fs.createWriteStream(partial),
+      sink,
       { signal: request.signal },
     );
   } catch (error: unknown) {
+    // Reihenfolge: erst das Ende des Schreibstroms abwarten, dann löschen.
+    await settled(sink);
     fs.rmSync(partial, { force: true });
     if (request.signal?.aborted === true) {
       throw new Error('Der Download wurde abgebrochen.');

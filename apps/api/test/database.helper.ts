@@ -9,6 +9,13 @@ const apiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
 export interface TestDatabase {
   prisma: PrismaClient;
+  /**
+   * Die Verbindungszeichenkette der Testdatenbank.
+   *
+   * Nötig für den seltenen Fall, dass ein Test eine eigene Verbindung
+   * braucht — siehe `withSingleConnection`.
+   */
+  url: string;
   cleanup: () => Promise<void>;
 }
 
@@ -40,11 +47,45 @@ export async function createTestDatabase(): Promise<TestDatabase> {
 
   return {
     prisma,
+    url,
     cleanup: async () => {
       await prisma.$disconnect();
       fs.rmSync(dir, { recursive: true, force: true });
     },
   };
+}
+
+/**
+ * Führt etwas auf einer eigenen, einzelnen Verbindung aus.
+ *
+ * Der Grund ist ein Verbindungspool: Prisma hält für SQLite mehrere
+ * Verbindungen offen und verteilt jede Anweisung auf irgendeine davon. Die
+ * meisten PRAGMAs stören sich daran nicht — `foreign_keys`, `busy_timeout`
+ * und `journal_mode` stehen auf jeder Verbindung gleich, weil Prisma sie
+ * beim Öffnen selbst setzt beziehungsweise weil sie in der Datei stehen.
+ *
+ * Wer eines davon aber **abschaltet**, tut das nur für eine Verbindung —
+ * und die nächste Anweisung landet womöglich auf einer anderen, auf der die
+ * Prüfung noch greift. Genau das braucht der Test, der einen verwaisten
+ * Fremdschlüssel herstellen will; ohne diese Klammer gelingt ihm das mal
+ * und mal nicht, je nachdem, wie ausgelastet der Rechner gerade ist.
+ *
+ * `connection_limit=1` nimmt dem Pool diese Wahl. In einer Transaktion
+ * ließe sich das nicht lösen: SQLite ignoriert `PRAGMA foreign_keys`
+ * innerhalb einer Transaktion stillschweigend.
+ */
+export async function withSingleConnection(
+  url: string,
+  work: (prisma: PrismaClient) => Promise<void>,
+): Promise<void> {
+  const prisma = new PrismaClient({
+    datasources: { db: { url: `${url}?connection_limit=1` } },
+  });
+  try {
+    await work(prisma);
+  } finally {
+    await prisma.$disconnect();
+  }
 }
 
 /** Legt einen minimalen Entwurf an und liefert dessen id. */
