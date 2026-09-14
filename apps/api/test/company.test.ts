@@ -54,6 +54,7 @@ const validInput = {
   bic: 'BYLADEM1001',
   bankName: 'Beispielbank',
   defaultPaymentTermDays: '14',
+  defaultHourlyRateCents: '85,50',
 };
 
 describe('CompanyService', () => {
@@ -73,11 +74,30 @@ describe('CompanyService', () => {
     expect(saved.companyName).toBe('Beispiel Agentur');
     expect(saved.iban).toBe('DE02 1203 0000 0000 2020 51');
     expect(saved.defaultPaymentTermDays).toBe(14);
+    // Der Stundensatz liegt wie jeder Geldbetrag als Cent in der Datenbank.
+    expect(saved.defaultHourlyRateCents).toBe(8550);
     // Leere Felder liegen als null in der Datenbank, nicht als "".
     expect(saved.website).toBeNull();
     expect(saved.taxNumber).toBeNull();
 
     expect((await company.get()).companyName).toBe('Beispiel Agentur');
+  });
+
+  it('unterscheidet den fehlenden Stundensatz von null Euro', async () => {
+    // NULL heißt „noch nicht festgelegt". Die Einrichtung liest daran ab,
+    // ob der Schritt noch aussteht — ein Vorgabewert 0 hätte beides
+    // verschmolzen.
+    expect((await company.get()).defaultHourlyRateCents).toBeNull();
+
+    const ohne = await company.update(
+      updateCompanySchema.parse({ ...validInput, defaultHourlyRateCents: '' }),
+    );
+    expect(ohne.defaultHourlyRateCents).toBeNull();
+
+    const nullEuro = await company.update(
+      updateCompanySchema.parse({ ...validInput, defaultHourlyRateCents: '0' }),
+    );
+    expect(nullEuro.defaultHourlyRateCents).toBe(0);
   });
 
   it('bleibt bei wiederholtem Speichern ein einziger Datensatz', async () => {

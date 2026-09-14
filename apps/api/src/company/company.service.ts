@@ -104,6 +104,7 @@ export class CompanyService {
       bic: company.bic,
       bankName: company.bankName,
       defaultPaymentTermDays: company.defaultPaymentTermDays,
+      defaultHourlyRateCents: company.defaultHourlyRateCents,
       logoAssetId: company.logoAssetId,
       logoUrl: company.logoAssetId === null ? null : `/api/assets/${company.logoAssetId}`,
       updatedAt: company.updatedAt.toISOString(),

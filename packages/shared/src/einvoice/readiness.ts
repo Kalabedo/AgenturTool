@@ -54,53 +54,26 @@ function isBlank(value: string | null | undefined): boolean {
 }
 
 /**
- * Alles, was dem XML-Export im Weg steht — leer heißt: lässt sich ausgeben.
+ * Der Teil der Prüfung, der allein an den eigenen Stammdaten hängt.
+ *
+ * Eigene Funktion, weil es zwei Zeitpunkte gibt, an denen dieselbe Frage
+ * gestellt wird: beim XML-Export einer konkreten Rechnung — dann zusammen
+ * mit Käufer und Steuerprofil — und bei der Einrichtung, wo es noch gar
+ * keine Rechnung gibt und trotzdem schon feststeht, was später fehlen wird.
+ *
+ * Die Einrichtung darf diese Liste deshalb nicht nachbauen: Zwei Listen
+ * liefen auseinander, und der Unterschied fiele erst an der ersten
+ * abgewiesenen XRechnung auf.
  */
-export function checkEinvoiceReady(
-  input: EinvoiceReadinessInput,
-  options: EinvoiceReadinessOptions = {},
-): FinalizationProblem[] {
+export function checkSellerEinvoiceReady(seller: SellerSnapshot): FinalizationProblem[] {
   const problems: FinalizationProblem[] = [];
-  const { seller, buyer, tax } = input;
-  // Vorbelegt mit „ja", weil der vorhandene Aufrufer die XRechnung erzeugt.
-  // Wer die Norm allein meint, sagt es ausdrücklich.
-  const { requireBuyerReference = true } = options;
 
-  // BT-10. In XRechnung ein Pflichtfeld ohne Ausnahme: Die Norm der EU
-  // kennt das Feld als optional, die deutsche CIUS macht es zur Pflicht.
-  if (requireBuyerReference && isBlank(buyer.buyerReference)) {
-    problems.push({
-      field: 'buyerReference',
-      message:
-        'Für die E-Rechnung fehlt die Referenz des Käufers (bei Behörden die Leitweg-ID). Sie steht beim Kunden.',
-    });
-  }
-
-  // BT-34 / BT-49. Ohne elektronische Adressen lässt sich die Rechnung
-  // zwar erzeugen, aber nicht zustellen — die Prüfwerkzeuge weisen sie ab.
+  // BT-34. Ohne elektronische Adresse lässt sich die Rechnung zwar
+  // erzeugen, aber nicht zustellen — die Prüfwerkzeuge weisen sie ab.
   if (isBlank(seller.electronicAddress)) {
     problems.push({
       field: 'seller.electronicAddress',
       message: 'In den Einstellungen fehlt die eigene elektronische Adresse für E-Rechnungen.',
-    });
-  }
-
-  if (isBlank(buyer.electronicAddress)) {
-    problems.push({
-      field: 'electronicAddress',
-      message: 'Für die E-Rechnung fehlt die elektronische Adresse des Kunden.',
-    });
-  }
-
-  // BR-E-10 und Geschwister: Code oder Text, nicht beides.
-  if (
-    CATEGORIES_NEEDING_EXEMPTION_REASON.includes(tax.taxCategoryCode as TaxCategoryCode) &&
-    isBlank(tax.exemptionReasonCode) &&
-    isBlank(tax.exemptionReasonText)
-  ) {
-    problems.push({
-      field: 'tax.exemptionReasonText',
-      message: `Die Steuerkategorie „${tax.taxCategoryCode}" verlangt einen Befreiungsgrund. Er steht im Steuerprofil.`,
     });
   }
 
@@ -138,6 +111,58 @@ export function checkEinvoiceReady(
       message: 'Für die E-Rechnung fehlt die eigene IBAN.',
     });
   }
+
+  return problems;
+}
+
+/**
+ * Alles, was dem XML-Export im Weg steht — leer heißt: lässt sich ausgeben.
+ *
+ * Erst das, was an dieser einen Rechnung liegt, danach das, was ein für
+ * alle Mal in den Einstellungen fehlt. Wer die Liste von oben abarbeitet,
+ * arbeitet damit vom Besonderen zum Allgemeinen.
+ */
+export function checkEinvoiceReady(
+  input: EinvoiceReadinessInput,
+  options: EinvoiceReadinessOptions = {},
+): FinalizationProblem[] {
+  const problems: FinalizationProblem[] = [];
+  const { seller, buyer, tax } = input;
+  // Vorbelegt mit „ja", weil der vorhandene Aufrufer die XRechnung erzeugt.
+  // Wer die Norm allein meint, sagt es ausdrücklich.
+  const { requireBuyerReference = true } = options;
+
+  // BT-10. In XRechnung ein Pflichtfeld ohne Ausnahme: Die Norm der EU
+  // kennt das Feld als optional, die deutsche CIUS macht es zur Pflicht.
+  if (requireBuyerReference && isBlank(buyer.buyerReference)) {
+    problems.push({
+      field: 'buyerReference',
+      message:
+        'Für die E-Rechnung fehlt die Referenz des Käufers (bei Behörden die Leitweg-ID). Sie steht beim Kunden.',
+    });
+  }
+
+  // BT-49, das Gegenstück zu BT-34 auf der Käuferseite.
+  if (isBlank(buyer.electronicAddress)) {
+    problems.push({
+      field: 'electronicAddress',
+      message: 'Für die E-Rechnung fehlt die elektronische Adresse des Kunden.',
+    });
+  }
+
+  // BR-E-10 und Geschwister: Code oder Text, nicht beides.
+  if (
+    CATEGORIES_NEEDING_EXEMPTION_REASON.includes(tax.taxCategoryCode as TaxCategoryCode) &&
+    isBlank(tax.exemptionReasonCode) &&
+    isBlank(tax.exemptionReasonText)
+  ) {
+    problems.push({
+      field: 'tax.exemptionReasonText',
+      message: `Die Steuerkategorie „${tax.taxCategoryCode}" verlangt einen Befreiungsgrund. Er steht im Steuerprofil.`,
+    });
+  }
+
+  problems.push(...checkSellerEinvoiceReady(seller));
 
   return problems;
 }

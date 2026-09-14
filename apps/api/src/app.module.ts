@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { HostModule, type HostOptions } from './common/host.module';
 import { PrismaModule } from './common/prisma.module';
 import { CompanyModule } from './company/company.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
 import { CustomersModule } from './customers/customers.module';
 import { TaxProfilesModule } from './tax-profiles/tax-profiles.module';
 import { TemplateSettingsModule } from './template-settings/template-settings.module';
@@ -46,6 +47,7 @@ export class AppModule {
         AppThemeModule,
         AppUpdateModule,
         CompanyModule,
+        OnboardingModule,
         CustomersModule,
         TaxProfilesModule,
         TemplateSettingsModule,

@@ -58,6 +58,11 @@ model Company {
   /// Standard-Zahlungsziel in Tagen; Vorschlag für das Fälligkeitsdatum.
   defaultPaymentTermDays Int @default(14)
 
+  /// Standard-Stundensatz in Cent. NULL heißt „noch nicht festgelegt" — ein
+  /// anderer Zustand als null Euro die Stunde. Ein Projekt darf ihn später
+  /// überschreiben; hier steht nur der Vorschlag.
+  defaultHourlyRateCents Int?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

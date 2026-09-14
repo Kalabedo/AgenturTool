@@ -18,7 +18,12 @@ import { FilesService } from '../src/files/files.service';
 import { InvoiceDocumentsService } from '../src/pdf/invoice-documents.service';
 import { InvoiceNumbersService } from '../src/invoices/invoice-numbers.service';
 import { InvoicesService } from '../src/invoices/invoices.service';
-import { createTestDatabase, resetInvoices, type TestDatabase } from './database.helper';
+import {
+  createTestDatabase,
+  resetInvoices,
+  withSingleConnection,
+  type TestDatabase,
+} from './database.helper';
 
 /**
  * „Neue Rechnung auf Basis dieser Rechnung."
@@ -319,9 +324,15 @@ describe('Vorschau', () => {
     // aber stehen lassen — und dann darf die Vorschau nicht abstürzen,
     // sondern muss sagen, was los ist. Deshalb hier mit abgeschalteter
     // Fremdschlüsselprüfung genau dieser Zustand.
-    await prisma.$executeRawUnsafe('PRAGMA foreign_keys = OFF');
-    await prisma.$executeRawUnsafe('DELETE FROM "Customer" WHERE "id" = ?', customerId);
-    await prisma.$executeRawUnsafe('PRAGMA foreign_keys = ON');
+    // Auf einer eigenen, einzelnen Verbindung: Ein abgeschaltetes
+    // `foreign_keys` gilt nur dort, wo es gesetzt wurde, und der Pool
+    // schickte das DELETE sonst womöglich über eine Verbindung, auf der die
+    // Prüfung noch greift — dann räumte SetNull die Verknüpfung ab, und der
+    // Test prüfte einen anderen Zustand als den gemeinten.
+    await withSingleConnection(db.url, async (single) => {
+      await single.$executeRawUnsafe('PRAGMA foreign_keys = OFF');
+      await single.$executeRawUnsafe('DELETE FROM "Customer" WHERE "id" = ?', customerId);
+    });
 
     const preview = await invoices.rebillPreview(id);
 

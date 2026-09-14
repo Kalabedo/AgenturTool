@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isValidBic, isValidIban, isPlausibleVatId } from './banking.js';
+import { formatCents, parseCents } from './money.js';
 import { ELECTRONIC_ADDRESS_SCHEME_VALUES } from './einvoice/codes.js';
 
 /**
@@ -58,6 +59,55 @@ const paymentTermDays = z.union([z.string().trim(), z.number()]).transform((valu
 });
 
 /**
+ * Obergrenze des Stundensatzes: 10.000 € je Stunde, in Cent.
+ *
+ * Keine betriebswirtschaftliche Aussage, sondern ein Vertipper-Fangnetz.
+ * Wer 85 € meint und 8500 tippt, weil er an Cent denkt, soll das hier
+ * erfahren und nicht erst auf der ersten Rechnung.
+ */
+const MAX_HOURLY_RATE_CENTS = 1_000_000;
+
+/**
+ * Standard-Stundensatz in Cent.
+ *
+ * NULL-fähig mit Absicht: „noch nicht festgelegt" ist ein anderer Zustand
+ * als „null Euro die Stunde". Die Einrichtung unterscheidet beides — ein
+ * Vorgabewert 0 hätte den offenen Punkt als erledigt gemeldet.
+ *
+ * Nimmt wie das Zahlungsziel beides an: die Zeichenkette aus dem Formular
+ * („85", „85,50", „1.200") und die Zahl aus einem API-Aufruf, dort bereits
+ * in Cent. Auch hier bewusst kein `z.coerce.number()`: Das machte aus einem
+ * versehentlich geleerten Feld klaglos die Zahl 0, und ein Stundensatz von
+ * null Euro sähe auf der Rechnung aus wie geschenkte Arbeit.
+ */
+const optionalHourlyRateCents = z
+  .union([z.string().trim(), z.number(), z.null()])
+  .transform((value, ctx) => {
+    if (value === null) return null;
+
+    const cents = typeof value === 'number' ? value : value === '' ? null : parseCents(value);
+    if (cents === null) {
+      // Das leere Feld ist kein Fehler, sondern die Abwesenheit der Angabe.
+      if (typeof value === 'string' && value === '') return null;
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Bitte einen Betrag angeben, z. B. 85 oder 85,50',
+      });
+      return z.NEVER;
+    }
+
+    if (!Number.isInteger(cents) || cents < 0 || cents > MAX_HOURLY_RATE_CENTS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Bitte einen Betrag zwischen 0 und ${formatCents(MAX_HOURLY_RATE_CENTS)} angeben`,
+      });
+      return z.NEVER;
+    }
+
+    return cents;
+  });
+
+/**
  * Schema der elektronischen Adresse (BT-34-1).
  *
  * Wie alles andere hier optional: Erst wer eine E-Rechnung erzeugen will,
@@ -100,12 +150,19 @@ export const updateCompanySchema = z.object({
   bankName: optionalText,
 
   defaultPaymentTermDays: paymentTermDays,
+
+  /**
+   * Weggelassen heißt „unverändert leer", nicht „Fehler": Ein Aufruf aus der
+   * Zeit vor diesem Feld — etwa aus einem Skript — bleibt gültig.
+   */
+  defaultHourlyRateCents: optionalHourlyRateCents.optional().default(null),
 });
 export type UpdateCompanyInput = z.input<typeof updateCompanySchema>;
 export type UpdateCompanyPayload = z.output<typeof updateCompanySchema>;
 
 export const companyResponseSchema = updateCompanySchema.extend({
   defaultPaymentTermDays: z.number().int(),
+  defaultHourlyRateCents: z.number().int().nullable(),
   id: z.number().int(),
   logoAssetId: z.number().int().nullable(),
   /** Relative API-URL des Logos, oder null. Erspart dem Frontend das Basteln. */
@@ -167,4 +224,7 @@ export const COMPANY_FIELD_LABELS: Record<string, string> = {
   bic: 'BIC',
   bankName: 'Bank',
   defaultPaymentTermDays: 'Zahlungsziel in Tagen',
+  defaultHourlyRateCents: 'Standard-Stundensatz',
+  electronicAddress: 'Elektronische Adresse',
+  electronicAddressScheme: 'Art der elektronischen Adresse',
 };

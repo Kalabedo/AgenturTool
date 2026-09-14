@@ -6,7 +6,6 @@ import {
   formatIban,
   updateCompanySchema,
   type CompanyResponse,
-  type UpdateCompanyInput,
   type UpdateCompanyPayload,
   ELECTRONIC_ADDRESS_SCHEME_LABELS,
   ELECTRONIC_ADDRESS_SCHEME_VALUES,
@@ -23,42 +22,13 @@ import { PageHeader } from '../../../components/ui/PageHeader.js';
 import { StatusText } from '../../../components/ui/StatusText.js';
 import { Select } from '../../../components/ui/Select.js';
 import { LogoUpload } from './LogoUpload.js';
+import { toCompanyFormValues, type CompanyFormValues } from './companyFormValues.js';
 import { ErrorNotice } from '../../../components/ui/ErrorNotice.js';
 import { formErrorOf } from '../../../lib/errorMessage.js';
 import { LoadingNote } from '../../../components/ui/LoadingNote.js';
 import { useDocumentTitle } from '../../../lib/useDocumentTitle.js';
 
-/**
- * Der Eingabetyp des geteilten Schemas ist zugleich der Formulartyp.
- *
- * Ein eigener Typ mit lauter Strings wäre lesbarer, würde aber neben dem
- * Schema herlaufen und bei jeder Feldänderung nachgezogen werden müssen.
- * Im Formular stehen ohnehin durchgehend Strings; leere Felder wandelt das
- * Schema beim Absenden in null um.
- */
-type FormValues = UpdateCompanyInput;
-
-function toFormValues(company: CompanyResponse): FormValues {
-  return {
-    companyName: company.companyName,
-    street: company.street,
-    postalCode: company.postalCode,
-    city: company.city,
-    country: company.country,
-    email: company.email ?? '',
-    website: company.website ?? '',
-    phone: company.phone ?? '',
-    vatId: company.vatId ?? '',
-    taxNumber: company.taxNumber ?? '',
-    bankAccountHolder: company.bankAccountHolder ?? '',
-    iban: company.iban ?? '',
-    bic: company.bic ?? '',
-    bankName: company.bankName ?? '',
-    electronicAddress: company.electronicAddress ?? '',
-    electronicAddressScheme: company.electronicAddressScheme ?? '',
-    defaultPaymentTermDays: String(company.defaultPaymentTermDays),
-  };
-}
+type FormValues = CompanyFormValues;
 
 export function CompanyPage(): JSX.Element {
   useDocumentTitle('Unternehmensdaten');
@@ -74,7 +44,7 @@ export function CompanyPage(): JSX.Element {
     // Dasselbe Schema, das der Server benutzt — eine Validierungsquelle
     // statt zweier, die auseinanderlaufen können.
     resolver: zodResolver(updateCompanySchema),
-    values: company.data === undefined ? undefined : toFormValues(company.data),
+    values: company.data === undefined ? undefined : toCompanyFormValues(company.data),
   });
 
   const save = useMutation({
@@ -82,7 +52,7 @@ export function CompanyPage(): JSX.Element {
       apiClient.put<CompanyResponse>('/company', values),
     onSuccess: (updated) => {
       queryClient.setQueryData(queryKeys.company, updated);
-      form.reset(toFormValues(updated));
+      form.reset(toCompanyFormValues(updated));
       setSaved(true);
     },
     onError: (cause: unknown) => {
@@ -350,23 +320,42 @@ export function CompanyPage(): JSX.Element {
       </Card>
 
       <Card title="Rechnungsvorgaben">
-        <Field
-          label="Zahlungsziel in Tagen"
-          htmlFor="defaultPaymentTermDays"
-          error={errors.defaultPaymentTermDays?.message}
-          hint="Vorschlag für das Fälligkeitsdatum neuer Rechnungen"
-          className="sm:max-w-sm"
-        >
-          <Input
-            id="defaultPaymentTermDays"
-            type="number"
-            min={0}
-            max={365}
-            invalid={errors.defaultPaymentTermDays !== undefined}
-            className="sm:w-32"
-            {...form.register('defaultPaymentTermDays')}
-          />
-        </Field>
+        <div className="grid gap-4 sm:grid-cols-6">
+          <Field
+            label="Zahlungsziel in Tagen"
+            htmlFor="defaultPaymentTermDays"
+            error={errors.defaultPaymentTermDays?.message}
+            hint="Vorschlag für das Fälligkeitsdatum neuer Rechnungen"
+            className="sm:col-span-3"
+          >
+            <Input
+              id="defaultPaymentTermDays"
+              type="number"
+              min={0}
+              max={365}
+              invalid={errors.defaultPaymentTermDays !== undefined}
+              className="sm:w-32"
+              {...form.register('defaultPaymentTermDays')}
+            />
+          </Field>
+
+          <Field
+            label="Standard-Stundensatz"
+            htmlFor="defaultHourlyRateCents"
+            error={errors.defaultHourlyRateCents?.message}
+            hint="Netto, in Euro. Leer lassen, wenn du nicht nach Stunden abrechnest."
+            className="sm:col-span-3"
+          >
+            <Input
+              id="defaultHourlyRateCents"
+              inputMode="decimal"
+              placeholder="z. B. 85,00"
+              invalid={errors.defaultHourlyRateCents !== undefined}
+              className="sm:w-40"
+              {...form.register('defaultHourlyRateCents')}
+            />
+          </Field>
+        </div>
       </Card>
 
       <FormActions

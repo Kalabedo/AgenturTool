@@ -202,9 +202,39 @@ function isoDate(offsetDays = 0) {
   return date.toISOString().slice(0, 10);
 }
 
+/**
+ * Die Oberfläche muss unter jeder Adresse ankommen, nicht nur auf der Wurzel.
+ *
+ * Weiterleiten tut der Router im Fenster; der Server muss dafür jede
+ * unbekannte Adresse mit derselben Seite beantworten. Hier steht das, weil
+ * es sich nur an der laufenden Anwendung prüfen lässt — und weil der Fehler,
+ * den es fängt, sonst niemandem auffällt: Im Fenster wird von der Wurzel aus
+ * weitergeklickt, und erst „Neu laden" auf einer Unterseite zeigte statt der
+ * Anwendung eine JSON-Fehlermeldung ohne Weg zurück.
+ */
+async function probeSpaRouting() {
+  for (const route of ['/', '/invoices', '/onboarding', '/settings/mail']) {
+    const page = await call('GET', route);
+    const html = Buffer.isBuffer(page) ? page.toString('utf8') : String(page);
+    check(html.includes('<div id="root"'), `Die Oberfläche kommt unter ${route} an.`);
+  }
+
+  // Umgekehrt: Ein unbekannter API-Pfad muss ein Fehler bleiben. Bekäme er
+  // die index.html, sähe ein Tippfehler in einer Route im Fenster aus wie
+  // kaputtes JSON.
+  const response = await fetch(`${apiUrl}/api/gibtesnicht`);
+  check(response.status === 404, 'Ein unbekannter API-Pfad bleibt ein 404.');
+  check(
+    !(await response.text()).includes('<div id="root"'),
+    'Ein unbekannter API-Pfad bekommt nicht die Oberfläche.',
+  );
+}
+
 async function probeFreshInstall() {
   const profiles = await call('GET', '/api/tax-profiles');
   check(profiles.length > 0, `Grunddaten stehen (${String(profiles.length)} Steuerprofile).`);
+
+  await probeSpaRouting();
 
   await call('PUT', '/api/company', {
     companyName: 'XYZ - Agentur',
