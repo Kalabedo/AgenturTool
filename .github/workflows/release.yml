@@ -61,14 +61,34 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+
+      # `notarytool` nimmt den App-Store-Connect-Schlüssel nur als Datei
+      # entgegen (`--key`), und electron-builder reicht `APPLE_API_KEY`
+      # unverändert dorthin weiter. Das Geheimnis enthält deshalb den
+      # PEM-Inhalt der `.p8`, und hier entsteht daraus kurzzeitig eine Datei
+      # neben dem Lauf — nicht im Arbeitsbaum, damit sie in kein Paket gerät.
+      - name: Notarisierungsschlüssel bereitlegen
+        env:
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          printf '%s\n' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
+
       - name: Signieren, notarisieren und DMG bauen
         run: pnpm --filter @agentur-tool/desktop paket --release
         env:
           CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_API_KEY: ${{ runner.temp }}/AuthKey.p8
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+
+      # Der Runner wird ohnehin verworfen. Der Schlüssel liegt trotzdem nur
+      # so lange, wie er gebraucht wird — auch wenn der Bau abbricht.
+      - name: Notarisierungsschlüssel entfernen
+        if: always()
+        run: rm -f "$RUNNER_TEMP/AuthKey.p8"
 
       - name: Signatur, Notarisierung und Laufzeit prüfen
         shell: bash
@@ -114,6 +134,12 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+
+      # Achtung: Dieser Weg setzt eine PFX-Datei mit exportierbarem privatem
+      # Schlüssel voraus, und die stellt seit dem 1. Juni 2023 keine
+      # öffentlich vertraute Zertifizierungsstelle mehr aus. Vor dem ersten
+      # Windows-Release muss hier ein Cloud-Signaturweg stehen; die Wahl und
+      # ihre Folgen stehen in docs/RELEASE.md.
       - name: Signieren und NSIS-Installer bauen
         run: pnpm --filter @agentur-tool/desktop paket --release
         env:

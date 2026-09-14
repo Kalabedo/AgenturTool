@@ -3,6 +3,7 @@ import {
   assertNativeBuildTarget,
   missingReleaseEnvironment,
   parsePackageArguments,
+  unreadableReleaseFiles,
 } from '../scripts/paket-konfiguration.mjs';
 import { validateReleaseTag } from '../scripts/release-preflight.mjs';
 
@@ -48,10 +49,25 @@ describe('Paket-Konfiguration', () => {
     expect(missingReleaseEnvironment('darwin', {})).toEqual([
       'CSC_LINK',
       'CSC_KEY_PASSWORD',
-      'APPLE_ID',
-      'APPLE_APP_SPECIFIC_PASSWORD',
-      'APPLE_TEAM_ID',
+      'APPLE_API_KEY',
+      'APPLE_API_KEY_ID',
+      'APPLE_API_ISSUER',
     ]);
+  });
+
+  it('erkennt einen Notarisierungsschlüssel, der auf keine Datei zeigt', () => {
+    const vorhanden = (pfad) => pfad === '/tmp/AuthKey.p8';
+
+    expect(
+      unreadableReleaseFiles('darwin', { APPLE_API_KEY: '/tmp/AuthKey.p8' }, vorhanden),
+    ).toEqual([]);
+    expect(unreadableReleaseFiles('darwin', { APPLE_API_KEY: '/tmp/weg.p8' }, vorhanden)).toEqual([
+      'APPLE_API_KEY',
+    ]);
+    // Ein leerer Wert ist Sache von missingReleaseEnvironment; hier wäre er
+    // sonst zweimal gemeldet.
+    expect(unreadableReleaseFiles('darwin', { APPLE_API_KEY: ' ' }, vorhanden)).toEqual([]);
+    expect(unreadableReleaseFiles('win32', {}, vorhanden)).toEqual([]);
   });
 });
 
