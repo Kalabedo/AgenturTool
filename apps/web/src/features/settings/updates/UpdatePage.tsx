@@ -87,6 +87,24 @@ export function UpdatePage(): JSX.Element {
     openInBrowser.error,
   ].find((candidate) => candidate !== null);
 
+  if (current.state === 'microsoft-store') {
+    return (
+      <div className="space-y-6">
+        {header}
+        <Card
+          title={`Privatura ${current.currentVersion}`}
+          description="Updates über den Microsoft Store"
+        >
+          <p className="text-sm text-ink-muted">
+            Der Microsoft Store aktualisiert diese Installation. Öffne den Store und suche dort nach
+            Updates für Privatura. Automatische Updates kannst du in den Store-Einstellungen
+            verwalten.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
   if (current.state === 'nicht-unterstuetzt') {
     return (
       <div className="space-y-6">

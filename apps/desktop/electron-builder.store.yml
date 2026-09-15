@@ -1,0 +1,15 @@
+# Store-Paket; macOS und lokale NSIS-Testpakete verwenden die Basiskonfiguration.
+extends: ./electron-builder.yml
+forceCodeSigning: false
+win:
+  # Ein Skalar ersetzt das NSIS-Ziel; Arrays würden beim Vererben addiert.
+  target: appx
+appx:
+  applicationId: Privatura
+  displayName: Privatura
+  languages:
+    - de-DE
+  minVersion: '10.0.19041.0'
+  maxVersionTested: '10.0.26100.0'
+  # identityName, publisher und publisherDisplayName kommen aus Partner Center
+  # und werden von paket.mjs nach einer Pflichtfeldprüfung übergeben.

@@ -9,7 +9,7 @@ const NODE_TO_ELECTRON_PLATFORM = {
 };
 
 export function parsePackageArguments(args) {
-  const supported = new Set(['--nur-baum', '--release']);
+  const supported = new Set(['--nur-baum', '--release', '--store']);
   const unknown = args.filter((argument) => !supported.has(argument));
 
   if (unknown.length > 0) {
@@ -18,12 +18,43 @@ export function parsePackageArguments(args) {
 
   const onlyTree = args.includes('--nur-baum');
   const release = args.includes('--release');
+  const store = args.includes('--store');
 
   if (onlyTree && release) {
     throw new Error('--nur-baum und --release können nicht zusammen verwendet werden.');
   }
+  if (onlyTree && store)
+    throw new Error('--nur-baum und --store können nicht zusammen verwendet werden.');
 
-  return { onlyTree, release };
+  return { onlyTree, release, store };
+}
+
+/** Nur echte Partner-Center-Identitäten dürfen in ein Store-Uploadpaket. */
+export function storePackageArguments(platform, env = process.env) {
+  if (platform !== 'win32') throw new Error('Store-Pakete werden nativ auf Windows gebaut.');
+  const fields = {
+    WINDOWS_STORE_IDENTITY_NAME: 'identityName',
+    WINDOWS_STORE_PUBLISHER: 'publisher',
+    WINDOWS_STORE_PUBLISHER_DISPLAY_NAME: 'publisherDisplayName',
+  };
+  const missing = Object.keys(fields).filter((key) => !env[key]?.trim());
+  if (missing.length > 0)
+    throw new Error(`Partner-Center-Konfiguration fehlt: ${missing.join(', ')}`);
+  if (!/^[A-Za-z0-9.-]{3,50}$/u.test(env.WINDOWS_STORE_IDENTITY_NAME)) {
+    throw new Error('WINDOWS_STORE_IDENTITY_NAME ist keine gültige Paketidentität.');
+  }
+  if (!env.WINDOWS_STORE_PUBLISHER.startsWith('CN=')) {
+    throw new Error(
+      'WINDOWS_STORE_PUBLISHER muss der Publisher-DN aus Partner Center sein (CN=…).',
+    );
+  }
+  // Der Builder setzt diese Angaben unmittelbar in XML ein.
+  if (Object.keys(fields).some((key) => /[<>&"'\r\n]/u.test(env[key]))) {
+    throw new Error(
+      'Partner-Center-Angaben enthalten XML-Sonderzeichen; Manifest-Escaping ist erforderlich.',
+    );
+  }
+  return Object.entries(fields).map(([key, field]) => `--config.appx.${field}=${env[key]}`);
 }
 
 export function assertNativeBuildTarget(

@@ -1,56 +1,50 @@
 # Desktop-Releases
 
-Öffentliche Desktop-Pakete entstehen nur aus einem stabilen SemVer-Tag auf
-`main`. Eine installierte Anwendung findet diese Pakete selbst: Sie fragt den
-Updatefeed, lädt auf Klick, prüft Prüfsumme und Signatur und ersetzt sich
-nach einem Backup selbst (D54, Architektur Abschnitt 28). Der Releaselauf
-erzeugt neben den Paketen die Feed-Datei; ausgeliefert wird sie über die
-eigene Website.
+## Vertrieb zum Launch
 
-## Unterstützte Pakete
+- macOS: signierte und notarisierte Developer-ID-DMGs als Direktdownload.
+- Windows: ausschließlich Microsoft Store als AppX-Paket. Microsoft signiert
+  nach der Zertifizierung und verteilt Updates. Kein eigener Signaturdienst.
+- NSIS bleibt für lokale Entwicklung und CI-Tests erhalten. Es gibt zum Launch
+  keine öffentlichen Windows-EXE-Downloads.
 
-| System      | Runner           | Ergebnis                    |
-| ----------- | ---------------- | --------------------------- |
-| macOS ARM64 | `macos-15`       | `Privatura-X.Y.Z-arm64.dmg` |
-| macOS x64   | `macos-15-intel` | `Privatura-X.Y.Z-x64.dmg`   |
-| Windows x64 | `windows-2025`   | `Privatura-X.Y.Z-x64.exe`   |
+| System      | Runner           | Ergebnis                    | Ziel           |
+| ----------- | ---------------- | --------------------------- | -------------- |
+| macOS ARM64 | `macos-15`       | `Privatura-X.Y.Z-arm64.dmg` | Website        |
+| macOS x64   | `macos-15-intel` | `Privatura-X.Y.Z-x64.dmg`   | Website        |
+| Windows x64 | `windows-2025`   | `Privatura-X.Y.Z-x64.appx`  | Partner Center |
 
-macOS 13 oder neuer sowie Windows 10 und 11 werden unterstützt. Windows ARM64
-kann das x64-Paket über die Betriebssystememulation ausführen, wird aber nicht
-als eigene Architektur gebaut oder zertifiziert. Linux ist kein Release-Ziel.
+macOS benötigt Version 13 oder neuer. Das Store-Manifest setzt Windows 10
+Build 19041 voraus; Windows 11 ist der primäre manuelle Testrechner.
+Windows ARM64 ist noch nicht als eigene Architektur getestet. Linux ist kein
+Releaseziel.
 
-## Geschützte Umgebung und Geheimnisse
+## Geschützte GitHub-Umgebung `release`
 
-Unter **Settings → Environments** muss eine Umgebung `release` angelegt
-werden. Ein erforderlicher Reviewer verhindert, dass ein versehentlich
-gesetzter Tag ohne menschliche Freigabe Zugriff auf die Zertifikate erhält.
+Die macOS-Secrets bleiben bestehen:
 
-Die Umgebung enthält ausschließlich diese Secrets:
+| Secret                 | Inhalt                                             |
+| ---------------------- | -------------------------------------------------- |
+| `MAC_CSC_LINK`         | Developer-ID-Application-Zertifikat als Base64-P12 |
+| `MAC_CSC_KEY_PASSWORD` | Passwort der P12                                   |
+| `APPLE_API_KEY_P8`     | vollständiger PEM-Text der Team-API-Key-Datei      |
+| `APPLE_API_KEY_ID`     | Key-ID                                             |
+| `APPLE_API_ISSUER`     | Issuer-ID                                          |
 
-| Secret                     | Inhalt                                        |
-| -------------------------- | --------------------------------------------- |
-| `MAC_CSC_LINK`             | Developer-ID-Application-Zertifikat als P12   |
-| `MAC_CSC_KEY_PASSWORD`     | Passwort der P12-Datei                        |
-| `APPLE_API_KEY_P8`         | App-Store-Connect-Schlüssel, Inhalt der `.p8` |
-| `APPLE_API_KEY_ID`         | Kennung des Schlüssels, zehnstellig           |
-| `APPLE_API_ISSUER`         | Issuer-ID des Teams, eine UUID                |
-| `WINDOWS_CSC_LINK`         | Windows-Signatur — Weg offen, siehe unten     |
-| `WINDOWS_CSC_KEY_PASSWORD` | Windows-Signatur — Weg offen, siehe unten     |
+Die P12 wird mit `base64 -i DeveloperIDApplication.p12 | pbcopy` kopiert.
+Der P8-Inhalt bleibt normaler PEM-Text.
 
-Die P12 wird als einzeiliger Base64-Inhalt gespeichert:
+Für Windows unter **Environment variables**, nicht Secrets, ergänzen:
 
-```bash
-base64 -i DeveloperIDApplication.p12 | pbcopy
-```
+| Variable                               | Quelle in Partner Center → Product identity       |
+| -------------------------------------- | ------------------------------------------------- |
+| `WINDOWS_STORE_IDENTITY_NAME`          | Package/Identity/Name                             |
+| `WINDOWS_STORE_PUBLISHER`              | Package/Identity/Publisher, vollständig mit `CN=` |
+| `WINDOWS_STORE_PUBLISHER_DISPLAY_NAME` | Package/Properties/PublisherDisplayName           |
 
-Der Notarisierungsschlüssel dagegen im Klartext: Die heruntergeladene
-`AuthKey_XXXXXXXXXX.p8` ist PEM-Text und kommt mit allen Zeilen — von
-`-----BEGIN PRIVATE KEY-----` bis zur letzten — in das Secret.
-
-Die Workflows reichen nur die für den jeweiligen Runner benötigten Secrets
-weiter. Werte gehören weder in Dateien noch in Workflow-Ausgaben.
-`pnpm paket --release` nennt bei einem Fehler ausschließlich die fehlenden
-Variablennamen.
+Diese Angaben sind öffentlich. Sie werden unverändert übernommen; keine
+Beispielidentität darf veröffentlicht werden. Fehlen sie, stoppt der
+Store-Paketbau. Es werden keine `WINDOWS_CSC_*`- oder eSigner-Secrets benötigt.
 
 ## macOS-Zertifikat und Notarisierungszugang einrichten
 
@@ -88,100 +82,63 @@ Wer lokal signiert, darf `APPLE_ID` und `APPLE_APP_SPECIFIC_PASSWORD` nicht
 gesetzt haben: electron-builder prüft sie zuerst und bricht ab, sobald eine
 von beiden allein in der Umgebung steht.
 
-## Windows-Signatur: offener Punkt
+## Microsoft Store einrichten und Paket bauen
 
-**Der Windows-Job des Workflows ist so, wie er dasteht, nicht mehr
-befüllbar.** `WINDOWS_CSC_LINK` erwartet eine PFX-Datei mit exportierbarem
-privatem Schlüssel; seit dem 1. Juni 2023 verlangen die Baseline Requirements
-des CA/Browser-Forums für jedes Code-Signing-Zertifikat — OV wie EV —, dass
-der private Schlüssel auf zertifizierter Hardware erzeugt wird und
-nicht-exportierbar bleibt. Keine öffentlich vertraute CA gibt seitdem noch
-eine herunterladbare PFX heraus. Seit dem 1. März 2026 gilt zusätzlich eine
-Höchstlaufzeit von 460 Tagen, das Zertifikat ist also etwa jährlich zu
-erneuern.
+1. Bei [Microsoft Store Developer](https://storedeveloper.microsoft.com/) über
+   den neuen kostenlosen Individual-Developer-Flow registrieren und Identität
+   verifizieren.
+2. Privatura als Produkt anlegen und den Namen reservieren.
+3. Die drei Product-Identity-Werte in der GitHub-Umgebung eintragen.
+4. Auf Windows x64 `pnpm install --frozen-lockfile` und `pnpm build` ausführen.
+5. Mit gesetzten Store-Variablen bauen:
 
-Vor dem ersten Windows-Release ist deshalb einer dieser Wege zu wählen:
+   ```powershell
+   pnpm --filter @privatura/desktop paket --store --release
+   ```
 
-- **Azure Artifact Signing** (früher Trusted Signing). Etwa zehn Dollar im
-  Monat, keine Hardware, von electron-builder 25 über `win.azureSignOptions`
-  unmittelbar unterstützt. Voraussetzung ist eine geprüfte Organisation;
-  Einzelentwickler sind bislang auf die USA und Kanada beschränkt, und die
-  Organisationsprüfung verlangt etwa drei Jahre nachweisbare Geschäftshistorie.
-- **Cloud-HSM einer klassischen CA** (SSL.com eSigner, DigiCert KeyLocker,
-  GlobalSign, Certum). Teurer, dafür auch als Einzelperson zu bekommen. Die
-  Signatur läuft über ein Skript in `win.sign`.
-- **USB-Token.** Ein von GitHub gehosteter Runner sieht ihn nicht. Das hieße
-  eigener Runner oder Signieren von Hand — und damit das Ende des
-  geschlossenen Releaselaufs.
-
-Zwei Dinge hängen daran:
-
-- Bei kurzlebigen Cloud-Zertifikaten — bei Azure lebt jedes nur wenige Tage —
-  entscheidet allein der RFC-3161-Zeitstempel darüber, ob der Installer in
-  einem Monat noch gültig ist. Die Prüfung im Workflow sieht bisher nur
-  `Status`; sobald der Weg steht, gehört `TimeStamperCertificate` dazu.
-- Die Signaturidentität ist nach dem öffentlichen Release festgelegt (D43,
-  `VERTRIEB-UND-UPDATES.md`). Ein späterer Wechsel des Ausstellers setzt die
-  SmartScreen-Reputation zurück. Die Wahl fällt vor 1.0, nicht danach.
+`electron-builder.store.yml` ergänzt die Basiskonfiguration. Der vorhandene
+Builder 25 unterstützt AppX; Microsoft akzeptiert AppX und MSIX. Store-Kacheln
+entstehen auf Windows aus dem vorhandenen Markenasset.
+`paket --release` ohne `--store` verweigert Windows-Releases.
+Das erzeugte AppX ist unsigniert und ausschließlich ein Store-Uploadpaket.
+Für lokale Paketinstallation eine Kopie mit einem lokal vertrauten
+Testzertifikat signieren; dafür ist kein gekauftes Zertifikat nötig.
 
 ## Veröffentlichung
 
-1. Die Version in `apps/desktop/package.json` erhöhen und den aktualisierten
-   `pnpm-lock.yaml` mit einchecken. Diese Version ist für Desktop-Releases
-   maßgeblich.
-2. Pull Request vollständig grün werden lassen und nach `main` mergen.
-3. Auf genau diesem Commit den passenden Tag anlegen und pushen:
+1. Version in `apps/desktop/package.json` erhöhen, Änderungen prüfen und
+   nach `main` integrieren.
+2. Passenden stabilen Tag `vX.Y.Z` auf dem Release-Commit pushen.
+3. Den Lauf **Desktop-Release** und gegebenenfalls die Umgebung freigeben.
+4. macOS: GitHub-Entwurf mit zwei DMGs, `SHA256SUMS` und `updates.json`
+   prüfen und veröffentlichen. Signatur, Gatekeeper, Stapling und zweimaliger
+   Lauf mit denselben Testdaten werden wie bisher geprüft.
+5. Windows: das Actions-Artefakt `store-upload-windows-x64` herunterladen
+   und die darin enthaltene AppX-Datei in Partner Center hochladen.
+6. Listing mit Screenshots, Beschreibung, Datenschutzlink und Altersfreigabe
+   vervollständigen. `runFullTrust` mit dem lokalen Electron-/Prisma-Betrieb
+   begründen. Zertifizierung und die unten genannten manuellen Prüfungen
+   abschließen, bevor die Store-Version öffentlich wird.
+7. Den Windows-Downloadknopf der Website auf die veröffentlichte
+   Microsoft-Store-Produktseite richten.
 
-   ```bash
-   git tag v1.2.3
-   git push origin v1.2.3
-   ```
+Der macOS-Entwurf wartet nur auf die macOS-Jobs. Windows-Zertifizierung und
+Store-Veröffentlichung erfolgen unabhängig. Das Store-Uploadpaket wird nicht
+an den GitHub-Release angehängt und nicht auf der Website gehostet.
+Ein fehlgeschlagener Windows-Job muss vor Store-Einreichung behoben werden,
+blockiert aber den macOS-Entwurf nicht.
 
-4. Den Lauf **Desktop-Release** und den Zugriff auf die geschützte Umgebung
-   freigeben.
-5. Den erzeugten Release-Entwurf prüfen: zwei DMGs, ein EXE-Installer,
-   `SHA256SUMS`, `updates.json` und automatisch erzeugte Hinweise müssen
-   vorhanden sein.
-6. Den Entwurf in GitHub veröffentlichen.
-7. Die Website bestücken — siehe den nächsten Abschnitt.
+## Website und macOS-Updatefeed
 
-Der Workflow lehnt Tags ab, die nicht exakt `vMAJOR.MINOR.PATCH` entsprechen,
-nicht zur Desktop-Version passen oder deren Commit nicht zu `main` gehört.
-Ein fehlgeschlagener Lauf darf denselben Entwurf und seine Dateien ersetzen;
-ein bereits veröffentlichter Release wird niemals überschrieben.
+Der Feed bleibt `https://updates.privatura.de/stable/updates.json`.
+`apps/desktop/scripts/updatefeed.mjs` nimmt ausschließlich die beiden DMGs
+auf; auch eine versehentlich vorhandene EXE oder AppX gelangt nicht hinein.
 
-## Website und Updatefeed
+Zuerst beide DMGs an die im Feed angegebenen Adressen laden und Erreichbarkeit
+prüfen, danach `updates.json` austauschen. Den Feed mit `Cache-Control:
+no-cache` ausliefern. Versionierte DMGs dürfen länger zwischengespeichert werden.
 
-Verkauft und heruntergeladen wird über die eigene Website (D38). Die
-installierte Anwendung fragt dort höchstens einmal am Tag eine einzige Datei
-ab:
-
-```text
-https://updates.privatura.de/stable/updates.json
-```
-
-Die Datei entsteht im Releaselauf aus den fertigen Paketen
-(`apps/desktop/scripts/updatefeed.mjs`) und liegt dem Release bei — so
-stammen veröffentlichte Prüfsummen und Feed aus demselben Lauf. Sie enthält
-Version, Datum, einen Satz für das Banner sowie je Paket Adresse, Größe und
-SHA-256.
-
-**Die Reihenfolge ist die Regel:**
-
-1. Die drei Pakete auf die Website laden, unter genau die Adressen, die in
-   `updates.json` stehen (`…/stable/Privatura-<Version>-<arch>.<ext>`).
-2. Prüfen, dass jede dieser Adressen die Datei wirklich ausliefert.
-3. Erst dann `updates.json` hochladen und ersetzen.
-
-Ein Feed, der auf einen 404 zeigt, ist schlimmer als gar keiner: Jede
-laufende Installation zeigt dann ein Banner, dessen Knopf ins Leere führt.
-
-Die Datei wird ohne Zwischenspeicher ausgeliefert (`Cache-Control:
-no-cache`, kurze TTL); sonst sieht ein Teil der Kunden tagelang die alte
-Version. Die Pakete dürfen dagegen lange zwischengespeichert werden — ihre
-Adressen enthalten die Version.
-
-Von Hand erzeugen lässt sich der Feed genauso, etwa für einen Testkanal:
+Für einen Testfeed:
 
 ```bash
 node apps/desktop/scripts/updatefeed.mjs \
@@ -190,69 +147,62 @@ node apps/desktop/scripts/updatefeed.mjs \
   --base-url https://updates.privatura.de/stable
 ```
 
-Vor dem Umstellen des echten Feeds lässt sich der ganze Weg mit einer
-Testadresse prüfen — `PRIVATURA_UPDATE_FEED` zeigt dann dorthin, und nur
-dieser Host gilt für Downloads:
+macOS meldet und lädt Updates weiterhin über den eigenen Kanal, erstellt vor
+der Installation ein Backup und startet erst nach Zustimmung neu.
+Ein kompletter Upgrade-Test benötigt zwei Fassungen, einschließlich des
+Fehlerfalls ohne Schreibrecht und der Entfernung alter Updateverzeichnisse.
 
-```bash
-PRIVATURA_UPDATE_FEED=https://test.privatura.de/updates.json pnpm dev:desktop
-```
+## Windows-Updates und Daten
 
-Der Host im Feed und der Host der Downloads müssen zusammenpassen: Die
-Anwendung nimmt Adressen nur von `updates.privatura.de`,
-`privatura.de` und `www.privatura.de` an (`apps/desktop/src/config.ts`).
-Eine neue Domain ist deshalb eine Codeänderung und keine Serverkonfiguration
-— das ist Absicht.
+Electron erkennt Store-/MSIX-Pakete über `process.windowsStore`.
+In diesem Betrieb wird kein eigener UpdateService gestartet. Alle
+Update-API-Aktionen bleiben im Zustand `microsoft-store`; der eigene
+Feed, Download und NSIS-Installer werden nicht aufgerufen. Einstellungen und
+Menü verweisen auf den Microsoft Store.
 
-## Automatische Freigabekriterien
+Store-Updates müssen nicht mit dem macOS-Release zeitgleich erscheinen.
+Die Tagessicherung und die Sicherung vor Datenbankmigrationen bleiben aktiv.
+Ein Backup unmittelbar vor jedem vom Store installierten Update kann die
+Anwendung nicht garantieren.
 
-- vollständige statische, Unit-, Integrations- und Build-Prüfung;
-- native Prisma- und argon2-Binärdateien je Zielarchitektur;
-- gültige macOS-Codesignatur, Gatekeeper-Prüfung und angeheftetes
-  Notarisierungsticket;
-- gültige Authenticode-Signatur für Windows-Installer und Anwendung;
-- erfolgreicher Start direkt aus dem DMG beziehungsweise nach stiller
-  NSIS-Installation;
-- zweiter Start mit derselben Datenablage samt Rechnung, PDF und Tagessicherung;
-- keine von der Anwendung ausgehende Netzwerkanfrage.
+**Vor Launch offen:** Windows kann virtualisierte AppData beim Deinstallieren
+oder Zurücksetzen entfernen. `userData/Daten/backups` ist deshalb allein kein
+Schutz vor diesen Aktionen. Externe Backups müssen außerhalb der Paketdaten
+gespeichert werden; Datenerhalt, Export und Wiederherstellung sind zu testen.
+Falls Daten eine Deinstallation überstehen sollen, muss die Ablage vor dem
+öffentlichen Launch entsprechend angepasst werden.
 
-Eine neue Windows-Signatur kann trotz gültigem Zertifikat anfangs noch keinen
-SmartScreen-Ruf besitzen. Der Workflow kann die Authenticode-Gültigkeit
-erzwingen, nicht Microsofts externe Reputationsbewertung.
+Auch das geplante Lizenzmodell mit zwölf Monaten Updates muss Store-konform
+ausgearbeitet werden: Der Store aktualisiert Binärdateien unabhängig von
+kundenspezifischen Lizenzfristen. Die Vertriebsentscheidung ändert keine
+zugesagten Nutzungsrechte.
 
-## Update in der Anwendung
+## Prüfungen und Grenzen
 
-Die laufende Anwendung meldet die neue Fassung von selbst — als Banner und
-unter Einstellungen → Updates, mit Größe und Prüfsumme zum Vergleichen.
-„Update laden" holt das Paket, „Neu starten und installieren" erzeugt ein
-Backup, prüft die Signatur, ersetzt die Installation und startet neu. Was
-dabei im Einzelnen passiert, steht in Abschnitt 28 der Architektur.
+Automatisch prüft der Windows-Releasejob Paketbau, Identität, Publisher,
+Architektur und Full-Trust-Einstieg. Anschließend startet er die aus dem AppX
+extrahierte Anwendung zweimal mit denselben Daten und prüft Rechnung, PDF,
+Tagessicherung und ausgehende Verbindungen.
 
-**Nach dem ersten Release eines neuen Kanals von Hand nachprüfen** — der Weg
-lässt sich nicht ohne zwei Fassungen testen:
+**Dies ist noch kein Test einer installierten Store-App.** Vor Freigabe auf
+einem Windows-11-Rechner prüfen:
 
-1. Eine ältere Fassung installieren (DMG beziehungsweise Installer aus dem
-   vorigen Release), starten und in den Einstellungen prüfen lassen.
-2. „Update laden" — der Fortschritt muss laufen und die Prüfung durchgehen.
-3. „Neu starten und installieren" — danach muss unter `Daten/backups` ein
-   frisches Archiv liegen, die Anwendung von selbst wieder hochkommen und
-   unter Einstellungen → Updates die neue Fassung stehen.
-4. Auf macOS zusätzlich prüfen, dass `/Applications/Privatura.app` die neue
-   Fassung ist und daneben kein `.privatura-update-*` liegen bleibt.
-5. Den Fall ohne Schreibrecht mitprüfen: dieselbe Anwendung aus dem
-   Download-Ordner starten (Gatekeeper verschiebt sie dann) — die
-   Installation muss mit einem Hinweis auf den Dateimanager abbrechen und
-   nichts anfassen.
+- AppX installieren und aus dem Startmenü starten; Updates-Seite nennt den
+  Microsoft Store und bietet keinen eigenen Installer an.
+- Prisma-Migrationen, Rechnung, PDF-Export, E-Mail-Übergabe und SMTP testen.
+- Zweite Paketversion über die erste installieren und Daten prüfen.
+- Externes Backup exportieren und nach Reset/Neuinstallation wiederherstellen;
+  ausschließlich Wegwerfdaten für Reset- und Deinstallationstests verwenden.
+- Eine Store-signierte Testversion über Partner Center beziehen und den
+  tatsächlichen Store-Installations- und Upgradeweg bestätigen.
 
-## Manuelles Update
+Noch erforderlich sind echte Partner-Center-Identitäten, ein Windows-Paketlauf,
+diese Installationstests sowie Microsofts Zertifizierung. Ein erfolgreich
+erstelltes Uploadpaket ist keine Store-Freigabe.
 
-Der Weg bleibt daneben bestehen — für den Fall, dass der Austausch
-fehlschlägt, oder für jemanden, der ihn nicht will: Unter Einstellungen →
-Updates führen „Paket im Ordner zeigen" und „Stattdessen im Browser laden"
-dorthin.
+## Offizielle Referenzen
 
-Vor dem Update über die Anwendung ein Backup erzeugen. Anschließend das neue
-DMG beziehungsweise den neuen NSIS-Installer über die bestehende Installation
-installieren und Privatura starten. Die Daten unter Electron `userData`
-liegen außerhalb des Programms, werden bei der Deinstallation nicht gelöscht
-und vor Datenbankmigrationen nochmals automatisch gesichert.
+- [Kostenloser Individual-Developer-Flow](https://learn.microsoft.com/en-us/windows/apps/publish/whats-new-individual-developer)
+- [Store-Signierung von AppX/MSIX](https://learn.microsoft.com/en-us/windows/apps/publish/faq/get-started-with-the-microsoft-store)
+- [Verhalten paketierter Desktop-Apps](https://learn.microsoft.com/en-us/windows/msix/desktop/desktop-to-uwp-behind-the-scenes)
+- [Electron-Paketerkennung](https://www.electronjs.org/docs/latest/api/process#processwindowsstore-readonly)

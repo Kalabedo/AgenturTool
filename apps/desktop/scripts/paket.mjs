@@ -21,8 +21,9 @@
  * nicht gebaut.
  *
  * Mit `--nur-baum` endet der Lauf nach dem Aufbau von `paket/`, ohne
- * electron-builder zu rufen. `--release` verlangt dagegen die
- * Signatur-Zugangsdaten und erzwingt ein signiertes Paket.
+ * electron-builder zu rufen. `--release` verlangt auf macOS die
+ * Signatur-Zugangsdaten; auf Windows ist zusätzlich `--store` erforderlich.
+ * `--store` baut das Uploadpaket mit der Partner-Center-Identität.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -32,6 +33,7 @@ import {
   missingReleaseEnvironment,
   parsePackageArguments,
   unreadableReleaseFiles,
+  storePackageArguments,
 } from './paket-konfiguration.mjs';
 
 const desktopDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -39,8 +41,17 @@ const repoRoot = path.resolve(desktopDir, '../..');
 const paketDir = path.join(desktopDir, 'paket');
 const releaseDir = path.join(desktopDir, 'release');
 const options = parsePackageArguments(process.argv.slice(2));
+if (options.release && process.platform === 'win32' && !options.store) {
+  throw new Error(
+    'Windows-Releases werden ausschließlich mit --store --release für den Microsoft Store gebaut.',
+  );
+}
+const storeArguments = options.store ? storePackageArguments(process.platform) : [];
+if (options.store && process.arch !== 'x64') {
+  throw new Error('Der Store-Launch unterstützt ausschließlich native Windows-x64-Builds.');
+}
 
-if (options.release) {
+if (options.release && !options.store) {
   const missing = missingReleaseEnvironment(process.platform);
   if (missing.length > 0) {
     throw new Error(`Release-Zugangsdaten fehlen: ${missing.join(', ')}`);
@@ -163,10 +174,28 @@ fs.rmSync(path.join(paketDir, 'pnpm-lock.yaml'), { force: true });
 if (options.onlyTree) {
   process.stdout.write(`▸ Baum steht unter ${paketDir} — electron-builder übersprungen.\n`);
 } else {
-  const builderArguments = ['exec', 'electron-builder', '--config', 'electron-builder.yml'];
-  if (options.release) builderArguments.push('--config.forceCodeSigning=true');
+  const builderArguments = [
+    'exec',
+    'electron-builder',
+    '--config',
+    options.store ? 'electron-builder.store.yml' : 'electron-builder.yml',
+    ...storeArguments,
+  ];
+  if (options.release && !options.store) builderArguments.push('--config.forceCodeSigning=true');
+  if (options.store) {
+    run('pwsh', ['-NoProfile', '-File', 'scripts/store-assets.ps1'], desktopDir);
+  }
 
   run('pnpm', builderArguments, desktopDir, {
     PRIVATURA_RELEASE: options.release ? '1' : '0',
+    ...(options.store
+      ? {
+          CSC_LINK: '',
+          WIN_CSC_LINK: '',
+          CSC_KEY_PASSWORD: '',
+          WIN_CSC_KEY_PASSWORD: '',
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false',
+        }
+      : {}),
   });
 }

@@ -33,6 +33,7 @@ import {
   startWindowsInstaller,
 } from './update/install';
 import { UpdateService } from './update/update-service';
+import { MicrosoftStoreUpdates } from './update/microsoft-store';
 import { readWindowState, saveWindowState } from './window-state';
 
 // Vor allem anderen: Der Name bestimmt, wo `userData` liegt — auf einem
@@ -50,7 +51,7 @@ app.commandLine.appendSwitch('disable-background-networking');
 app.commandLine.appendSwitch('disable-component-update');
 
 let api: INestApplication | null = null;
-let updates: UpdateService | null = null;
+let updates: UpdateService | MicrosoftStoreUpdates | null = null;
 let backups: BackupSchedule | null = null;
 let window: BrowserWindow | null = null;
 let apiUrl = '';
@@ -94,7 +95,7 @@ app.on('before-quit', (event) => {
 
   event.preventDefault();
   quitting = true;
-  updates?.stop();
+  if (updates instanceof UpdateService) updates.stop();
   // Vor `api.close()`: Die Sicherung braucht den laufenden Server, und ein
   // Zeitgeber, der danach noch feuert, fände ihn nicht mehr.
   backups?.stop();
@@ -172,26 +173,28 @@ async function start(): Promise<void> {
     // (D41, D43). Der Dienst wird vor dem Server gebaut, weil der Server ihn
     // als Gastgeberdienst bekommt — und weil ein Fehler in der Konfiguration
     // beim Start auffallen soll und nicht beim ersten Klick.
-    updates = new UpdateService({
-      currentVersion: app.getVersion(),
-      stateDir: paths.stateDir,
-      updatesDir: paths.updatesDir,
-      feed: updateFeedConfig(),
-      platform: process.platform,
-      arch: process.arch,
-      log,
-      openExternal: (url) => shell.openExternal(url),
-      revealPackage: (filePath) => {
-        shell.showItemInFolder(filePath);
-      },
-      // Unmittelbar vor der Installation und ohne Dialog: Wer gerade „Neu
-      // starten und installieren" geklickt hat, wartet auf das Update und
-      // nicht auf eine zweite Rückfrage.
-      createBackup: async () => {
-        await createBackupArchive('update');
-      },
-      installPackage: installUpdate,
-    });
+    updates = process.windowsStore
+      ? new MicrosoftStoreUpdates(app.getVersion())
+      : new UpdateService({
+          currentVersion: app.getVersion(),
+          stateDir: paths.stateDir,
+          updatesDir: paths.updatesDir,
+          feed: updateFeedConfig(),
+          platform: process.platform,
+          arch: process.arch,
+          log,
+          openExternal: (url) => shell.openExternal(url),
+          revealPackage: (filePath) => {
+            shell.showItemInFolder(filePath);
+          },
+          // Unmittelbar vor der Installation und ohne Dialog: Wer gerade „Neu
+          // starten und installieren" geklickt hat, wartet auf das Update und
+          // nicht auf eine zweite Rückfrage.
+          createBackup: async () => {
+            await createBackupArchive('update');
+          },
+          installPackage: installUpdate,
+        });
 
     const running = await bootstrap({
       pdfRenderer: new ElectronPdfRenderer(pdfTimeoutMs(), (url) => {
@@ -233,7 +236,7 @@ async function start(): Promise<void> {
 
     // Erst nachdem das Fenster steht: Der Start gehört der Anwendung, nicht
     // der Updateprüfung. Danach genügt ein Blick in 24 Stunden (D41).
-    updates.start();
+    if (updates instanceof UpdateService) updates.start();
 
     // Die Tagessicherung (D55). Sie hängt am Start, weil diese Anwendung
     // nicht durchläuft — ein nächtlicher Zeitplan liefe auf einem Rechner,
@@ -348,6 +351,15 @@ async function checkForUpdates(): Promise<void> {
 
   const status = await updates.check();
 
+  if (status.state === 'microsoft-store') {
+    await dialog.showMessageBox({
+      type: 'info',
+      message: 'Updates kommen über den Microsoft Store.',
+      detail: 'Öffne den Microsoft Store und suche dort nach Updates für Privatura.',
+    });
+    return;
+  }
+
   if (status.state === 'abgeschaltet') {
     await dialog.showMessageBox({
       type: 'info',
@@ -450,6 +462,7 @@ async function checkForUpdates(): Promise<void> {
  * im Schreiben unterbricht, wäre ein teuer bezahlter Neustart.
  */
 async function installUpdate(ready: { filePath: string; version: string }): Promise<boolean> {
+  if (process.windowsStore) return false;
   if (!canInstall(process.platform)) return false;
 
   const context = {

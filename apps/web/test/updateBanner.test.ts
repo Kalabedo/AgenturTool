@@ -102,7 +102,13 @@ describe('bannerMode', () => {
   });
 
   it('schweigt bei allen übrigen Zuständen', () => {
-    for (const state of ['aktuell', 'prueft', 'abgeschaltet', 'nicht-unterstuetzt'] as const) {
+    for (const state of [
+      'aktuell',
+      'prueft',
+      'abgeschaltet',
+      'nicht-unterstuetzt',
+      'microsoft-store',
+    ] as const) {
       expect(bannerMode(status({ state, available: null }), null)).toBe('kein');
     }
   });

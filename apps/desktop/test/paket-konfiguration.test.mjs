@@ -1,17 +1,34 @@
 import { describe, expect, it } from 'vitest';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 import {
   assertNativeBuildTarget,
   missingReleaseEnvironment,
   parsePackageArguments,
   unreadableReleaseFiles,
+  storePackageArguments,
 } from '../scripts/paket-konfiguration.mjs';
 import { validateReleaseTag } from '../scripts/release-preflight.mjs';
 
 describe('Paket-Konfiguration', () => {
-  it('akzeptiert nur die zwei dokumentierten Optionen', () => {
-    expect(parsePackageArguments([])).toEqual({ onlyTree: false, release: false });
-    expect(parsePackageArguments(['--nur-baum'])).toEqual({ onlyTree: true, release: false });
-    expect(parsePackageArguments(['--release'])).toEqual({ onlyTree: false, release: true });
+  it('akzeptiert nur die dokumentierten Paketoptionen', () => {
+    expect(parsePackageArguments([])).toEqual({ onlyTree: false, release: false, store: false });
+    expect(parsePackageArguments(['--nur-baum'])).toEqual({
+      onlyTree: true,
+      release: false,
+      store: false,
+    });
+    expect(parsePackageArguments(['--release'])).toEqual({
+      onlyTree: false,
+      release: true,
+      store: false,
+    });
+    expect(parsePackageArguments(['--store', '--release'])).toEqual({
+      onlyTree: false,
+      release: true,
+      store: true,
+    });
+    expect(() => parsePackageArguments(['--store', '--nur-baum'])).toThrow('können nicht zusammen');
     expect(() => parsePackageArguments(['--x64'])).toThrow('Unbekannte Paketoption');
     expect(() => parsePackageArguments(['--nur-baum', '--release'])).toThrow(
       'können nicht zusammen',
@@ -69,6 +86,61 @@ describe('Paket-Konfiguration', () => {
     expect(unreadableReleaseFiles('darwin', { APPLE_API_KEY: ' ' }, vorhanden)).toEqual([]);
     expect(unreadableReleaseFiles('win32', {}, vorhanden)).toEqual([]);
   });
+});
+
+describe('Store-Identität', () => {
+  const identity = {
+    WINDOWS_STORE_IDENTITY_NAME: '12345.TomWenczelPrivatura',
+    WINDOWS_STORE_PUBLISHER: 'CN=12345678-1234-1234-1234-123456789012',
+    WINDOWS_STORE_PUBLISHER_DISPLAY_NAME: 'Tom Wenczel',
+  };
+
+  it('fordert Partner-Center-Angaben statt eines Windows-Zertifikats', () => {
+    expect(() => storePackageArguments('win32', {})).toThrow('Partner-Center-Konfiguration fehlt');
+    expect(storePackageArguments('win32', identity)).toEqual([
+      '--config.appx.identityName=12345.TomWenczelPrivatura',
+      '--config.appx.publisher=CN=12345678-1234-1234-1234-123456789012',
+      '--config.appx.publisherDisplayName=Tom Wenczel',
+    ]);
+    expect(() => storePackageArguments('darwin', identity)).toThrow('nativ auf Windows');
+  });
+
+  it('weist falsche Identitäten und unsicheres Manifest-XML vor dem Bau ab', () => {
+    expect(() =>
+      storePackageArguments('win32', {
+        ...identity,
+        WINDOWS_STORE_IDENTITY_NAME: '@privatura/desktop',
+      }),
+    ).toThrow('Paketidentität');
+    expect(() =>
+      storePackageArguments('win32', { ...identity, WINDOWS_STORE_PUBLISHER: 'Tom' }),
+    ).toThrow('Publisher-DN');
+    expect(() =>
+      storePackageArguments('win32', {
+        ...identity,
+        WINDOWS_STORE_PUBLISHER_DISPLAY_NAME: 'Tom & Co',
+      }),
+    ).toThrow('XML-Sonderzeichen');
+  });
+});
+
+it('ersetzt beim Vererben der Store-Konfiguration NSIS vollständig', async () => {
+  const require = createRequire(import.meta.url);
+  const builderRequire = createRequire(require.resolve('electron-builder'));
+  const { getConfig, validateConfiguration } = builderRequire(
+    'app-builder-lib/out/util/config/config',
+  );
+  const { DebugLogger } = builderRequire('builder-util');
+  const config = await getConfig(
+    fileURLToPath(new URL('../', import.meta.url)),
+    'electron-builder.store.yml',
+    null,
+  );
+  await validateConfiguration(config, new DebugLogger(false));
+  expect(config.win.target).toBe('appx');
+  expect(config.forceCodeSigning).toBe(false);
+  expect(config.mac.notarize).toBe(true);
+  expect(config.mac.hardenedRuntime).toBe(true);
 });
 
 describe('Release-Tag', () => {

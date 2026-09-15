@@ -3,8 +3,10 @@
 ## Beschlossene Leitplanken
 
 - **Primärer Verkaufskanal:** eigene Website.
-- **Weitere Kanäle:** Microsoft Store und Mac App Store nur optional und
-  später, wenn ihr zusätzlicher Nutzen den Pflegeaufwand rechtfertigt.
+- **Windows-Download zum Launch:** ausschließlich Microsoft Store (AppX/MSIX),
+  Signatur und Updates durch Microsoft. Eigene Windows-Signierung später.
+- **macOS-Download:** Developer-ID-signiertes, notarisiertes DMG wie bisher.
+  Der Mac App Store bleibt eine spätere Option.
 - **Lizenz:** Einmalkauf mit dauerhaftem Nutzungsrecht für die zuletzt
   berechtigte Version.
 - **Updates:** zwölf Monate ab Kauf inklusive; danach kann der Zeitraum
@@ -32,7 +34,21 @@
 Diese Entscheidungen sind als D38 bis D44 in der verbindlichen Architektur
 festgehalten.
 
-## Vertriebskonzept
+## Beschluss vom 15.09.2026
+
+Die Website verlinkt für Windows auf die Store-Produktseite. Windows-EXE und
+AppX werden nicht als öffentliche Downloads angeboten; das AppX-Artefakt der
+Pipeline ist ausschließlich für Partner Center bestimmt. Die folgenden
+älteren Abschnitte zum gemeinsamen DMG-/NSIS-Vertrieb und zum eigenen
+Windows-Updater beschreiben eine spätere Option, nicht den Launch.
+
+Store-Updates ersetzen auch nach zwölf Monaten die installierten Binärdateien.
+Vor Umsetzung des Lizenzsystems ist deshalb die Trennung zwischen
+Funktionsberechtigung und App-Version zu klären; ein Kaufdatum darf den
+Store-Updater nicht blockieren oder bestehende Nutzungsrechte entziehen.
+Der Implementierungs- und Freigabeplan steht in [RELEASE.md](RELEASE.md).
+
+## Bisheriges Direktvertriebskonzept (macOS; Windows später optional)
 
 Privatura startet mit der eigenen Website als primärem Verkaufskanal. Die
 Website verkauft eine Lizenz und bietet die vorhandenen signierten Installer

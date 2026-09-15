@@ -47,7 +47,6 @@ export const DEFAULT_NOTES_URL = 'https://privatura.de/releases/{version}';
 const PACKAGES = [
   { platform: 'macos-arm64', suffix: '-arm64.dmg' },
   { platform: 'macos-x64', suffix: '-x64.dmg' },
-  { platform: 'windows-x64', suffix: '-x64.exe' },
 ];
 
 export function parseFeedArguments(args) {

@@ -66,6 +66,40 @@ jobs:
           xvfb-run -a node apps/desktop/scripts/rauchprobe.mjs \
             apps/desktop/release/linux-unpacked/privatura
 
+  store-paket:
+    name: Store-Paket (Testidentität, nicht veröffentlichen)
+    runs-on: windows-2025
+    timeout-minutes: 45
+    env:
+      # Keine Zugangsdaten. Das Paket wird nur auf diesem Runner geprüft.
+      WINDOWS_STORE_IDENTITY_NAME: Privatura.CITest
+      WINDOWS_STORE_PUBLISHER: CN=Privatura-CI
+      WINDOWS_STORE_PUBLISHER_DISPLAY_NAME: Privatura CI
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm --filter @privatura/desktop paket --store
+      - name: Store-Paket ohne Direktinstaller prüfen
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $packages = @(Get-ChildItem 'apps/desktop/release/Privatura-*-x64.appx')
+          if ($packages.Count -ne 1) { throw 'Genau ein AppX-Paket erwartet.' }
+          if (Get-ChildItem 'apps/desktop/release/Privatura-*-x64.exe') { throw 'Unerwarteter NSIS-Installer.' }
+          $packageDir = Join-Path $env:RUNNER_TEMP 'Privatura-Store-CI'
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          [System.IO.Compression.ZipFile]::ExtractToDirectory($packages[0].FullName, $packageDir)
+          [xml]$manifest = Get-Content (Join-Path $packageDir 'AppxManifest.xml') -Raw
+          if ($manifest.Package.Identity.Name -cne $env:WINDOWS_STORE_IDENTITY_NAME) { throw 'Falsche Paketidentität.' }
+          if ($manifest.Package.Identity.Publisher -cne $env:WINDOWS_STORE_PUBLISHER) { throw 'Falscher Publisher.' }
+          if (-not (Test-Path (Join-Path $packageDir 'app/Privatura.exe'))) { throw 'Anwendung fehlt im Paket.' }
+
   paket:
     strategy:
       fail-fast: false

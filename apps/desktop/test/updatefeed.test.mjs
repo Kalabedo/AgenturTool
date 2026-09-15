@@ -69,7 +69,7 @@ describe('collectPackages', () => {
 
     const files = collectPackages(dir, '1.4.0');
 
-    expect(files.map((file) => file.platform)).toEqual(['macos-arm64', 'macos-x64', 'windows-x64']);
+    expect(files.map((file) => file.platform)).toEqual(['macos-arm64', 'macos-x64']);
     expect(files[0].sizeBytes).toBe(7);
     // sha256 von „mac-arm"
     expect(files[0].sha256).toMatch(/^[0-9a-f]{64}$/u);
@@ -138,6 +138,6 @@ describe('buildFeed', () => {
     ]);
 
     expect(parsed.version).toBe('1.4.0');
-    expect(Object.keys(parsed.downloads)).toEqual(['macos-arm64', 'windows-x64']);
+    expect(Object.keys(parsed.downloads)).toEqual(['macos-arm64']);
   });
 });

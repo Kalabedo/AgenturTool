@@ -122,9 +122,13 @@ jobs:
   windows:
     needs: verify
     environment: release
-    name: Signieren (Windows x64)
+    name: Microsoft-Store-Paket (Windows x64)
     runs-on: windows-2025
     timeout-minutes: 45
+    env:
+      WINDOWS_STORE_IDENTITY_NAME: ${{ vars.WINDOWS_STORE_IDENTITY_NAME }}
+      WINDOWS_STORE_PUBLISHER: ${{ vars.WINDOWS_STORE_PUBLISHER }}
+      WINDOWS_STORE_PUBLISHER_DISPLAY_NAME: ${{ vars.WINDOWS_STORE_PUBLISHER_DISPLAY_NAME }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -135,60 +139,44 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
 
-      # Achtung: Dieser Weg setzt eine PFX-Datei mit exportierbarem privatem
-      # Schlüssel voraus, und die stellt seit dem 1. Juni 2023 keine
-      # öffentlich vertraute Zertifizierungsstelle mehr aus. Vor dem ersten
-      # Windows-Release muss hier ein Cloud-Signaturweg stehen; die Wahl und
-      # ihre Folgen stehen in docs/RELEASE.md.
-      - name: Signieren und NSIS-Installer bauen
-        run: pnpm --filter @privatura/desktop paket --release
-        env:
-          CSC_LINK: ${{ secrets.WINDOWS_CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CSC_KEY_PASSWORD }}
+      # Microsoft signiert nach der Store-Zertifizierung. Dieses Artefakt
+      # ist nur für den Upload in Partner Center, nicht für Direktdownloads.
+      - name: AppX für Partner Center bauen
+        run: pnpm --filter @privatura/desktop paket --store --release
 
-      - name: Signaturen, Installation und Laufzeit prüfen
+      # Die Paketinstallation und ein echtes Store-Update sind zusätzliche
+      # Freigabekriterien auf Windows 11; der Server-Runner prüft den Inhalt.
+      - name: Paketinhalt und Laufzeit prüfen
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $installers = @(Get-ChildItem 'apps/desktop/release/Privatura-*-x64.exe')
-          if ($installers.Count -ne 1) { throw "Erwartete genau einen Installer, fand $($installers.Count)." }
-
-          $unpacked = 'apps/desktop/release/win-unpacked/Privatura.exe'
-          foreach ($file in @($installers[0].FullName, $unpacked)) {
-            $signature = Get-AuthenticodeSignature $file
-            if ($signature.Status -ne 'Valid') {
-              throw "Ungültige Authenticode-Signatur für $file: $($signature.Status)"
-            }
-          }
-
-          $installDir = Join-Path $env:RUNNER_TEMP 'Privatura-Installation'
+          $packages = @(Get-ChildItem 'apps/desktop/release/Privatura-*-x64.appx')
+          if ($packages.Count -ne 1) { throw "Erwartete genau ein Store-Paket, fand $($packages.Count)." }
+          if (Get-ChildItem 'apps/desktop/release/Privatura-*-x64.exe') { throw 'Direkter Windows-Installer im Store-Release.' }
+          $packageDir = Join-Path $env:RUNNER_TEMP 'Privatura-Store-Inhalt'
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          [System.IO.Compression.ZipFile]::ExtractToDirectory($packages[0].FullName, $packageDir)
+          [xml]$manifest = Get-Content (Join-Path $packageDir 'AppxManifest.xml') -Raw
+          if ($manifest.Package.Identity.Name -cne $env:WINDOWS_STORE_IDENTITY_NAME) { throw 'Falsche Store-Identität.' }
+          if ($manifest.Package.Identity.Publisher -cne $env:WINDOWS_STORE_PUBLISHER) { throw 'Falscher Store-Publisher.' }
+          if ($manifest.Package.Identity.ProcessorArchitecture -ne 'x64') { throw 'Falsche Architektur.' }
+          if ($manifest.Package.Applications.Application.EntryPoint -ne 'Windows.FullTrustApplication') { throw 'Full-trust-Einstieg fehlt.' }
           $dataDir = Join-Path $env:RUNNER_TEMP 'Privatura-Smoke'
           New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
-          $install = Start-Process -FilePath $installers[0].FullName -ArgumentList '/S', "/D=$installDir" -Wait -PassThru
-          if ($install.ExitCode -ne 0) { throw "Installer endete mit Code $($install.ExitCode)." }
-
-          $app = Join-Path $installDir 'Privatura.exe'
-          $installedSignature = Get-AuthenticodeSignature $app
-          if ($installedSignature.Status -ne 'Valid') {
-            throw "Installierte Anwendung ist nicht gültig signiert: $($installedSignature.Status)"
-          }
+          $app = Join-Path $packageDir 'app/Privatura.exe'
           node apps/desktop/scripts/rauchprobe.mjs $app --data-dir $dataDir
           if ($LASTEXITCODE -ne 0) { throw 'Erste Rauchprobe fehlgeschlagen.' }
           node apps/desktop/scripts/rauchprobe.mjs $app --data-dir $dataDir --reopen
           if ($LASTEXITCODE -ne 0) { throw 'Rauchprobe nach Neustart fehlgeschlagen.' }
 
-          $uninstaller = Join-Path $installDir 'Uninstall Privatura.exe'
-          $uninstall = Start-Process -FilePath $uninstaller -ArgumentList '/S' -Wait -PassThru
-          if ($uninstall.ExitCode -ne 0) { throw "Deinstallation endete mit Code $($uninstall.ExitCode)." }
-
       - uses: actions/upload-artifact@v4
         with:
-          name: signed-windows-x64
-          path: apps/desktop/release/Privatura-*-x64.exe
+          name: store-upload-windows-x64
+          path: apps/desktop/release/Privatura-*-x64.appx
           if-no-files-found: error
 
   draft:
-    needs: [macos, windows]
+    needs: [macos]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -199,13 +187,13 @@ jobs:
           node-version: 22
       - uses: actions/download-artifact@v4
         with:
-          pattern: signed-*
+          pattern: signed-macos-*
           path: dist
           merge-multiple: true
       - name: Prüfsummen erzeugen
         run: |
           cd dist
-          sha256sum Privatura-*.dmg Privatura-*.exe > SHA256SUMS
+          sha256sum Privatura-*.dmg > SHA256SUMS
 
       # Die Datei, die die installierte Anwendung später abfragt. Sie liegt
       # dem Release bei, damit veröffentlichte Prüfsummen und Feed aus

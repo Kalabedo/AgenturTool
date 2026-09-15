@@ -70,6 +70,8 @@ export const UPDATE_FEED_FORMAT_VERSION = 1;
  * einer Stelle entschieden.
  */
 export type UpdateState =
+  /** Installation und Aktualisierung erfolgen über den Microsoft Store. */
+  | 'microsoft-store'
   /** Kein Gastgeber — der Browserbetrieb bei `pnpm dev`. Nichts anzeigen. */
   | 'nicht-unterstuetzt'
   /** Der Benutzer hat die Prüfung abgeschaltet, oder die Umgebung tat es. */

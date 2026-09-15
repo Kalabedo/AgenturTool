@@ -8,6 +8,7 @@ coverage/
 # Entitlements, ohne die die signierte Anwendung nicht startet.
 apps/desktop/paket/
 apps/desktop/release/
+apps/desktop/build/appx/
 
 # Laufzeitdaten: Datenbank, Assets, erzeugte PDFs
 data/

@@ -11,6 +11,24 @@ sie hier korrigiert und nicht nur im Code.
 
 ### Getroffene Entscheidungen
 
+**Änderung vom 15.09.2026 — Windows-Vertrieb zum Launch:** Windows wird
+ausschließlich über den Microsoft Store als AppX/MSIX-Paket ausgeliefert.
+Microsoft übernimmt Signatur und Updates; ein eigener Windows-Signaturdienst
+und Direktdownloads bleiben eine spätere Option. Dies ersetzt für Windows
+die bisherigen Direktvertriebs- und Updateannahmen in D38, D41 und D54 sowie
+Abschnitt 28. macOS bleibt beim signierten und notarisierten Developer-ID-DMG.
+Die konkrete Release-Konfiguration steht in [RELEASE.md](RELEASE.md).
+
+Store-Updates können nicht pro Kunde auf einen zwölfmonatigen Downloadzeitraum
+begrenzt werden. Die Umsetzung des bestehenden Lizenzmodells muss deshalb
+Funktionsberechtigungen von der Verteilung der Binärdateien trennen; Preise
+und Lizenzrechte werden durch diese Vertriebsentscheidung nicht neu festgelegt.
+Vor Store-Freigabe sind Installation, Upgrade und Datenerhalt zu prüfen:
+Windows kann virtualisierte AppData beim Deinstallieren oder Zurücksetzen
+entfernen, einschließlich dort gespeicherter Backups. Ein exportiertes Backup
+muss außerhalb der Paketdaten liegen. Die frühere pauschale Aussage, dass
+`userData` jede Deinstallation übersteht, gilt für Store-Pakete nicht.
+
 | ID  | Thema                    | Gewählt                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | --- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | D1  | Betriebsmodell           | **Desktop-Anwendung** (Electron; Server im Hauptprozess, Daten in `userData`, Auth-Modul vorhanden aber deaktiviert) — ersetzt das ursprüngliche Docker-Image (Abschnitt 16a)                                                                                                                                                                                                                                                                                                                              |

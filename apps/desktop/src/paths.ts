@@ -9,7 +9,8 @@
  * Der Zustand liegt in beiden Fällen außerhalb: `app.getPath('userData')`,
  * auf einem Mac also `~/Library/Application Support/Privatura`. Er gehört
  * dem Benutzer, nicht der Installation — ein Update darf ihn nicht
- * anfassen, und eine Deinstallation nicht mitnehmen.
+ * anfassen. Store-Pakete können allerdings virtualisierte AppData beim
+ * Deinstallieren/Zurücksetzen verlieren: Exporte außerhalb sind erforderlich.
  */
 import path from 'node:path';
 import { app } from 'electron';
