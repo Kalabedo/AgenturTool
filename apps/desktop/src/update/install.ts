@@ -15,7 +15,7 @@
  * Signatur des Bundles darin prüfen, es neben die eigene Installation
  * kopieren und dort in einem Zug an deren Stelle setzen. Der Austausch ist
  * ein `rename` innerhalb desselben Volumes — entweder der neue Ordner steht
- * da, oder der alte. Es gibt keinen Zwischenzustand, in dem `AgenturTool.app`
+ * da, oder der alte. Es gibt keinen Zwischenzustand, in dem `Privatura.app`
  * halb aus zwei Fassungen besteht.
  *
  * Die Signaturprüfung ist der eigentliche Schutz. Feed und Prüfsumme liegen
@@ -167,7 +167,7 @@ export async function installMacUpdate(context: InstallContext): Promise<boolean
   // Alles Arbeitsmaterial liegt neben dem Ziel: Ein `rename` über
   // Volumegrenzen hinweg gibt es nicht, und genau darauf beruht der
   // Austausch unten.
-  const work = fs.mkdtempSync(path.join(parent, '.agentur-tool-update-'));
+  const work = fs.mkdtempSync(path.join(parent, '.privatura-update-'));
   const mountPoint = path.join(work, 'abbild');
   const staged = path.join(work, path.basename(bundle));
   fs.mkdirSync(mountPoint, { recursive: true });
@@ -268,7 +268,7 @@ export function cleanupUpdateLeftovers(exePath: string, log: (message: string) =
   }
 
   for (const entry of entries) {
-    if (!entry.startsWith('.agentur-tool-update-')) continue;
+    if (!entry.startsWith('.privatura-update-')) continue;
     try {
       fs.rmSync(path.join(parent, entry), { recursive: true, force: true });
       log(`Reste der letzten Installation entfernt: ${entry}`);

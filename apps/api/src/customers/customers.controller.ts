@@ -17,7 +17,7 @@ import {
   type CustomerListQuery,
   type CustomerPayload,
   type CustomerResponse,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { CustomersService } from './customers.service';
 

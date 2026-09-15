@@ -10,7 +10,7 @@ import {
   DISCOUNT_TYPE,
   backupFilename,
   type BackupManifest,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { StorageConfig } from '../src/common/config.service';
 import { BackupService } from '../src/backup/backup.service';
 import { resolveSqliteFile } from '../src/backup/database-file';
@@ -34,7 +34,7 @@ let dataDir: string;
 beforeAll(async () => {
   db = await createTestDatabase();
   prisma = db.prisma;
-  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentur-tool-backup-'));
+  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'privatura-backup-'));
   storage = new StorageConfig({ get: () => dataDir } as never);
   storage.ensureDirectories();
   backup = new BackupService(prisma as never, storage);
@@ -170,7 +170,7 @@ describe('Backup erstellen', () => {
     });
 
     expect(summary.filename).toBe(backupFilename(new Date('2026-03-02T09:15:00Z'), 'taeglich'));
-    expect(summary.filename).toBe('agentur-tool-backup-20260302-091500-taeglich.zip');
+    expect(summary.filename).toBe('privatura-backup-20260302-091500-taeglich.zip');
     expect(summary.counts).toEqual({ invoices: 1, documents: 1, assets: 1, customers: 1 });
     expect(summary.sizeBytes).toBeGreaterThan(0);
 
@@ -197,8 +197,8 @@ describe('Backup erstellen', () => {
     const first = await backup.createBackup({ now });
     const second = await backup.createBackup({ now });
 
-    expect(first.filename).toBe('agentur-tool-backup-20260302-091500-manuell.zip');
-    expect(second.filename).toBe('agentur-tool-backup-20260302-091500-manuell-1.zip');
+    expect(first.filename).toBe('privatura-backup-20260302-091500-manuell.zip');
+    expect(second.filename).toBe('privatura-backup-20260302-091500-manuell-1.zip');
     expect(fs.existsSync(path.join(backup.directory, first.filename))).toBe(true);
     expect(fs.existsSync(path.join(backup.directory, second.filename))).toBe(true);
   });
@@ -236,7 +236,7 @@ describe('Backup erstellen', () => {
     const summary = await backup.createBackup({ now: new Date('2026-03-02T09:15:00Z') });
 
     // So hieß ein Archiv, bevor der Anlass im Namen stand.
-    const alt = 'agentur-tool-backup-20260301-080000.zip';
+    const alt = 'privatura-backup-20260301-080000.zip';
     fs.renameSync(path.join(backup.directory, summary.filename), path.join(backup.directory, alt));
 
     const list = await backup.list();
@@ -385,7 +385,7 @@ describe('Wiederherstellen', () => {
     const archive = path.join(backup.directory, summary.filename);
 
     // Der Ernstfall: Das Datenverzeichnis ist weg.
-    const targetDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentur-tool-restored-'));
+    const targetDir = fs.mkdtempSync(path.join(os.tmpdir(), 'privatura-restored-'));
     fs.rmSync(targetDir, { recursive: true, force: true });
     const targetDb = path.join(path.dirname(targetDir), `${path.basename(targetDir)}.sqlite`);
 
@@ -426,7 +426,7 @@ describe('Wiederherstellen', () => {
     await seedData();
     const summary = await backup.createBackup();
 
-    const targetDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentur-tool-existing-'));
+    const targetDir = fs.mkdtempSync(path.join(os.tmpdir(), 'privatura-existing-'));
     fs.writeFileSync(path.join(targetDir, 'wichtig.txt'), 'nicht verlieren');
     const targetDb = path.join(targetDir, 'db.sqlite');
 
@@ -467,7 +467,7 @@ describe('Wiederherstellen', () => {
     bytes[position] = (bytes[position] ?? 0) ^ 0xff;
     fs.writeFileSync(archive, bytes);
 
-    const targetDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentur-tool-broken-'));
+    const targetDir = fs.mkdtempSync(path.join(os.tmpdir(), 'privatura-broken-'));
     fs.writeFileSync(path.join(targetDir, 'wichtig.txt'), 'nicht verlieren');
 
     await expect(

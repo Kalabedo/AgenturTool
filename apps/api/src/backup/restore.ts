@@ -4,7 +4,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import yauzl from 'yauzl';
-import { BACKUP_FORMAT_VERSION, type BackupEntry, type BackupManifest } from '@agentur-tool/shared';
+import { BACKUP_FORMAT_VERSION, type BackupEntry, type BackupManifest } from '@privatura/shared';
 
 /**
  * Die Wiederherstellung aus einem Archiv (Abschnitt 17).

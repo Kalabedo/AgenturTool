@@ -14,7 +14,7 @@ import {
   updateCompanySchema,
   type CompanyResponse,
   type UpdateCompanyPayload,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { ApiError } from '../common/api-error';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { CompanyService } from './company.service';

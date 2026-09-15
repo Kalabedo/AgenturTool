@@ -19,7 +19,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { isStableVersion, parseUpdateFeed, type UpdateFeed } from '@agentur-tool/shared';
+import { isStableVersion, parseUpdateFeed, type UpdateFeed } from '@privatura/shared';
 
 const FILE = 'aktualisierung.json';
 

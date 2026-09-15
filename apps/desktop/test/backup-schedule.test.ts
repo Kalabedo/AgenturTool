@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { backupFilename, type BackupSummary } from '@agentur-tool/shared';
+import { backupFilename, type BackupSummary } from '@privatura/shared';
 import { BackupSchedule } from '../src/backup-schedule';
 
 /**
@@ -18,7 +18,7 @@ let directory: string;
 let databaseFile: string;
 
 beforeEach(() => {
-  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentur-tool-zeitplan-'));
+  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'privatura-zeitplan-'));
   directory = path.join(dataDir, 'backups');
   databaseFile = path.join(dataDir, 'db.sqlite');
   fs.mkdirSync(directory, { recursive: true });

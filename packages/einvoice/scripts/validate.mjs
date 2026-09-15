@@ -43,7 +43,7 @@ const goldenDir = path.join(here, '..', 'test', 'golden');
 
 // Unterhalb des Systemtemp und nicht im Projekt: Das sind 30 MB fremder
 // Code, die weder ins Repository noch in ein Paket gehören.
-const cacheDir = path.join(os.tmpdir(), `agentur-tool-kosit-${VALIDATOR_VERSION}`);
+const cacheDir = path.join(os.tmpdir(), `privatura-kosit-${VALIDATOR_VERSION}`);
 const validatorDir = path.join(cacheDir, 'validator');
 const configurationDir = path.join(cacheDir, 'configuration');
 
@@ -74,9 +74,7 @@ const files = fs
   .map((name) => path.join(goldenDir, name));
 
 if (files.length === 0) {
-  console.error(
-    'Keine Golden-Dateien gefunden. Erst `pnpm --filter @agentur-tool/einvoice golden`.',
-  );
+  console.error('Keine Golden-Dateien gefunden. Erst `pnpm --filter @privatura/einvoice golden`.');
   process.exit(1);
 }
 

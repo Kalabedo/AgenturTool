@@ -12,7 +12,7 @@ import {
   NUMBER_PATTERN_SETTING_KEY,
   TAX_PROFILE_KIND,
   CURRENT_SNAPSHOT_VERSION,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { ApiError } from '../src/common/api-error';
 import { StorageConfig } from '../src/common/config.service';
 import { CompanyService } from '../src/company/company.service';
@@ -52,7 +52,7 @@ let dataDir: string;
 beforeAll(async () => {
   db = await createTestDatabase();
   prisma = db.prisma;
-  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentur-tool-final-'));
+  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'privatura-final-'));
 
   const storage = new StorageConfig({ get: () => dataDir } as never);
   const files = new FilesService(prisma, storage);

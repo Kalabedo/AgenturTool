@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
-import type { TaxProfilePayload, TaxProfileResponse } from '@agentur-tool/shared';
+import type { TaxProfilePayload, TaxProfileResponse } from '@privatura/shared';
 import { apiClient } from '../../../lib/apiClient.js';
 import { fieldErrorsOf, formErrorOf } from '../../../lib/errorMessage.js';
 import { queryKeys } from '../../../lib/queryKeys.js';

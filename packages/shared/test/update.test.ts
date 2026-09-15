@@ -8,7 +8,7 @@ import {
   type UpdateFeed,
 } from '../src/index.js';
 
-const HOSTS = ['updates.agenturtool.de', 'agenturtool.de'];
+const HOSTS = ['updates.privatura.de', 'privatura.de'];
 
 const SHA = 'a'.repeat(64);
 
@@ -18,10 +18,10 @@ function feed(overrides: Record<string, unknown> = {}): Record<string, unknown> 
     version: '1.4.0',
     releasedAt: '2026-09-13',
     notes: 'Verbesserte Exporte und Fehlerkorrekturen.',
-    notesUrl: 'https://agenturtool.de/releases/1.4.0',
+    notesUrl: 'https://privatura.de/releases/1.4.0',
     downloads: {
       'macos-arm64': {
-        url: 'https://updates.agenturtool.de/stable/AgenturTool-1.4.0-arm64.dmg',
+        url: 'https://updates.privatura.de/stable/Privatura-1.4.0-arm64.dmg',
         sizeBytes: 123_456_789,
         sha256: SHA,
       },
@@ -102,7 +102,7 @@ describe('parseUpdateFeed', () => {
     const fremd = feed({
       downloads: {
         'macos-arm64': {
-          url: 'https://beispiel.invalid/AgenturTool.dmg',
+          url: 'https://beispiel.invalid/Privatura.dmg',
           sizeBytes: 1,
           sha256: SHA,
         },
@@ -115,7 +115,7 @@ describe('parseUpdateFeed', () => {
     const unsicher = feed({
       downloads: {
         'macos-arm64': {
-          url: 'http://updates.agenturtool.de/AgenturTool.dmg',
+          url: 'http://updates.privatura.de/Privatura.dmg',
           sizeBytes: 1,
           sha256: SHA,
         },
@@ -130,7 +130,7 @@ describe('parseUpdateFeed', () => {
     expect(() =>
       parseUpdateFeed(
         feed({
-          downloads: { 'macos-arm64': { url: 'https://agenturtool.de/a.dmg', sha256: SHA } },
+          downloads: { 'macos-arm64': { url: 'https://privatura.de/a.dmg', sha256: SHA } },
         }),
         HOSTS,
       ),
@@ -139,7 +139,7 @@ describe('parseUpdateFeed', () => {
       parseUpdateFeed(
         feed({
           downloads: {
-            'macos-arm64': { url: 'https://agenturtool.de/a.dmg', sizeBytes: 1, sha256: 'kurz' },
+            'macos-arm64': { url: 'https://privatura.de/a.dmg', sizeBytes: 1, sha256: 'kurz' },
           },
         }),
         HOSTS,

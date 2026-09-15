@@ -5,7 +5,7 @@ import {
   type CustomerListQuery,
   type CustomerPayload,
   type CustomerResponse,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { ApiError } from '../common/api-error';
 import { PrismaService } from '../common/prisma.service';
 

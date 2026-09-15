@@ -13,7 +13,7 @@ import {
   type TimeEntryInput,
   type TimeEntryPayload,
   type TimeEntryResponse,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { Button } from '../../components/ui/Button.js';
 import { Card } from '../../components/ui/Card.js';
 import { Field } from '../../components/ui/Field.js';

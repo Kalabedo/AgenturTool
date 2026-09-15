@@ -27,7 +27,7 @@ export interface TestDatabase {
  * Trigger tatsächlich mit — und genau die sollen hier geprüft werden.
  */
 export async function createTestDatabase(): Promise<TestDatabase> {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentur-tool-test-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'privatura-test-'));
   const file = path.join(dir, 'test.sqlite');
   const url = `file:${file}`;
 

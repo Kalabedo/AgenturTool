@@ -9,8 +9,8 @@ import {
   type TimeEntryCustomerSummary,
   type TimeEntryRangeQuery,
   type TimeEntryResponse,
-} from '@agentur-tool/shared';
-import { EMBEDDED_FONT_CSS } from '@agentur-tool/invoice-template';
+} from '@privatura/shared';
+import { EMBEDDED_FONT_CSS } from '@privatura/invoice-template';
 import { ApiError } from '../common/api-error';
 import { CompanyService } from '../company/company.service';
 import { PDF_RENDERER, type PdfRenderer } from './pdf-renderer';

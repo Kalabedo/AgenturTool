@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { parseBackupFilename, utcDayNumber, type BackupSummary } from '@agentur-tool/shared';
+import { parseBackupFilename, utcDayNumber, type BackupSummary } from '@privatura/shared';
 
 /**
  * Die Tagessicherung.

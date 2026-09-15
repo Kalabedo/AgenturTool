@@ -17,7 +17,7 @@ import {
   type TaxProfileListQuery,
   type TaxProfilePayload,
   type TaxProfileResponse,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { TaxProfilesService } from './tax-profiles.service';
 

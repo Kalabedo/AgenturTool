@@ -6,7 +6,7 @@ import {
   quantityToInput,
   type DiscountType,
   type InvoiceResponse,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 
 /**
  * Formularwerte der Rechnung.

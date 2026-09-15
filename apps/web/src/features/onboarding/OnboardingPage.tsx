@@ -16,7 +16,7 @@ import {
   type TaxProfileResponse,
   type TemplateSettingsResponse,
   type UpdateCompanyPayload,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { ApiRequestError, apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
@@ -368,7 +368,7 @@ export function OnboardingPage(): JSX.Element {
       />
 
       {screen === 'welcome' && (
-        <Card title="Willkommen bei AgenturTool">
+        <Card title="Willkommen bei Privatura">
           <div className="max-w-2xl space-y-3 text-sm text-ink">
             <p>
               In den nächsten fünf Schritten stehen die Angaben, die auf jeder Rechnung erscheinen:

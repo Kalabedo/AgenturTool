@@ -1,4 +1,4 @@
-import { parseBackupFilename, utcDayNumber } from '@agentur-tool/shared';
+import { parseBackupFilename, utcDayNumber } from '@privatura/shared';
 
 /**
  * Die Aufbewahrung nach Generationen (Abschnitt 17).

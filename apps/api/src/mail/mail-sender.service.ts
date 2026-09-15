@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import nodemailer, { type Transporter } from 'nodemailer';
-import { MAIL_SECURITY } from '@agentur-tool/shared';
+import { MAIL_SECURITY } from '@privatura/shared';
 import { ApiError } from '../common/api-error';
 import type { PreparedAttachment } from './mail-composer.service';
 import type { ResolvedMailSettings } from './mail-settings.service';

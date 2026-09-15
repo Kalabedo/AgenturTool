@@ -2,7 +2,7 @@
 // Quellen:
 //   @fontsource/open-sans (SIL Open Font License 1.1), Subset "latin"
 //   @fontsource/source-serif-4 (SIL Open Font License 1.1), Subset "latin"
-// Neu erzeugen: pnpm --filter @agentur-tool/invoice-template fonts
+// Neu erzeugen: pnpm --filter @privatura/invoice-template fonts
 
 /**
  * Die eingebetteten Schriften, je Familie.

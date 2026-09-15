@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { AuthSessionResponse } from '@agentur-tool/shared';
+import type { AuthSessionResponse } from '@privatura/shared';
 import { SESSION_EXPIRED_EVENT, apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 import { LoginPage } from './LoginPage.js';
@@ -41,7 +41,7 @@ export function AuthGate({ children }: { children: JSX.Element }): JSX.Element {
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface-sunken p-6">
         <p aria-live="polite" className="text-sm text-ink-subtle">
-          AgenturTool wird geladen …
+          Privatura wird geladen …
         </p>
       </div>
     );
@@ -51,7 +51,7 @@ export function AuthGate({ children }: { children: JSX.Element }): JSX.Element {
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface-sunken p-6">
         <div className="w-full max-w-md space-y-4">
-          <ErrorNotice error={session.error} title="AgenturTool ist gerade nicht erreichbar." />
+          <ErrorNotice error={session.error} title="Privatura ist gerade nicht erreichbar." />
           <Button variant="secondary" onClick={() => void session.refetch()}>
             Erneut verbinden
           </Button>

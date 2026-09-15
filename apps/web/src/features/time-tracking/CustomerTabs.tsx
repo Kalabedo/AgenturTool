@@ -1,4 +1,4 @@
-import { formatDuration, type TimeEntryOpenSummary } from '@agentur-tool/shared';
+import { formatDuration, type TimeEntryOpenSummary } from '@privatura/shared';
 
 interface CustomerTabsProps {
   customers: readonly TimeEntryOpenSummary[];

@@ -8,11 +8,11 @@ describe('Rauchproben-Prozess', () => {
     const lines = [];
     const collector = createLineCollector((line) => lines.push(line));
 
-    collector.write('AGENTUR_TOOL_');
+    collector.write('PRIVATURA_');
     collector.write('URL http://127.0.0.1:1234\nzweite');
     collector.flush();
 
-    expect(lines).toEqual(['AGENTUR_TOOL_URL http://127.0.0.1:1234', 'zweite']);
+    expect(lines).toEqual(['PRIVATURA_URL http://127.0.0.1:1234', 'zweite']);
   });
 
   it('scheitert sofort, wenn das Kindprogramm nicht gestartet werden kann', async () => {

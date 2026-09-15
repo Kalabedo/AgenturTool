@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DISCOUNT_TYPE, DOCUMENT_TYPE, negateInvoiceItems, toIsoDate } from '@agentur-tool/shared';
+import { DISCOUNT_TYPE, DOCUMENT_TYPE, negateInvoiceItems, toIsoDate } from '@privatura/shared';
 import { buildRenderModel } from '../src/render-model.js';
 import { renderInvoiceDocument } from '../src/server.js';
 import { DEFAULT_TEMPLATE, REFERENCE_BUYER, REFERENCE_INVOICE, STANDARD_TAX } from './fixtures.js';

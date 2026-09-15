@@ -13,8 +13,8 @@ import {
   type TemplateSettingsResponse,
   type UpdateTemplateSettingsInput,
   type UpdateTemplateSettingsPayload,
-} from '@agentur-tool/shared';
-import { buildRenderModel, embeddedFontCss, resolveTemplate } from '@agentur-tool/invoice-template';
+} from '@privatura/shared';
+import { buildRenderModel, embeddedFontCss, resolveTemplate } from '@privatura/invoice-template';
 import { apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js';

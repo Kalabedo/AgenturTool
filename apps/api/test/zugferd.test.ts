@@ -21,7 +21,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { embedZugferd, ZUGFERD_ATTACHMENT_NAME } from '@agentur-tool/einvoice';
+import { embedZugferd, ZUGFERD_ATTACHMENT_NAME } from '@privatura/einvoice';
 import { referenceDocuments } from './reference-documents';
 import { embedsFont, isPdf, pdfPageCount, pdfPageSizes } from './pdf.helper';
 
@@ -92,7 +92,7 @@ const wrapped = new Map<string, Buffer>();
 beforeAll(async () => {
   if (!available) return;
 
-  workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentur-tool-zugferd-'));
+  workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'privatura-zugferd-'));
   const input = path.join(workDir, 'documents.json');
   const output = path.join(workDir, 'pdf');
 

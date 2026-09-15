@@ -4,13 +4,13 @@
     {
       "name": "web",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@agentur-tool/web", "dev"],
+      "runtimeArgs": ["--filter", "@privatura/web", "dev"],
       "port": 5173
     },
     {
       "name": "api",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@agentur-tool/api", "dev"],
+      "runtimeArgs": ["--filter", "@privatura/api", "dev"],
       "port": 3000
     }
   ]

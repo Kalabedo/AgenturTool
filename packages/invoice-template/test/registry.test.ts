@@ -2,7 +2,7 @@
  * Die Designliste steht an zwei Orten — hier wird geprüft, dass sie
  * übereinstimmen.
  *
- * `TEMPLATE_KEY_VALUES` liegt in `@agentur-tool/shared`, weil das
+ * `TEMPLATE_KEY_VALUES` liegt in `@privatura/shared`, weil das
  * Eingabeschema die Auswahl prüfen muss und `shared` nicht von diesem Paket
  * abhängen darf: Die Abhängigkeit läuft andersherum. Die Verdopplung ist
  * damit unvermeidlich, das stille Auseinanderlaufen nicht.
@@ -11,7 +11,7 @@
  * Design, das im Schema steht, aber nicht registriert ist, ließe sich
  * einstellen und fiele beim Drucken lautlos auf „classic" zurück.
  */
-import { TEMPLATE_KEY_VALUES } from '@agentur-tool/shared';
+import { TEMPLATE_KEY_VALUES } from '@privatura/shared';
 import { describe, expect, it } from 'vitest';
 import { listTemplates, resolveTemplate } from '../src/registry.js';
 

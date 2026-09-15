@@ -13,7 +13,7 @@ import {
   TAX_PROFILE_KIND,
   invoicePaymentInputSchema,
   invoiceSentInputSchema,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { StorageConfig } from '../src/common/config.service';
 import { CompanyService } from '../src/company/company.service';
 import { FilesService } from '../src/files/files.service';
@@ -46,7 +46,7 @@ let dataDir: string;
 beforeAll(async () => {
   db = await createTestDatabase();
   prisma = db.prisma;
-  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentur-tool-life-'));
+  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'privatura-life-'));
 
   const storage = new StorageConfig({ get: () => dataDir } as never);
   const files = new FilesService(prisma, storage);

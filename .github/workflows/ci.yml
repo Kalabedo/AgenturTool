@@ -39,7 +39,7 @@ jobs:
           java-version: '17'
 
       - name: E-Rechnung gegen den KoSIT-Validator prüfen
-        run: pnpm --filter @agentur-tool/einvoice pruefen
+        run: pnpm --filter @privatura/einvoice pruefen
 
       # Dasselbe Prinzip für das PDF: Ob Chromiums Ausgabe nach dem
       # Einbetten wirklich ein PDF/A-3 ist, sagt nicht unser Test, sondern
@@ -57,14 +57,14 @@ jobs:
 
       - name: Rauchprobe (Paketbaum)
         run: |
-          pnpm --filter @agentur-tool/desktop paket --nur-baum
+          pnpm --filter @privatura/desktop paket --nur-baum
           xvfb-run -a node apps/desktop/scripts/rauchprobe.mjs
 
       - name: Rauchprobe (Linux-Paket)
         run: |
-          pnpm --filter @agentur-tool/desktop exec electron-builder --config electron-builder.yml --linux dir
+          pnpm --filter @privatura/desktop exec electron-builder --config electron-builder.yml --linux dir
           xvfb-run -a node apps/desktop/scripts/rauchprobe.mjs \
-            apps/desktop/release/linux-unpacked/agentur-tool
+            apps/desktop/release/linux-unpacked/privatura
 
   paket:
     strategy:
@@ -75,17 +75,17 @@ jobs:
             ziel: macOS arm64
             arch: arm64
             artifact: unsigned-ci-macos-arm64
-            package: apps/desktop/release/AgenturTool-*-arm64.dmg
+            package: apps/desktop/release/Privatura-*-arm64.dmg
           - os: macos-15-intel
             ziel: macOS x64
             arch: x64
             artifact: unsigned-ci-macos-x64
-            package: apps/desktop/release/AgenturTool-*-x64.dmg
+            package: apps/desktop/release/Privatura-*-x64.dmg
           - os: windows-2025
             ziel: Windows x64
             arch: x64
             artifact: unsigned-ci-windows-x64
-            package: apps/desktop/release/AgenturTool-*-x64.exe
+            package: apps/desktop/release/Privatura-*-x64.exe
     name: Paket (${{ matrix.ziel }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
@@ -103,8 +103,8 @@ jobs:
       # Ausgabe hinterlassen, an der der nächste scheitert.
       - name: Unsigiertes Paket zweimal bauen
         run: |
-          pnpm --filter @agentur-tool/desktop paket
-          pnpm --filter @agentur-tool/desktop paket
+          pnpm --filter @privatura/desktop paket
+          pnpm --filter @privatura/desktop paket
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
@@ -113,13 +113,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          DMG_COUNT="$(find apps/desktop/release -maxdepth 1 -name 'AgenturTool-*-${{ matrix.arch }}.dmg' | wc -l | tr -d ' ')"
+          DMG_COUNT="$(find apps/desktop/release -maxdepth 1 -name 'Privatura-*-${{ matrix.arch }}.dmg' | wc -l | tr -d ' ')"
           test "$DMG_COUNT" = 1
-          DMG="$(find apps/desktop/release -maxdepth 1 -name 'AgenturTool-*-${{ matrix.arch }}.dmg' -print -quit)"
+          DMG="$(find apps/desktop/release -maxdepth 1 -name 'Privatura-*-${{ matrix.arch }}.dmg' -print -quit)"
           hdiutil verify "$DMG"
 
-          MOUNT_POINT="$RUNNER_TEMP/agentur-tool-dmg"
-          DATA_DIR="$RUNNER_TEMP/agentur-tool-smoke"
+          MOUNT_POINT="$RUNNER_TEMP/privatura-dmg"
+          DATA_DIR="$RUNNER_TEMP/privatura-smoke"
           mkdir -p "$MOUNT_POINT" "$DATA_DIR"
           hdiutil attach "$DMG" -readonly -nobrowse -mountpoint "$MOUNT_POINT" >/dev/null
           trap 'hdiutil detach "$MOUNT_POINT" >/dev/null || true' EXIT
@@ -134,24 +134,24 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $installers = @(Get-ChildItem 'apps/desktop/release/AgenturTool-*-x64.exe')
+          $installers = @(Get-ChildItem 'apps/desktop/release/Privatura-*-x64.exe')
           if ($installers.Count -ne 1) { throw "Erwartete genau einen Installer, fand $($installers.Count)." }
 
-          $installDir = Join-Path $env:RUNNER_TEMP 'AgenturTool-Installation'
-          $dataDir = Join-Path $env:RUNNER_TEMP 'AgenturTool-Smoke'
+          $installDir = Join-Path $env:RUNNER_TEMP 'Privatura-Installation'
+          $dataDir = Join-Path $env:RUNNER_TEMP 'Privatura-Smoke'
           New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
 
           $install = Start-Process -FilePath $installers[0].FullName -ArgumentList '/S', "/D=$installDir" -Wait -PassThru
           if ($install.ExitCode -ne 0) { throw "Installer endete mit Code $($install.ExitCode)." }
 
-          $app = Join-Path $installDir 'AgenturTool.exe'
+          $app = Join-Path $installDir 'Privatura.exe'
           if (-not (Test-Path $app)) { throw "Installierte Anwendung fehlt: $app" }
           node apps/desktop/scripts/rauchprobe.mjs $app --data-dir $dataDir
           if ($LASTEXITCODE -ne 0) { throw 'Erste Rauchprobe fehlgeschlagen.' }
           node apps/desktop/scripts/rauchprobe.mjs $app --data-dir $dataDir --reopen
           if ($LASTEXITCODE -ne 0) { throw 'Rauchprobe nach Neustart fehlgeschlagen.' }
 
-          $uninstaller = Join-Path $installDir 'Uninstall AgenturTool.exe'
+          $uninstaller = Join-Path $installDir 'Uninstall Privatura.exe'
           if (-not (Test-Path $uninstaller)) { throw "Deinstallationsprogramm fehlt: $uninstaller" }
           $uninstall = Start-Process -FilePath $uninstaller -ArgumentList '/S' -Wait -PassThru
           if ($uninstall.ExitCode -ne 0) { throw "Deinstallation endete mit Code $($uninstall.ExitCode)." }

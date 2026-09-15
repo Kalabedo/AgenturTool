@@ -8,7 +8,7 @@ import {
   type SellerSnapshot,
   type TaxSnapshot,
   type TemplateSnapshot,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import type { RenderModelSource } from '../src/render-model.js';
 
 /**

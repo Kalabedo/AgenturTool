@@ -13,14 +13,14 @@ import {
   type DocumentType,
   type IsoDate,
   type UnitCode,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import {
   buildEinvoiceModel,
   renderCii,
   DEFAULT_EINVOICE_PROFILE,
   type EinvoiceProfile,
-} from '@agentur-tool/einvoice';
-import type { RenderModelSourceItem } from '@agentur-tool/invoice-template';
+} from '@privatura/einvoice';
+import type { RenderModelSourceItem } from '@privatura/invoice-template';
 import { ApiError } from '../common/api-error';
 import { PrismaService } from '../common/prisma.service';
 import { InvoiceDocumentsService } from '../pdf/invoice-documents.service';

@@ -28,7 +28,7 @@
  * soll nicht von einem Erzeugungsschritt abhängen, und eine Änderung am
  * Profil soll im Diff sichtbar werden statt still zu geschehen.
  *
- * Neu erzeugen: pnpm --filter @agentur-tool/einvoice srgb
+ * Neu erzeugen: pnpm --filter @privatura/einvoice srgb
  */
 import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -209,7 +209,7 @@ const source = `/**
  * **Erzeugt — nicht von Hand geändert.** Quelle ist
  * \`scripts/build-srgb-profile.mjs\`; dort steht auch, warum das Profil
  * gerechnet und nicht mitgeliefert wird. Neu erzeugen mit
- * \`pnpm --filter @agentur-tool/einvoice srgb\`.
+ * \`pnpm --filter @privatura/einvoice srgb\`.
  *
  * Gebraucht wird es für den \`OutputIntent\` des PDF/A-3 — ohne ihn ist die
  * Datei kein PDF/A und damit kein ZUGFeRD.

@@ -28,7 +28,7 @@ import {
   type InvoiceSentPayload,
   type RebillPayload,
   type RebillPreviewResponse,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { InvoicePdfService, type RenderedInvoicePdf } from '../pdf/invoice-pdf.service';
 import { EinvoiceService } from '../einvoice/einvoice.service';

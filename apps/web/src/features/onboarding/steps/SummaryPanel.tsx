@@ -2,7 +2,7 @@ import {
   COMPANY_FIELD_LABELS,
   type OnboardingStateResponse,
   type OnboardingStepId,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { stepForProblemField } from '../onboardingFields.js';
 
 interface SummaryPanelProps {

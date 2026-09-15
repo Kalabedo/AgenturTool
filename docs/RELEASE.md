@@ -9,11 +9,11 @@ eigene Website.
 
 ## Unterstützte Pakete
 
-| System      | Runner           | Ergebnis                      |
-| ----------- | ---------------- | ----------------------------- |
-| macOS ARM64 | `macos-15`       | `AgenturTool-X.Y.Z-arm64.dmg` |
-| macOS x64   | `macos-15-intel` | `AgenturTool-X.Y.Z-x64.dmg`   |
-| Windows x64 | `windows-2025`   | `AgenturTool-X.Y.Z-x64.exe`   |
+| System      | Runner           | Ergebnis                    |
+| ----------- | ---------------- | --------------------------- |
+| macOS ARM64 | `macos-15`       | `Privatura-X.Y.Z-arm64.dmg` |
+| macOS x64   | `macos-15-intel` | `Privatura-X.Y.Z-x64.dmg`   |
+| Windows x64 | `windows-2025`   | `Privatura-X.Y.Z-x64.exe`   |
 
 macOS 13 oder neuer sowie Windows 10 und 11 werden unterstützt. Windows ARM64
 kann das x64-Paket über die Betriebssystememulation ausführen, wird aber nicht
@@ -157,7 +157,7 @@ installierte Anwendung fragt dort höchstens einmal am Tag eine einzige Datei
 ab:
 
 ```text
-https://updates.agenturtool.de/stable/updates.json
+https://updates.privatura.de/stable/updates.json
 ```
 
 Die Datei entsteht im Releaselauf aus den fertigen Paketen
@@ -169,7 +169,7 @@ SHA-256.
 **Die Reihenfolge ist die Regel:**
 
 1. Die drei Pakete auf die Website laden, unter genau die Adressen, die in
-   `updates.json` stehen (`…/stable/AgenturTool-<Version>-<arch>.<ext>`).
+   `updates.json` stehen (`…/stable/Privatura-<Version>-<arch>.<ext>`).
 2. Prüfen, dass jede dieser Adressen die Datei wirklich ausliefert.
 3. Erst dann `updates.json` hochladen und ersetzen.
 
@@ -187,20 +187,20 @@ Von Hand erzeugen lässt sich der Feed genauso, etwa für einen Testkanal:
 node apps/desktop/scripts/updatefeed.mjs \
   --dir apps/desktop/release --version 1.4.0 \
   --notes "Verbesserte Exporte und Fehlerkorrekturen." \
-  --base-url https://updates.agenturtool.de/stable
+  --base-url https://updates.privatura.de/stable
 ```
 
 Vor dem Umstellen des echten Feeds lässt sich der ganze Weg mit einer
-Testadresse prüfen — `AGENTUR_TOOL_UPDATE_FEED` zeigt dann dorthin, und nur
+Testadresse prüfen — `PRIVATURA_UPDATE_FEED` zeigt dann dorthin, und nur
 dieser Host gilt für Downloads:
 
 ```bash
-AGENTUR_TOOL_UPDATE_FEED=https://test.agenturtool.de/updates.json pnpm dev:desktop
+PRIVATURA_UPDATE_FEED=https://test.privatura.de/updates.json pnpm dev:desktop
 ```
 
 Der Host im Feed und der Host der Downloads müssen zusammenpassen: Die
-Anwendung nimmt Adressen nur von `updates.agenturtool.de`,
-`agenturtool.de` und `www.agenturtool.de` an (`apps/desktop/src/config.ts`).
+Anwendung nimmt Adressen nur von `updates.privatura.de`,
+`privatura.de` und `www.privatura.de` an (`apps/desktop/src/config.ts`).
 Eine neue Domain ist deshalb eine Codeänderung und keine Serverkonfiguration
 — das ist Absicht.
 
@@ -237,8 +237,8 @@ lässt sich nicht ohne zwei Fassungen testen:
 3. „Neu starten und installieren" — danach muss unter `Daten/backups` ein
    frisches Archiv liegen, die Anwendung von selbst wieder hochkommen und
    unter Einstellungen → Updates die neue Fassung stehen.
-4. Auf macOS zusätzlich prüfen, dass `/Applications/AgenturTool.app` die neue
-   Fassung ist und daneben kein `.agentur-tool-update-*` liegen bleibt.
+4. Auf macOS zusätzlich prüfen, dass `/Applications/Privatura.app` die neue
+   Fassung ist und daneben kein `.privatura-update-*` liegen bleibt.
 5. Den Fall ohne Schreibrecht mitprüfen: dieselbe Anwendung aus dem
    Download-Ordner starten (Gatekeeper verschiebt sie dann) — die
    Installation muss mit einem Hinweis auf den Dateimanager abbrechen und
@@ -253,6 +253,6 @@ dorthin.
 
 Vor dem Update über die Anwendung ein Backup erzeugen. Anschließend das neue
 DMG beziehungsweise den neuen NSIS-Installer über die bestehende Installation
-installieren und AgenturTool starten. Die Daten unter Electron `userData`
+installieren und Privatura starten. Die Daten unter Electron `userData`
 liegen außerhalb des Programms, werden bei der Deinstallation nicht gelöscht
 und vor Datenbankmigrationen nochmals automatisch gesichert.

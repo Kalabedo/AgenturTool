@@ -1,4 +1,4 @@
-import { LOGO_ALLOWED_MIME_TYPES, type LogoMimeType } from '@agentur-tool/shared';
+import { LOGO_ALLOWED_MIME_TYPES, type LogoMimeType } from '@privatura/shared';
 
 /**
  * Bestimmt den Bildtyp anhand der Signatur am Dateianfang.

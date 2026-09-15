@@ -11,7 +11,7 @@ import {
   toIsoDate,
   type CompanyResponse,
   type InvoiceListResponse,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js';

@@ -3,7 +3,7 @@ import {
   updateTemplateSettingsSchema,
   type TemplateSettingsResponse,
   type UpdateTemplateSettingsPayload,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { TemplateSettingsService } from './template-settings.service';
 

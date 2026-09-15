@@ -17,7 +17,7 @@ import {
   type TaxProfilePayload,
   type TaxProfileResponse,
   type TaxCategoryCode,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { Button } from '../../../components/ui/Button.js';
 import { FormActions } from '../../../components/ui/FormActions.js';
 import { StatusText } from '../../../components/ui/StatusText.js';

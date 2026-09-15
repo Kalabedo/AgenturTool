@@ -42,7 +42,7 @@ import {
   type UpdateProgress,
   type UpdateState as UpdateStateName,
   type UpdateStatus,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import type { UpdateFeedConfig } from '../config';
 import { downloadPackage, pruneDownloads } from './download';
 import { canInstall } from './install';
@@ -538,7 +538,7 @@ export class UpdateService {
           // Kein Zwischenspeicher: Die Datei ändert sich selten, aber wenn
           // sie sich ändert, ist genau das die Nachricht.
           'Cache-Control': 'no-cache',
-          'User-Agent': `AgenturTool/${this.options.currentVersion} (${this.options.platform}; ${this.options.arch})`,
+          'User-Agent': `Privatura/${this.options.currentVersion} (${this.options.platform}; ${this.options.arch})`,
         },
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });

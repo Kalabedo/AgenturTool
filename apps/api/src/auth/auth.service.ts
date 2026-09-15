@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { hash as argonHash, verify as argonVerify, Algorithm } from '@node-rs/argon2';
-import type { AuthUser, LoginPayload } from '@agentur-tool/shared';
+import type { AuthUser, LoginPayload } from '@privatura/shared';
 import { ApiError } from '../common/api-error';
 import { PrismaService } from '../common/prisma.service';
 import { AuthConfig } from './auth.config';

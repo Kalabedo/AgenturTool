@@ -1,6 +1,6 @@
 # Produkt-TODO
 
-AgenturTool bleibt auf Solo-Agenturen ausgerichtet. Neue Funktionen sollen
+Privatura bleibt auf Solo-Agenturen ausgerichtet. Neue Funktionen sollen
 wiederkehrende Verwaltungsarbeit verkürzen, ohne die Anwendung in ein großes
 ERP- oder Team-System zu verwandeln. Der Schwerpunkt liegt zunächst auf
 Deutschland und anschließend auf einer breiteren Nutzung in der EU.

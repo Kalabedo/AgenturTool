@@ -15,7 +15,7 @@ import {
   type TimeEntryOpenSummary,
   type TimeEntryPayload,
   type TimeEntryResponse,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { apiClient, type DownloadedFile } from '../../lib/apiClient.js';
 import { fieldErrorsOf, formErrorOf } from '../../lib/errorMessage.js';
 import { queryKeys } from '../../lib/queryKeys.js';

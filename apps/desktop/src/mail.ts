@@ -104,7 +104,7 @@ end nonEmpty
 /**
  * Zeitgrenze für den AppleScript-Aufruf.
  *
- * Beim ersten Mal fragt macOS, ob AgenturTool Mail steuern darf, und das
+ * Beim ersten Mal fragt macOS, ob Privatura Mail steuern darf, und das
  * Skript wartet so lange auf die Antwort. Wer den Dialog stehen lässt, soll
  * nicht auf einen hängenden Versanddialog schauen — danach greift der Weg
  * über die Nachrichtendatei.

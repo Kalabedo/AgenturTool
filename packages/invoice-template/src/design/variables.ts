@@ -1,4 +1,4 @@
-import type { TemplateSnapshot } from '@agentur-tool/shared';
+import type { TemplateSnapshot } from '@privatura/shared';
 import { densityScale } from './density.js';
 
 /**

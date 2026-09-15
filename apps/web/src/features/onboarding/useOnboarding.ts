@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { type OnboardingStateResponse, type OnboardingStatus } from '@agentur-tool/shared';
+import { type OnboardingStateResponse, type OnboardingStatus } from '@privatura/shared';
 import { apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 

@@ -12,7 +12,7 @@ import {
   DOCUMENT_TYPE,
   TAX_PROFILE_KIND,
   type TaxAdvisorExportManifest,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { StorageConfig } from '../src/common/config.service';
 import { InvoiceDocumentsService } from '../src/pdf/invoice-documents.service';
 import { TaxAdvisorExportService } from '../src/tax-advisor/tax-advisor-export.service';
@@ -85,7 +85,7 @@ const TOTALS = {
 beforeAll(async () => {
   db = await createTestDatabase();
   prisma = db.prisma;
-  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentur-tool-tax-advisor-'));
+  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'privatura-tax-advisor-'));
   const storage = new StorageConfig({ get: () => dataDir } as never);
   const documents = new InvoiceDocumentsService(prisma, storage);
   service = new TaxAdvisorExportService(prisma, documents);

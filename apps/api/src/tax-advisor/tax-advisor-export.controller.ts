@@ -4,7 +4,7 @@ import {
   taxAdvisorExportInputSchema,
   type TaxAdvisorExportPayload,
   type TaxAdvisorExportSummary,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { TaxAdvisorExportService } from './tax-advisor-export.service';
 

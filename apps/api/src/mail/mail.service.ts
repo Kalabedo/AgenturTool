@@ -18,7 +18,7 @@ import {
   type MailSource,
   type MailStatus,
   type MailTransport,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import type { MailMessage } from '@prisma/client';
 import { ApiError } from '../common/api-error';
 import { StorageConfig } from '../common/config.service';

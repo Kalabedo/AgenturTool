@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CURRENT_SNAPSHOT_VERSION, DISCOUNT_TYPE, type TotalsSnapshot } from '@agentur-tool/shared';
+import { CURRENT_SNAPSHOT_VERSION, DISCOUNT_TYPE, type TotalsSnapshot } from '@privatura/shared';
 import { buildRenderModel } from '../src/render-model.js';
 import { REFERENCE_INVOICE, STANDARD_TAX } from './fixtures.js';
 

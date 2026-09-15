@@ -8,7 +8,7 @@ import {
   formatBasisPoints,
   type ElectronicAddressScheme,
   type TaxProfileResponse,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { Field } from '../../../components/ui/Field.js';
 import { Input } from '../../../components/ui/Input.js';
 import { Select } from '../../../components/ui/Select.js';

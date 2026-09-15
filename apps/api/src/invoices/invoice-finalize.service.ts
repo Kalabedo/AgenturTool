@@ -37,8 +37,8 @@ import {
   type TemplateSnapshot,
   type TotalsSnapshot,
   type UnitCode,
-} from '@agentur-tool/shared';
-import type { RenderModelSourceItem } from '@agentur-tool/invoice-template';
+} from '@privatura/shared';
+import type { RenderModelSourceItem } from '@privatura/invoice-template';
 import {
   buildEinvoiceModel,
   embedZugferd,
@@ -46,7 +46,7 @@ import {
   XRECHNUNG_3_0,
   ZUGFERD_EN16931,
   type EinvoiceProfile,
-} from '@agentur-tool/einvoice';
+} from '@privatura/einvoice';
 import { ApiError } from '../common/api-error';
 import { PrismaService } from '../common/prisma.service';
 import { CompanyService } from '../company/company.service';
@@ -400,9 +400,9 @@ export class InvoiceFinalizeService {
    * eine Beschriftung, kein Inhalt des Belegs.
    */
   private sellerNameOf(sellerSnapshot: string | null): string {
-    if (sellerSnapshot === null) return 'AgenturTool';
+    if (sellerSnapshot === null) return 'Privatura';
     const parsed = sellerSnapshotSchema.safeParse(JSON.parse(sellerSnapshot));
-    return parsed.success ? parsed.data.companyName : 'AgenturTool';
+    return parsed.success ? parsed.data.companyName : 'Privatura';
   }
 
   private renderEinvoice(

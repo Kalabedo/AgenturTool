@@ -24,7 +24,7 @@ import {
   type TaxAdvisorExportSummary,
   type TaxSnapshot,
   type TotalsSnapshot,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { ApiError } from '../common/api-error';
 import { PrismaService } from '../common/prisma.service';
 import { InvoiceDocumentsService } from '../pdf/invoice-documents.service';
@@ -431,7 +431,7 @@ function sha256(bytes: Buffer): string {
 
 function readme(payload: TaxAdvisorExportPayload, count: number): string {
   return [
-    'AgenturTool – Steuerberater-Paket',
+    'Privatura – Steuerberater-Paket',
     '',
     `Zeitraum (Rechnungsdatum, jeweils einschließlich): ${payload.from} bis ${payload.to}`,
     `Belege: ${String(count)}`,

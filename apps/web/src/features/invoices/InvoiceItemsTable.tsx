@@ -7,7 +7,7 @@ import {
   formatCents,
   type InvoiceCalculation,
   type UnitCode,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { Button } from '../../components/ui/Button.js';
 import { Input } from '../../components/ui/Input.js';
 import { Select } from '../../components/ui/Select.js';

@@ -7,7 +7,7 @@ import {
   type MailSettingsPayload,
   type MailSettingsResponse,
   type MailTransport,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import type { MailSettings } from '@prisma/client';
 import { StorageConfig } from '../common/config.service';
 import { PrismaService } from '../common/prisma.service';

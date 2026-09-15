@@ -7,7 +7,7 @@ import {
   invoiceDraftInputSchema,
   invoiceListQuerySchema,
   todayIso,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { InvoicesService } from '../src/invoices/invoices.service';
 import { CompanyService } from '../src/company/company.service';
 import { FilesService } from '../src/files/files.service';
@@ -33,7 +33,7 @@ let dataDir: string;
 beforeAll(async () => {
   db = await createTestDatabase();
   prisma = db.prisma;
-  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentur-tool-inv-'));
+  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'privatura-inv-'));
   const storage = new StorageConfig({ get: () => dataDir } as never);
   const company = new CompanyService(prisma, new FilesService(prisma, storage));
   invoices = new InvoicesService(

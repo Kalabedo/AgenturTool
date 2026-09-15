@@ -17,7 +17,7 @@
     // Weg, zieht aber die ESM/CJS-Doppelform aller Pakete nach sich — das
     // ist ein eigener Umbau und keiner, der in Schritt 8 gehört.
     "paths": {
-      "@agentur-tool/invoice-template/server": ["../../packages/invoice-template/dist/server.d.ts"]
+      "@privatura/invoice-template/server": ["../../packages/invoice-template/dist/server.d.ts"]
     },
     "outDir": "dist"
   },

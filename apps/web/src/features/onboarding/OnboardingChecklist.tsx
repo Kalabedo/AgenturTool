@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ONBOARDING_STATUS } from '@agentur-tool/shared';
+import { ONBOARDING_STATUS } from '@privatura/shared';
 import { Button } from '../../components/ui/Button.js';
 import { useOnboardingState, useOnboardingStatusMutation } from './useOnboarding.js';
 

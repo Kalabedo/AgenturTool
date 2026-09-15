@@ -43,13 +43,13 @@ importers:
 
   apps/api:
     dependencies:
-      '@agentur-tool/einvoice':
+      '@privatura/einvoice':
         specifier: workspace:*
         version: link:../../packages/einvoice
-      '@agentur-tool/invoice-template':
+      '@privatura/invoice-template':
         specifier: workspace:*
         version: link:../../packages/invoice-template
-      '@agentur-tool/shared':
+      '@privatura/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@nestjs/common':
@@ -134,10 +134,10 @@ importers:
 
   apps/desktop:
     dependencies:
-      '@agentur-tool/api':
+      '@privatura/api':
         specifier: workspace:*
         version: link:../api
-      '@agentur-tool/shared':
+      '@privatura/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@nestjs/common':
@@ -159,10 +159,10 @@ importers:
 
   apps/web:
     dependencies:
-      '@agentur-tool/invoice-template':
+      '@privatura/invoice-template':
         specifier: workspace:*
         version: link:../../packages/invoice-template
-      '@agentur-tool/shared':
+      '@privatura/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@hookform/resolvers':
@@ -208,10 +208,10 @@ importers:
 
   packages/einvoice:
     dependencies:
-      '@agentur-tool/invoice-template':
+      '@privatura/invoice-template':
         specifier: workspace:*
         version: link:../invoice-template
-      '@agentur-tool/shared':
+      '@privatura/shared':
         specifier: workspace:*
         version: link:../shared
       pdf-lib:
@@ -224,7 +224,7 @@ importers:
 
   packages/invoice-template:
     dependencies:
-      '@agentur-tool/shared':
+      '@privatura/shared':
         specifier: workspace:*
         version: link:../shared
     devDependencies:

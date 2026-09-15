@@ -9,8 +9,8 @@ import {
   type TaxCategoryCode,
   type TotalsSnapshot,
   type UnitCode,
-} from '@agentur-tool/shared';
-import type { RenderModelSource } from '@agentur-tool/invoice-template';
+} from '@privatura/shared';
+import type { RenderModelSource } from '@privatura/invoice-template';
 
 /**
  * Das Zwischenmodell der E-Rechnung.

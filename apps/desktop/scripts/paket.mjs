@@ -1,9 +1,9 @@
 /**
- * `pnpm --filter @agentur-tool/desktop paket` — die Anwendung verpacken.
+ * `pnpm --filter @privatura/desktop paket` — die Anwendung verpacken.
  *
  * Gepackt wird nicht dieses Verzeichnis, sondern ein eigens gebautes unter
  * `paket/`. Der Grund ist die Auflösung von Modulen: Der Hauptprozess
- * schreibt `import … from '@agentur-tool/api/dist/main'` und
+ * schreibt `import … from '@privatura/api/dist/main'` und
  * `from '@prisma/client'`, und Node sucht dafür in `node_modules` neben
  * der Datei. Im Repository ist das ein Symlink in den virtuellen Store von
  * pnpm — und darüber liegt das node_modules des Repositories, das den Rest
@@ -91,7 +91,7 @@ if (!options.onlyTree) {
 // Paket zeigte jeder davon ins Leere.
 run(
   'pnpm',
-  ['deploy', '--filter', '@agentur-tool/desktop', '--prod', '--node-linker=hoisted', paketDir],
+  ['deploy', '--filter', '@privatura/desktop', '--prod', '--node-linker=hoisted', paketDir],
   repoRoot,
 );
 
@@ -110,7 +110,7 @@ run(
     path.join(paketDir, 'node_modules/prisma/build/index.js'),
     'generate',
     '--schema',
-    path.join(paketDir, 'node_modules/@agentur-tool/api/prisma/schema.prisma'),
+    path.join(paketDir, 'node_modules/@privatura/api/prisma/schema.prisma'),
   ],
   paketDir,
   // Prisma fragt sonst beim ersten Lauf nach anonymen Statistiken.
@@ -167,6 +167,6 @@ if (options.onlyTree) {
   if (options.release) builderArguments.push('--config.forceCodeSigning=true');
 
   run('pnpm', builderArguments, desktopDir, {
-    AGENTUR_TOOL_RELEASE: options.release ? '1' : '0',
+    PRIVATURA_RELEASE: options.release ? '1' : '0',
   });
 }

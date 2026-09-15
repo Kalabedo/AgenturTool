@@ -1,4 +1,4 @@
-import { calculateInvoice, type InvoiceCalculation } from '@agentur-tool/shared';
+import { calculateInvoice, type InvoiceCalculation } from '@privatura/shared';
 import type { InvoiceItemFormValues } from './invoiceFormValues.js';
 import { toCalculationItems } from './toCalculationItems.js';
 

@@ -1,5 +1,5 @@
 {
-  "name": "@agentur-tool/web",
+  "name": "@privatura/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,8 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@agentur-tool/invoice-template": "workspace:*",
-    "@agentur-tool/shared": "workspace:*",
+    "@privatura/invoice-template": "workspace:*",
+    "@privatura/shared": "workspace:*",
     "@hookform/resolvers": "^5.9.1",
     "@tanstack/react-query": "^5.102.8",
     "react": "^18.3.1",

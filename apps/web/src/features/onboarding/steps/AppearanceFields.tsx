@@ -10,7 +10,7 @@ import {
   type TemplateKey,
   type TemplateSettingsResponse,
   type UpdateTemplateSettingsPayload,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { Field } from '../../../components/ui/Field.js';
 import { Select } from '../../../components/ui/Select.js';
 import { ColorField } from '../../design/ColorField.js';

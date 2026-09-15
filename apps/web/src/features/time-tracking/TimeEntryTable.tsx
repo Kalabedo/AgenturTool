@@ -7,7 +7,7 @@ import {
   isWeekend,
   type IsoDate,
   type TimeEntryResponse,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { Badge } from '../../components/ui/Badge.js';
 import { Button } from '../../components/ui/Button.js';
 

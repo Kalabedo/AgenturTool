@@ -128,7 +128,7 @@ export function backupFilename(createdAt: Date, reason: BackupReason): string {
     .replace(/[-:]/gu, '')
     .replace(/\..+$/u, '')
     .replace('T', '-');
-  return `agentur-tool-backup-${stamp}-${reason}.zip`;
+  return `privatura-backup-${stamp}-${reason}.zip`;
 }
 
 /**
@@ -146,7 +146,7 @@ export function backupFilename(createdAt: Date, reason: BackupReason): string {
  * bleiben trotzdem lesbar.
  */
 const ARCHIVE_NAME =
-  /^agentur-tool-backup-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})(?:-(taeglich|migration|update|manuell))?(?:-(\d+))?\.zip$/u;
+  /^privatura-backup-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})(?:-(taeglich|migration|update|manuell))?(?:-(\d+))?\.zip$/u;
 
 export interface ParsedBackupFilename {
   createdAt: Date;

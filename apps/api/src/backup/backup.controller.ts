@@ -1,6 +1,6 @@
 import { Controller, Get, Header, HttpCode, HttpStatus, Param, Post, Res } from '@nestjs/common';
 import type { Response } from 'express';
-import type { BackupStatusResponse, BackupSummary } from '@agentur-tool/shared';
+import type { BackupStatusResponse, BackupSummary } from '@privatura/shared';
 import { BackupService } from './backup.service';
 
 @Controller('backup')

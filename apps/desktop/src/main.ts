@@ -16,8 +16,8 @@
 import path from 'node:path';
 import { BrowserWindow, app, dialog, nativeTheme, session, shell } from 'electron';
 import type { INestApplication } from '@nestjs/common';
-import { bootstrap } from '@agentur-tool/api/dist/main';
-import type { BackupReason, BackupSummary } from '@agentur-tool/shared';
+import { bootstrap } from '@privatura/api/dist/main';
+import type { BackupReason, BackupSummary } from '@privatura/shared';
 import { BackupSchedule, backupDirectory } from './backup-schedule';
 import { forcedDailyBackup, pdfTimeoutMs, updateFeedConfig } from './config';
 import { prepareDatabase } from './database';
@@ -36,10 +36,10 @@ import { UpdateService } from './update/update-service';
 import { readWindowState, saveWindowState } from './window-state';
 
 // Vor allem anderen: Der Name bestimmt, wo `userData` liegt — auf einem
-// Mac `~/Library/Application Support/AgenturTool`. Ohne ihn nähme Electron
+// Mac `~/Library/Application Support/Privatura`. Ohne ihn nähme Electron
 // den Paketnamen aus der package.json, und der Datenordner hieße nach einem
 // npm-Namensraum.
-app.setName('AgenturTool');
+app.setName('Privatura');
 
 // Die Anwendung ist selbst gehostet und hat keinen Grund, beim Start
 // irgendwo anzuklopfen; Chromium täte das von sich aus. Die beiden
@@ -109,7 +109,7 @@ app.on('before-quit', (event) => {
  * Gesetzt von `pnpm dev:desktop`. Ist sie leer, liefert der eingebaute
  * Server das gebaute Frontend selbst aus — der Normalfall.
  */
-const devUrl = process.env.AGENTUR_TOOL_DEV_URL;
+const devUrl = process.env.PRIVATURA_DEV_URL;
 
 /**
  * Das Protokoll.
@@ -134,7 +134,7 @@ async function start(): Promise<void> {
   });
 
   app.setAboutPanelOptions({
-    applicationName: 'AgenturTool',
+    applicationName: 'Privatura',
     applicationVersion: app.getVersion(),
     copyright: '© Tom Wenczel',
   });
@@ -223,7 +223,7 @@ async function start(): Promise<void> {
     // Die Adresse in einer erkennbaren Zeile: Der Port wird bei jedem
     // Start neu vergeben, und die Rauchprobe (scripts/rauchprobe.mjs)
     // muss wissen, wohin sie ihre Anfragen schickt.
-    log(`AGENTUR_TOOL_URL ${apiUrl}`);
+    log(`PRIVATURA_URL ${apiUrl}`);
 
     buildMenu({
       dataDir: paths.dataDir,
@@ -254,7 +254,7 @@ async function start(): Promise<void> {
     openWindow(devUrl ?? apiUrl);
   } catch (error) {
     dialog.showErrorBox(
-      'AgenturTool konnte nicht starten',
+      'Privatura konnte nicht starten',
       error instanceof Error ? error.message : String(error),
     );
     app.exit(1);
@@ -289,7 +289,7 @@ function openWindow(url: string): void {
     y: state.y,
     minWidth: 900,
     minHeight: 600,
-    title: 'AgenturTool',
+    title: 'Privatura',
     show: false,
     // Die beiden Werte sind die Grundfläche aus index.css in hex —
     // `--color-surface-sunken`, hell wie dunkel. Electron legt die Farbe
@@ -371,7 +371,7 @@ async function checkForUpdates(): Promise<void> {
     const install = 0;
     const answer = await dialog.showMessageBox({
       type: 'info',
-      message: `AgenturTool ${status.ready.version} ist bereit.`,
+      message: `Privatura ${status.ready.version} ist bereit.`,
       detail:
         'Vor der Installation wird automatisch ein Backup erstellt. Die ' +
         'Anwendung startet danach neu — ungespeicherte Änderungen in einem ' +
@@ -397,7 +397,7 @@ async function checkForUpdates(): Promise<void> {
   if (status.available === null) {
     await dialog.showMessageBox({
       type: 'info',
-      message: `AgenturTool ${status.currentVersion} ist aktuell.`,
+      message: `Privatura ${status.currentVersion} ist aktuell.`,
     });
     return;
   }
@@ -405,7 +405,7 @@ async function checkForUpdates(): Promise<void> {
   const load = 0;
   const answer = await dialog.showMessageBox({
     type: 'info',
-    message: `AgenturTool ${status.available.version} ist verfügbar.`,
+    message: `Privatura ${status.available.version} ist verfügbar.`,
     detail:
       `${status.available.notes ?? 'Neue Fassung vom ' + status.available.releasedAt}\n\n` +
       (status.available.download === null
@@ -484,7 +484,7 @@ async function createBackupArchive(reason: BackupReason): Promise<BackupSummary>
     throw new Error('Der Server läuft nicht; es kann kein Backup entstehen.');
   }
 
-  const { BackupService } = await import('@agentur-tool/api/dist/backup/backup.service');
+  const { BackupService } = await import('@privatura/api/dist/backup/backup.service');
   const service = api.get(BackupService);
   const summary = await service.createBackup({ reason });
   log(`Backup erstellt: ${summary.filename}`);

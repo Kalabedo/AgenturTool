@@ -16,7 +16,7 @@ import { pendingMigrations } from '../src/database';
 let migrationsDir: string;
 
 beforeEach(() => {
-  migrationsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentur-tool-migrationen-'));
+  migrationsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'privatura-migrationen-'));
   for (const name of ['20260907172730_init', '20260908042706_tax_profile_archiving']) {
     fs.mkdirSync(path.join(migrationsDir, name));
   }

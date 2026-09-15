@@ -26,7 +26,7 @@ import {
   type TimeEntryRangeQuery,
   type TimeEntryResponse,
   type TimeEntryUnbillPayload,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { TimeReportService, type RenderedTimeReport } from '../pdf/time-report.service';
 import { TimeEntriesService } from './time-entries.service';

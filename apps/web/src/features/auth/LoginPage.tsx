@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { AuthSessionResponse } from '@agentur-tool/shared';
+import type { AuthSessionResponse } from '@privatura/shared';
 import { ApiRequestError, apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 import { Button } from '../../components/ui/Button.js';
@@ -42,7 +42,10 @@ export function LoginPage({ hasUser }: { hasUser: boolean }): JSX.Element {
         }}
       >
         <div>
-          <h1 className="text-lg font-semibold text-ink">AgenturTool</h1>
+          <div className="flex items-center gap-3">
+            <img src="/privatura-icon.png" alt="" className="size-10 rounded-lg" />
+            <h1 className="text-lg font-semibold text-ink">Privatura</h1>
+          </div>
           <p className="mt-1 text-sm text-ink-subtle">
             {hasUser ? 'Bitte anmelden.' : 'Die Anmeldung muss einmalig eingerichtet werden.'}
           </p>

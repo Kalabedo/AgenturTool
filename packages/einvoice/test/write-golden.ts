@@ -1,5 +1,5 @@
 /**
- * Schreibt die Golden-Dateien neu: `pnpm --filter @agentur-tool/einvoice golden`.
+ * Schreibt die Golden-Dateien neu: `pnpm --filter @privatura/einvoice golden`.
  *
  * Wer sie neu schreibt, muss den Prüflauf ansehen — eine Golden-Datei, die
  * niemand geprüft hat, bestätigt nur, dass sich nichts geändert hat, nicht

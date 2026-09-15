@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { formatBytes } from '@agentur-tool/shared';
+import { formatBytes } from '@privatura/shared';
 import { ApiRequestError } from '../../lib/apiClient.js';
 import { Button } from '../../components/ui/Button.js';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog.js';
@@ -21,9 +21,9 @@ import {
  * Rechnung schreibt, soll weiterschreiben können. Er wechselt mit dem
  * Zustand und führt in genau einer Richtung weiter:
  *
- * > AgenturTool 1.4 ist verfügbar · Was ist neu? · **Update laden** · Später
- * > Lädt AgenturTool 1.4 … 62 % von 98 MB · Abbrechen
- * > AgenturTool 1.4 ist bereit · **Neu starten und installieren** · Später
+ * > Privatura 1.4 ist verfügbar · Was ist neu? · **Update laden** · Später
+ * > Lädt Privatura 1.4 … 62 % von 98 MB · Abbrechen
+ * > Privatura 1.4 ist bereit · **Neu starten und installieren** · Später
  *
  * Jeder Schritt braucht seinen Klick. Vor dem Neustart fragt ein Dialog
  * nach — er ist die einzige Stelle des Programms, an der eine Handlung das
@@ -63,7 +63,7 @@ export function UpdateBanner(): JSX.Element | null {
         <p className="text-sm text-ink">
           {mode === 'verfuegbar' && (
             <>
-              <span className="font-medium">AgenturTool {version} ist verfügbar</span>
+              <span className="font-medium">Privatura {version} ist verfügbar</span>
               {current.available?.notes !== null && current.available?.notes !== undefined && (
                 <span className="text-ink-muted"> · {current.available.notes}</span>
               )}
@@ -72,7 +72,7 @@ export function UpdateBanner(): JSX.Element | null {
 
           {mode === 'laedt' && (
             <>
-              <span className="font-medium">AgenturTool {version} wird geladen</span>
+              <span className="font-medium">Privatura {version} wird geladen</span>
               {current.progress !== null && (
                 <span className="tabular-nums text-ink-muted">
                   {' '}
@@ -84,7 +84,7 @@ export function UpdateBanner(): JSX.Element | null {
 
           {mode === 'bereit' && (
             <>
-              <span className="font-medium">AgenturTool {version} ist bereit</span>
+              <span className="font-medium">Privatura {version} ist bereit</span>
               <span className="text-ink-muted">
                 {' '}
                 ·{' '}
@@ -98,7 +98,7 @@ export function UpdateBanner(): JSX.Element | null {
 
           {mode === 'installiert' && (
             <span className="font-medium">
-              AgenturTool {version} wird installiert — die Anwendung startet gleich neu …
+              Privatura {version} wird installiert — die Anwendung startet gleich neu …
             </span>
           )}
 
@@ -115,7 +115,7 @@ export function UpdateBanner(): JSX.Element | null {
         {mode === 'laedt' && current.progress !== null && (
           <div
             role="progressbar"
-            aria-label={`Download von AgenturTool ${version}`}
+            aria-label={`Download von Privatura ${version}`}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={current.progress.percent}
@@ -186,7 +186,7 @@ export function UpdateBanner(): JSX.Element | null {
 
       <ConfirmDialog
         open={asking}
-        title={`AgenturTool ${version} installieren?`}
+        title={`Privatura ${version} installieren?`}
         description={
           'Die Anwendung erstellt ein Backup, installiert die neue Fassung und ' +
           'startet neu. Ungespeicherte Änderungen in einem Rechnungsentwurf gehen ' +

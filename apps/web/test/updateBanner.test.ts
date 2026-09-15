@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { UpdateStatus } from '@agentur-tool/shared';
+import type { UpdateStatus } from '@privatura/shared';
 import { bannerMode, shouldShowBanner } from '../src/features/updates/useUpdateStatus';
 
 /**
@@ -24,7 +24,7 @@ function status(overrides: Partial<UpdateStatus> = {}): UpdateStatus {
       notes: null,
       notesUrl: null,
       download: {
-        url: 'https://updates.agenturtool.de/stable/AgenturTool-1.4.0-arm64.dmg',
+        url: 'https://updates.privatura.de/stable/Privatura-1.4.0-arm64.dmg',
         sizeBytes: 98_000_000,
         sha256: 'a'.repeat(64),
       },
@@ -32,15 +32,14 @@ function status(overrides: Partial<UpdateStatus> = {}): UpdateStatus {
     progress: null,
     ready: null,
     error: null,
-    feedUrl: 'https://updates.agenturtool.de/stable/updates.json',
+    feedUrl: 'https://updates.privatura.de/stable/updates.json',
     ...overrides,
   };
 }
 
 const READY: UpdateStatus['ready'] = {
   version: '1.4.0',
-  filePath:
-    '/Users/tom/Library/Application Support/AgenturTool/Updates/AgenturTool-1.4.0-arm64.dmg',
+  filePath: '/Users/tom/Library/Application Support/Privatura/Updates/Privatura-1.4.0-arm64.dmg',
   sizeBytes: 98_000_000,
   installable: true,
 };

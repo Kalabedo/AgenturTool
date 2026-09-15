@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { PrismaClient } from '@prisma/client';
-import { ONBOARDING_STATUS, ONBOARDING_STEP, updateCompanySchema } from '@agentur-tool/shared';
+import { ONBOARDING_STATUS, ONBOARDING_STEP, updateCompanySchema } from '@privatura/shared';
 import { StorageConfig } from '../src/common/config.service';
 import { FilesService } from '../src/files/files.service';
 import { CompanyService } from '../src/company/company.service';
@@ -29,7 +29,7 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentur-tool-data-'));
+  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'privatura-data-'));
   const storage = new StorageConfig({ get: () => dataDir } as never);
   const company = new CompanyService(prisma, new FilesService(prisma, storage));
   onboarding = new OnboardingService(prisma, company);

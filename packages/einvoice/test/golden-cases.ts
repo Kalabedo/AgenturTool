@@ -1,4 +1,4 @@
-import { DOCUMENT_TYPE, TAX_CATEGORY_CODE } from '@agentur-tool/shared';
+import { DOCUMENT_TYPE, TAX_CATEGORY_CODE } from '@privatura/shared';
 import { renderCii } from '../src/cii.js';
 import { buildEinvoiceModel } from '../src/model.js';
 import { SOURCE, TOTALS } from './fixtures.js';

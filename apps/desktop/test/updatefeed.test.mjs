@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { parseUpdateFeed } from '@agentur-tool/shared';
+import { parseUpdateFeed } from '@privatura/shared';
 import {
   DEFAULT_BASE_URL,
   buildFeed,
@@ -22,7 +22,7 @@ import {
 let dir = '';
 
 beforeEach(() => {
-  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentur-tool-feed-'));
+  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'privatura-feed-'));
 });
 
 afterEach(() => {
@@ -60,11 +60,11 @@ describe('parseFeedArguments', () => {
 
 describe('collectPackages', () => {
   it('findet genau die Pakete dieser Version', () => {
-    fs.writeFileSync(path.join(dir, 'AgenturTool-1.4.0-arm64.dmg'), 'mac-arm');
-    fs.writeFileSync(path.join(dir, 'AgenturTool-1.4.0-x64.dmg'), 'mac-intel');
-    fs.writeFileSync(path.join(dir, 'AgenturTool-1.4.0-x64.exe'), 'windows');
+    fs.writeFileSync(path.join(dir, 'Privatura-1.4.0-arm64.dmg'), 'mac-arm');
+    fs.writeFileSync(path.join(dir, 'Privatura-1.4.0-x64.dmg'), 'mac-intel');
+    fs.writeFileSync(path.join(dir, 'Privatura-1.4.0-x64.exe'), 'windows');
     // Reste eines früheren Laufs gehören nicht in diesen Feed.
-    fs.writeFileSync(path.join(dir, 'AgenturTool-1.3.0-x64.exe'), 'alt');
+    fs.writeFileSync(path.join(dir, 'Privatura-1.3.0-x64.exe'), 'alt');
     fs.writeFileSync(path.join(dir, 'SHA256SUMS'), 'egal');
 
     const files = collectPackages(dir, '1.4.0');
@@ -87,11 +87,11 @@ describe('buildFeed', () => {
       releasedAt: '2026-09-13',
       notes: 'Schnellere Vorschau.',
       notesUrl: null,
-      baseUrl: 'https://updates.agenturtool.de/stable/',
+      baseUrl: 'https://updates.privatura.de/stable/',
       files: [
         {
           platform: 'macos-arm64',
-          name: 'AgenturTool-1.4.0-arm64.dmg',
+          name: 'Privatura-1.4.0-arm64.dmg',
           sizeBytes: 98_000_000,
           sha256: 'a'.repeat(64),
         },
@@ -99,9 +99,9 @@ describe('buildFeed', () => {
     });
 
     expect(feed.downloads['macos-arm64'].url).toBe(
-      'https://updates.agenturtool.de/stable/AgenturTool-1.4.0-arm64.dmg',
+      'https://updates.privatura.de/stable/Privatura-1.4.0-arm64.dmg',
     );
-    expect(feed.notesUrl).toBe('https://agenturtool.de/releases/1.4.0');
+    expect(feed.notesUrl).toBe('https://privatura.de/releases/1.4.0');
   });
 
   it('verweigert einen Feed ohne ein einziges Paket', () => {
@@ -118,8 +118,8 @@ describe('buildFeed', () => {
   });
 
   it('erzeugt einen Feed, den die Anwendung auch annimmt', () => {
-    fs.writeFileSync(path.join(dir, 'AgenturTool-1.4.0-arm64.dmg'), 'mac-arm');
-    fs.writeFileSync(path.join(dir, 'AgenturTool-1.4.0-x64.exe'), 'windows');
+    fs.writeFileSync(path.join(dir, 'Privatura-1.4.0-arm64.dmg'), 'mac-arm');
+    fs.writeFileSync(path.join(dir, 'Privatura-1.4.0-x64.exe'), 'windows');
 
     const feed = buildFeed({
       version: '1.4.0',
@@ -133,8 +133,8 @@ describe('buildFeed', () => {
     // Derselbe Weg wie in der Anwendung: durch die Prüfung aus `shared`,
     // mit den Hosts, die dort erlaubt sind.
     const parsed = parseUpdateFeed(JSON.parse(JSON.stringify(feed)), [
-      'updates.agenturtool.de',
-      'agenturtool.de',
+      'updates.privatura.de',
+      'privatura.de',
     ]);
 
     expect(parsed.version).toBe('1.4.0');

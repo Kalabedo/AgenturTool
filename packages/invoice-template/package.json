@@ -1,5 +1,5 @@
 {
-  "name": "@agentur-tool/invoice-template",
+  "name": "@privatura/invoice-template",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -29,7 +29,7 @@
     "preview": "tsx test/render-preview.mts"
   },
   "dependencies": {
-    "@agentur-tool/shared": "workspace:*"
+    "@privatura/shared": "workspace:*"
   },
   "devDependencies": {
     "@fontsource/open-sans": "^5.3.0",

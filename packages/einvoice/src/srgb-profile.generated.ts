@@ -4,7 +4,7 @@
  * **Erzeugt — nicht von Hand geändert.** Quelle ist
  * `scripts/build-srgb-profile.mjs`; dort steht auch, warum das Profil
  * gerechnet und nicht mitgeliefert wird. Neu erzeugen mit
- * `pnpm --filter @agentur-tool/einvoice srgb`.
+ * `pnpm --filter @privatura/einvoice srgb`.
  *
  * Gebraucht wird es für den `OutputIntent` des PDF/A-3 — ohne ihn ist die
  * Datei kein PDF/A und damit kein ZUGFeRD.

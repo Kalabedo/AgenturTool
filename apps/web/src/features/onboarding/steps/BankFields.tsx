@@ -1,4 +1,4 @@
-import { formatIban } from '@agentur-tool/shared';
+import { formatIban } from '@privatura/shared';
 import { Field } from '../../../components/ui/Field.js';
 import { Input } from '../../../components/ui/Input.js';
 import type { OnboardingForm } from '../onboardingFields.js';

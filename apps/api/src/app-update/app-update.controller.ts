@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Post, Put } from '@nestjs/common';
 import { z } from 'zod';
-import type { UpdateStatus } from '@agentur-tool/shared';
+import type { UpdateStatus } from '@privatura/shared';
 import { ApiError } from '../common/api-error';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { UPDATE_HOST, type UpdateHost } from './update-host';

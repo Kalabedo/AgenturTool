@@ -24,7 +24,7 @@ import {
   type MailTemplateKey,
   type MailTransport,
   type TimeEntryRangeQuery,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { ApiError } from '../common/api-error';
 import { CompanyService } from '../company/company.service';
 import { CustomersService } from '../customers/customers.service';

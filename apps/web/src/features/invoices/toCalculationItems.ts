@@ -4,7 +4,7 @@ import {
   parsePercentToBasisPoints,
   parseQuantity,
   type InvoiceCalculationItem,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import type { InvoiceItemFormValues } from './invoiceFormValues.js';
 
 /**

@@ -1,4 +1,4 @@
-import type { OnboardingStepId, OnboardingStepState } from '@agentur-tool/shared';
+import type { OnboardingStepId, OnboardingStepState } from '@privatura/shared';
 
 interface OnboardingProgressProps {
   steps: readonly OnboardingStepState[];

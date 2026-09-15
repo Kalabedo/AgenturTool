@@ -1,5 +1,5 @@
 {
-  "name": "@agentur-tool/einvoice",
+  "name": "@privatura/einvoice",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -26,8 +26,8 @@
     "pdfa:pruefen": "node scripts/validate-pdfa.mjs"
   },
   "dependencies": {
-    "@agentur-tool/invoice-template": "workspace:*",
-    "@agentur-tool/shared": "workspace:*",
+    "@privatura/invoice-template": "workspace:*",
+    "@privatura/shared": "workspace:*",
     "pdf-lib": "^1.17.1"
   },
   "devDependencies": {

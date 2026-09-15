@@ -8,7 +8,7 @@ import {
   DOCUMENT_KIND_EXTENSION,
   DOCUMENT_KIND_VALUES,
   type DocumentKind,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { ApiError } from '../common/api-error';
 import { StorageConfig } from '../common/config.service';
 import { PrismaService } from '../common/prisma.service';

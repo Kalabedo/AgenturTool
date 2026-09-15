@@ -37,7 +37,7 @@ export interface PdfRenderOptions {
 }
 
 /** Die Kennung der abgeschotteten Session; eine je Prozess genügt. */
-const PARTITION = 'agentur-tool-pdf';
+const PARTITION = 'privatura-pdf';
 
 export class ElectronPdfRenderer {
   private queue: Promise<unknown> = Promise.resolve();
@@ -72,7 +72,7 @@ export class ElectronPdfRenderer {
     // Schrift und Logo als Data-URI in sich und wird schnell einige hundert
     // Kilobyte groß — - als URL wäre das eine Zeile, an der Chromium je nach
     // Version abschneidet.
-    const file = path.join(app.getPath('temp'), `agentur-tool-${randomUUID()}.html`);
+    const file = path.join(app.getPath('temp'), `privatura-${randomUUID()}.html`);
     await fs.writeFile(file, html, 'utf8');
 
     const window = new BrowserWindow({

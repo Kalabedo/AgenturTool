@@ -49,7 +49,7 @@ const FLAVOUR = '3b';
 
 // Unterhalb des Systemtemp und nicht im Projekt: fremder Code, der weder
 // ins Repository noch in ein Paket gehört.
-const cacheDir = path.join(os.tmpdir(), `agentur-tool-verapdf-${VERAPDF_VERSION}`);
+const cacheDir = path.join(os.tmpdir(), `privatura-verapdf-${VERAPDF_VERSION}`);
 const installDir = path.join(cacheDir, 'verapdf');
 
 const files = process.argv.slice(2);

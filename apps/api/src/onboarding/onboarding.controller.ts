@@ -3,7 +3,7 @@ import {
   onboardingStatusSchema,
   type OnboardingStateResponse,
   type OnboardingStatusPayload,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { OnboardingService } from './onboarding.service';
 

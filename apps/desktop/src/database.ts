@@ -20,9 +20,9 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { PrismaClient } from '@prisma/client';
-import { BackupService } from '@agentur-tool/api/dist/backup/backup.service';
-import { StorageConfig } from '@agentur-tool/api/dist/common/config.service';
-import { seed } from '@agentur-tool/api/dist/common/seed';
+import { BackupService } from '@privatura/api/dist/backup/backup.service';
+import { StorageConfig } from '@privatura/api/dist/common/config.service';
+import { seed } from '@privatura/api/dist/common/seed';
 
 export interface PrepareOptions {
   /** Absoluter Pfad zur SQLite-Datei. */

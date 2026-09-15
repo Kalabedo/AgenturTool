@@ -13,7 +13,7 @@
  * @fontsource gerade nicht erreichbar ist, und der Diff bleibt sichtbar,
  * falls sich die Schrift je ändert.
  *
- * Neu erzeugen: pnpm --filter @agentur-tool/invoice-template fonts
+ * Neu erzeugen: pnpm --filter @privatura/invoice-template fonts
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -89,7 +89,7 @@ const table = entries
 const contents = `// AUTOMATISCH ERZEUGT von scripts/embed-fonts.mjs — nicht von Hand ändern.
 // Quellen:
 ${families.map((f) => `//   ${f.license}`).join('\n')}
-// Neu erzeugen: pnpm --filter @agentur-tool/invoice-template fonts
+// Neu erzeugen: pnpm --filter @privatura/invoice-template fonts
 
 /**
  * Die eingebetteten Schriften, je Familie.

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { AuthSessionResponse } from '@agentur-tool/shared';
+import type { AuthSessionResponse } from '@privatura/shared';
 import { apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 import { Button } from '../../components/ui/Button.js';

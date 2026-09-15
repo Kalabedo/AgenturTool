@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DOCUMENT_TYPE, TAX_CATEGORY_CODE, UNIT_CODE } from '@agentur-tool/shared';
+import { DOCUMENT_TYPE, TAX_CATEGORY_CODE, UNIT_CODE } from '@privatura/shared';
 import { buildEinvoiceModel, toCountryCode } from '../src/model.js';
 import { SOURCE, TOTALS } from './fixtures.js';
 

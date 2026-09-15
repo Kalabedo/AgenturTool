@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { backupFilename, type BackupReason } from '@agentur-tool/shared';
+import { backupFilename, type BackupReason } from '@privatura/shared';
 import { archivesToRemove, RETENTION } from '../src/backup/retention';
 
 /**
@@ -93,7 +93,7 @@ describe('Aufbewahrung', () => {
     const fremd = 'urlaubsfotos.zip';
     const namen = [
       fremd,
-      'agentur-tool-backup-kaputt.zip',
+      'privatura-backup-kaputt.zip',
       archiv('2023-01-04T02:00:00Z'),
       archiv('2023-01-03T02:00:00Z'),
       archiv('2023-01-02T02:00:00Z'),
@@ -103,11 +103,11 @@ describe('Aufbewahrung', () => {
     const entfernt = archivesToRemove(namen, JETZT);
 
     expect(entfernt).not.toContain(fremd);
-    expect(entfernt).not.toContain('agentur-tool-backup-kaputt.zip');
+    expect(entfernt).not.toContain('privatura-backup-kaputt.zip');
   });
 
   it('liest auch Namen ohne Anlass — die aus älteren Fassungen', () => {
-    const alt = 'agentur-tool-backup-20230101-020000.zip';
+    const alt = 'privatura-backup-20230101-020000.zip';
 
     expect(
       archivesToRemove([alt, archiv('2026-09-13T02:00:00Z')], JETZT, OHNE_MINDESTZAHL),
@@ -116,16 +116,16 @@ describe('Aufbewahrung', () => {
 
   it('unterscheidet zwei Sicherungen derselben Sekunde', () => {
     const namen = [
-      'agentur-tool-backup-20230101-020000-taeglich.zip',
-      'agentur-tool-backup-20230101-020000-taeglich-1.zip',
-      'agentur-tool-backup-20230101-020000-taeglich-2.zip',
-      'agentur-tool-backup-20230101-020000-taeglich-3.zip',
+      'privatura-backup-20230101-020000-taeglich.zip',
+      'privatura-backup-20230101-020000-taeglich-1.zip',
+      'privatura-backup-20230101-020000-taeglich-2.zip',
+      'privatura-backup-20230101-020000-taeglich-3.zip',
     ];
 
     // Die Nummer entscheidet, welche drei die jüngsten sind — nicht die
     // Reihenfolge, in der das Dateisystem seine Einträge ausgibt.
     expect(archivesToRemove([...namen].reverse(), JETZT)).toEqual([
-      'agentur-tool-backup-20230101-020000-taeglich.zip',
+      'privatura-backup-20230101-020000-taeglich.zip',
     ]);
   });
 

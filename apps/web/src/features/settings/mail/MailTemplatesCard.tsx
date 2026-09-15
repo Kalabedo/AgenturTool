@@ -10,7 +10,7 @@ import {
   unknownPlaceholders,
   type MailTemplateKey,
   type MailTemplateResponse,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { apiClient } from '../../../lib/apiClient.js';
 import { formErrorOf } from '../../../lib/errorMessage.js';
 import { queryKeys } from '../../../lib/queryKeys.js';

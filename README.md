@@ -1,4 +1,4 @@
-# AgenturTool
+# Privatura
 
 Eigene Rechnungssoftware — selbst gehostet, unabhängig von externen
 Rechnungsdiensten. Rechnungen erstellen, verwalten und als PDF exportieren.
@@ -116,17 +116,17 @@ Unendliche — ältere Archive werden nach Generationen ausgedünnt.
 
 Die Daten liegen außerhalb der Anwendung und überleben jedes Update:
 
-| System  | Ort                                               |
-| ------- | ------------------------------------------------- |
-| macOS   | `~/Library/Application Support/AgenturTool/Daten` |
-| Windows | `%APPDATA%\AgenturTool\Daten`                     |
+| System  | Ort                                             |
+| ------- | ----------------------------------------------- |
+| macOS   | `~/Library/Application Support/Privatura/Daten` |
+| Windows | `%APPDATA%\Privatura\Daten`                     |
 
 Darin: `db.sqlite`, `assets/` (Logos), `invoices/<Jahr>/` (die ausgestellten
 PDFs) und `backups/`. Das Menü führt unter „Ablage" direkt dorthin und legt
 auf Wunsch ein Archiv an. In `backups/` bleiben alle Sicherungen der letzten
 7 Tage, danach eine je Woche für 8 Wochen und eine je Monat für 12 Monate;
 die jüngsten drei bleiben in jedem Fall. Ein Archiv, das nicht von
-AgenturTool stammt, wird nie angefasst.
+Privatura stammt, wird nie angefasst.
 
 Fenstergröße und -position bleiben über Sitzungen hinweg erhalten. Liegt
 das gespeicherte Rechteck auf keinem angeschlossenen Bildschirm mehr — der
@@ -151,7 +151,7 @@ Datenbank zu setzen.
 ```bash
 pnpm install
 pnpm build
-pnpm --filter @agentur-tool/desktop paket
+pnpm --filter @privatura/desktop paket
 ```
 
 Das Ergebnis liegt unter `apps/desktop/release/`. Gepackt wird nicht das
@@ -179,11 +179,11 @@ Grunddaten, Kunde, Rechnung, Ausstellung, PDF, Backup — und verlangt
 zuletzt, dass keine einzige Anfrage nach außen gehen wollte.
 
 ```bash
-pnpm --filter @agentur-tool/desktop paket --nur-baum   # ohne zu packen
+pnpm --filter @privatura/desktop paket --nur-baum   # ohne zu packen
 node apps/desktop/scripts/rauchprobe.mjs               # gegen den Baum
 
 node apps/desktop/scripts/rauchprobe.mjs \
-  apps/desktop/release/mac-arm64/AgenturTool.app
+  apps/desktop/release/mac-arm64/Privatura.app
 ```
 
 Mit einem festen Datenverzeichnis prüft ein zweiter Lauf zusätzlich, dass
@@ -192,8 +192,8 @@ Neustart überleben — und dass die Tagessicherung auch im Paket läuft, ohne
 dass bei jedem Start ein weiteres Archiv entsteht:
 
 ```bash
-node apps/desktop/scripts/rauchprobe.mjs <anwendung> --data-dir /tmp/agentur-tool-test
-node apps/desktop/scripts/rauchprobe.mjs <anwendung> --data-dir /tmp/agentur-tool-test --reopen
+node apps/desktop/scripts/rauchprobe.mjs <anwendung> --data-dir /tmp/privatura-test
+node apps/desktop/scripts/rauchprobe.mjs <anwendung> --data-dir /tmp/privatura-test --reopen
 ```
 
 Auf einem Rechner ohne Bildschirm — einem Bauserver — gehört `xvfb-run -a`
@@ -243,10 +243,10 @@ pnpm einrechnung:pruefen      # braucht Java, wird nie ausgeliefert
 ### E-Mail-Versand
 
 Unter **Einstellungen → E-Mail** wird eingerichtet, wie Rechnungen das Haus
-verlassen. Ohne Einrichtung baut AgenturTool keine Verbindung nach außen auf —
+verlassen. Ohne Einrichtung baut Privatura keine Verbindung nach außen auf —
 das ist die Vorbelegung, nicht ein Zustand, aus dem man herausmuss.
 
-| Weg                | Was AgenturTool tut                                               |
+| Weg                | Was Privatura tut                                                 |
 | ------------------ | ----------------------------------------------------------------- |
 | **SMTP-Server**    | verschickt selbst und vermerkt die Rechnung als versendet         |
 | **Mail-Anwendung** | öffnet einen Entwurf und legt die Anhänge in einen Ordner daneben |
@@ -263,13 +263,13 @@ Anwendung, dass der Mailserver die Nachricht angenommen hat, und setzt den
 Versandvermerk. Über die Mail-Anwendung weiß sie nur, dass ein Fenster
 aufgegangen ist — den Versandvermerk setzt dort ein eigener Klick.
 
-Auf diesem Weg versucht AgenturTool zuerst einen **echten Entwurf**: Bei
+Auf diesem Weg versucht Privatura zuerst einen **echten Entwurf**: Bei
 Apple Mail entsteht ein fertiges Verfassen-Fenster mit Empfängern, Betreff,
 Text und Anhängen — es bleibt nur „Senden". macOS fragt dafür einmalig um
 Erlaubnis; wer sie verweigert, landet automatisch auf dem zweiten Weg.
 
 Der zweite Weg ist eine vollständige Nachricht als `.eml`-Datei, die
-AgenturTool öffnet. Auch darin stecken die Anhänge. Outlook erkennt sie als
+Privatura öffnet. Auch darin stecken die Anhänge. Outlook erkennt sie als
 Entwurf und öffnet das Verfassen-Fenster; andere Programme zeigen sie als
 eingegangene Nachricht, aus der ein „Weiterleiten" die Anhänge übernimmt.
 
@@ -279,7 +279,7 @@ bei dem man später nicht mehr weiß, ob die Rechnung draußen ist.
 
 Betreff und Text kommen aus drei bearbeitbaren Vorlagen — Rechnung, Storno,
 Zeitnachweis. Platzhalter wie `{{rechnungsnummer}}` oder `{{anrede}}` setzt
-AgenturTool beim Öffnen des Dialogs ein; die Einstellungsseite zeigt daneben
+Privatura beim Öffnen des Dialogs ein; die Einstellungsseite zeigt daneben
 eine Vorschau mit Beispielwerten und findet auf Wunsch zum Auslieferungstext
 zurück.
 
@@ -313,19 +313,19 @@ ohne Importfähigkeit vorzutäuschen.
 
 ### Aktualisieren
 
-AgenturTool aktualisiert sich auf Wunsch selbst — aber nur auf Wunsch. Der
+Privatura aktualisiert sich auf Wunsch selbst — aber nur auf Wunsch. Der
 Ablauf besteht aus drei Schritten, und jeder braucht einen Klick:
 
 1. **Melden.** Höchstens einmal in 24 Stunden holt der Hauptprozess eine
    kleine Textdatei von der eigenen Website:
 
    ```text
-   https://updates.agenturtool.de/stable/updates.json
+   https://updates.privatura.de/stable/updates.json
    ```
 
    Darin stehen die aktuelle Version, ein Satz dazu und je Paket Adresse,
    Größe und SHA-256-Prüfsumme. Ist sie neuer als die installierte Fassung,
-   erscheint ein schmales Banner über der Kopfzeile: **„AgenturTool 1.4 ist
+   erscheint ein schmales Banner über der Kopfzeile: **„Privatura 1.4 ist
    verfügbar · Was ist neu? · Update laden · Später"**.
 
 2. **Laden.** „Update laden" holt das Paket im Hintergrund; der Fortschritt
@@ -333,7 +333,7 @@ Ablauf besteht aus drei Schritten, und jeder braucht einen Klick:
    Anwendung Größe und Prüfsumme gegen den Feed. Stimmt etwas nicht, wird das
    Paket verworfen und nichts angefasst.
 
-3. **Installieren und neu starten.** Aus dem Banner wird **„AgenturTool 1.4
+3. **Installieren und neu starten.** Aus dem Banner wird **„Privatura 1.4
    ist bereit · Neu starten und installieren · Später"**. Dahinter läuft
    immer dieselbe Reihenfolge: automatisches Backup, Prüfung der Signatur
    durch das Betriebssystem, Austausch der Installation, Neustart. Unter
@@ -354,7 +354,7 @@ Menü unter „Nach Updates suchen …".
 Übertragen wird bei der Prüfung nur die installierte Version und das
 Betriebssystem — keine Kunden-, Rechnungs- oder Nutzungsdaten. Wer auch das
 nicht will, nimmt den Haken heraus oder setzt
-`AGENTUR_TOOL_UPDATE_FEED=aus`; die Anwendung fragt dann nie von sich aus.
+`PRIVATURA_UPDATE_FEED=aus`; die Anwendung fragt dann nie von sich aus.
 
 Die Daten liegen außerhalb der Anwendung und bleiben bei jedem Update
 erhalten. Unmittelbar vor der Installation entsteht ein Backup, und beim

@@ -16,7 +16,7 @@
  *   node scripts/rauchprobe.mjs <ziel> --data-dir <pfad> --reopen
  *
  * Das Ziel ist eine `.js`-Datei (dann startet Electron sie), ein
- * macOS-Bundle (`release/mac-arm64/AgenturTool.app`) oder ein fertiges
+ * macOS-Bundle (`release/mac-arm64/Privatura.app`) oder ein fertiges
  * Programm aus `release/` (dann startet es selbst).
  *
  * Auf einem Rechner ohne Bildschirm über `xvfb-run -a` aufrufen.
@@ -107,8 +107,7 @@ let output = '';
 const startupEvents = new EventEmitter();
 
 const temporaryDataDir = options.dataDir === null;
-const dataDir =
-  options.dataDir ?? fs.mkdtempSync(path.join(os.tmpdir(), 'agentur-tool-rauchprobe-'));
+const dataDir = options.dataDir ?? fs.mkdtempSync(path.join(os.tmpdir(), 'privatura-rauchprobe-'));
 fs.mkdirSync(dataDir, { recursive: true });
 console.log(`▸ Ziel:            ${target}`);
 console.log(`▸ Datenverzeichnis: ${dataDir}`);
@@ -123,17 +122,17 @@ const [command, args] = target.endsWith('.js')
   : [target, ['--no-sandbox', '--disable-error-dialogs']];
 
 const childEnvironment = { ...process.env };
-delete childEnvironment.AGENTUR_TOOL_DEV_URL;
+delete childEnvironment.PRIVATURA_DEV_URL;
 // Die Rauchprobe belegt, dass beim Start nichts den Rechner verlässt. Die
 // Updateprüfung würde genau das tun — und zwar zu Recht, nur eben nicht
 // hier. Sie wird deshalb abgeschaltet und unten daraufhin geprüft.
-childEnvironment.AGENTUR_TOOL_UPDATE_FEED = 'aus';
+childEnvironment.PRIVATURA_UPDATE_FEED = 'aus';
 // Die Tagessicherung wartet im Betrieb eine Minute und höchstens einmal je
 // Kalendertag. Beides erlebt die Rauchprobe nie: Sie prüft ein paar Sekunden
 // lang, und der erste Lauf hat schon ein Archiv desselben Tages angelegt.
 // Der Schalter nimmt Wartezeit und Drossel heraus, damit der zweite Lauf
 // belegen kann, dass die automatische Sicherung auch im Paket funktioniert.
-childEnvironment.AGENTUR_TOOL_BACKUP_TAEGLICH = 'erzwingen';
+childEnvironment.PRIVATURA_BACKUP_TAEGLICH = 'erzwingen';
 
 const app = spawn(command, [...args, `--user-data-dir=${dataDir}`], {
   cwd: desktopDir,
@@ -161,8 +160,8 @@ function absorb(chunk, collector) {
 }
 
 function absorbLine(line) {
-  if (line.startsWith('AGENTUR_TOOL_URL ')) {
-    const candidate = line.slice('AGENTUR_TOOL_URL '.length).trim();
+  if (line.startsWith('PRIVATURA_URL ')) {
+    const candidate = line.slice('PRIVATURA_URL '.length).trim();
     const parsed = new URL(candidate);
     if (!['127.0.0.1', 'localhost', '[::1]'].includes(parsed.hostname)) {
       throw new Error(`Die Anwendung meldete keine Rückschleifen-Adresse: ${candidate}`);

@@ -121,12 +121,12 @@ function buildXmp(options: ZugferdOptions): string {
       </dc:creator>
     </rdf:Description>
     <rdf:Description rdf:about="" xmlns:xmp="http://ns.adobe.com/xap/1.0/">
-      <xmp:CreatorTool>AgenturTool</xmp:CreatorTool>
+      <xmp:CreatorTool>Privatura</xmp:CreatorTool>
       <xmp:CreateDate>${timestamp}</xmp:CreateDate>
       <xmp:ModifyDate>${timestamp}</xmp:ModifyDate>
     </rdf:Description>
     <rdf:Description rdf:about="" xmlns:pdf="http://ns.adobe.com/pdf/1.3/">
-      <pdf:Producer>AgenturTool</pdf:Producer>
+      <pdf:Producer>Privatura</pdf:Producer>
     </rdf:Description>
     <rdf:Description rdf:about="" xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/">
       <pdfaid:part>3</pdfaid:part>
@@ -254,8 +254,8 @@ export async function embedZugferd(
   // passen; widersprechen sie sich, ist das ein Konformitätsfehler.
   pdf.setTitle(options.title);
   pdf.setAuthor(options.author);
-  pdf.setProducer('AgenturTool');
-  pdf.setCreator('AgenturTool');
+  pdf.setProducer('Privatura');
+  pdf.setCreator('Privatura');
   pdf.setCreationDate(options.now);
   pdf.setModificationDate(options.now);
 

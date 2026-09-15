@@ -12,7 +12,7 @@ import {
   type CustomerResponse,
   type InvoiceResponse,
   type TaxProfileResponse,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { ApiRequestError, apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js';

@@ -6,5 +6,5 @@ export default defineConfig({
   dts: true,
   sourcemap: true,
   clean: true,
-  external: ['@agentur-tool/shared', 'react', 'react-dom', 'react-dom/server'],
+  external: ['@privatura/shared', 'react', 'react-dom', 'react-dom/server'],
 });

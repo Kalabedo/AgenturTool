@@ -5,7 +5,7 @@ import {
   taxAdvisorExportInputSchema,
   type TaxAdvisorExportPayload,
   type TaxAdvisorExportSummary,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { Button } from '../../../components/ui/Button.js';
 import { Card } from '../../../components/ui/Card.js';
 import { FormActions } from '../../../components/ui/FormActions.js';

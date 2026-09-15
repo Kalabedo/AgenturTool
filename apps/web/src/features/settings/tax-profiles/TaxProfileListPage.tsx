@@ -6,7 +6,7 @@ import {
   allowsRateInput,
   formatBasisPoints,
   type TaxProfileResponse,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { apiClient } from '../../../lib/apiClient.js';
 import { queryKeys } from '../../../lib/queryKeys.js';
 import { Badge } from '../../../components/ui/Badge.js';

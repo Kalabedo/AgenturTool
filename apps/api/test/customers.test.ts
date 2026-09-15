@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { PrismaClient } from '@prisma/client';
-import { CUSTOMER_ARCHIVE_FILTER, customerInputSchema } from '@agentur-tool/shared';
+import { CUSTOMER_ARCHIVE_FILTER, customerInputSchema } from '@privatura/shared';
 import { CustomersService } from '../src/customers/customers.service';
 import { ApiError } from '../src/common/api-error';
 import { createTestDatabase, type TestDatabase } from './database.helper';

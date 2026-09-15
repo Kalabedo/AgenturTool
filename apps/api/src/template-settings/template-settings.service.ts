@@ -4,8 +4,8 @@ import {
   TEMPLATE_DENSITY_VALUES,
   TEMPLATE_FONT_FAMILY_VALUES,
   TEMPLATE_KEY_VALUES,
-} from '@agentur-tool/shared';
-import type { TemplateSettingsResponse, UpdateTemplateSettingsPayload } from '@agentur-tool/shared';
+} from '@privatura/shared';
+import type { TemplateSettingsResponse, UpdateTemplateSettingsPayload } from '@privatura/shared';
 import { PrismaService } from '../common/prisma.service';
 
 /** Wie die Firmendaten ein Singleton mit fester id (per CHECK erzwungen). */

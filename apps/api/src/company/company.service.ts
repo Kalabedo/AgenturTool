@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Company } from '@prisma/client';
-import type { CompanyResponse, UpdateCompanyPayload } from '@agentur-tool/shared';
+import type { CompanyResponse, UpdateCompanyPayload } from '@privatura/shared';
 import { PrismaService } from '../common/prisma.service';
 import { FilesService } from '../files/files.service';
 

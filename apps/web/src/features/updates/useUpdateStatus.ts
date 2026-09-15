@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
-import type { UpdateStatus } from '@agentur-tool/shared';
+import type { UpdateStatus } from '@privatura/shared';
 import { apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 
@@ -178,7 +178,7 @@ export function shouldShowBanner(
   return bannerMode(status, dismissedVersion) !== 'kein';
 }
 
-const DISMISS_KEY = 'agentur-tool.update-dismissed';
+const DISMISS_KEY = 'privatura.update-dismissed';
 
 /**
  * Die zuletzt weggeklickte Fassung.

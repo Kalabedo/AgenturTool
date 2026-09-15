@@ -7,7 +7,7 @@ import {
   onboardingSteps,
   type OnboardingStateResponse,
   type OnboardingStatus,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { PrismaService } from '../common/prisma.service';
 import { CompanyService } from '../company/company.service';
 

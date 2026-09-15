@@ -40,8 +40,8 @@ let dir = '';
 let target = '';
 
 beforeEach(() => {
-  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentur-tool-dl-'));
-  target = path.join(dir, 'AgenturTool-1.4.0-arm64.dmg');
+  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'privatura-dl-'));
+  target = path.join(dir, 'Privatura-1.4.0-arm64.dmg');
 });
 
 afterEach(() => {
@@ -53,7 +53,7 @@ function request(overrides: Record<string, unknown> = {}) {
   return {
     seen,
     options: {
-      url: 'https://updates.agenturtool.de/stable/AgenturTool-1.4.0-arm64.dmg',
+      url: 'https://updates.privatura.de/stable/Privatura-1.4.0-arm64.dmg',
       expectedSha256: SHA,
       expectedSizeBytes: BODY.byteLength,
       targetFile: target,
@@ -129,17 +129,17 @@ describe('downloadPackage', () => {
 
 describe('pruneDownloads', () => {
   it('behält genau das eine Paket, das noch zählt', () => {
-    fs.writeFileSync(path.join(dir, 'AgenturTool-1.4.0-arm64.dmg'), 'neu');
-    fs.writeFileSync(path.join(dir, 'AgenturTool-1.3.0-arm64.dmg'), 'alt');
-    fs.writeFileSync(path.join(dir, 'AgenturTool-1.4.0-arm64.dmg.teil'), 'halb');
+    fs.writeFileSync(path.join(dir, 'Privatura-1.4.0-arm64.dmg'), 'neu');
+    fs.writeFileSync(path.join(dir, 'Privatura-1.3.0-arm64.dmg'), 'alt');
+    fs.writeFileSync(path.join(dir, 'Privatura-1.4.0-arm64.dmg.teil'), 'halb');
 
-    pruneDownloads(dir, 'AgenturTool-1.4.0-arm64.dmg');
+    pruneDownloads(dir, 'Privatura-1.4.0-arm64.dmg');
 
-    expect(fs.readdirSync(dir)).toEqual(['AgenturTool-1.4.0-arm64.dmg']);
+    expect(fs.readdirSync(dir)).toEqual(['Privatura-1.4.0-arm64.dmg']);
   });
 
   it('räumt alles weg, wenn nichts mehr zählt', () => {
-    fs.writeFileSync(path.join(dir, 'AgenturTool-1.3.0-arm64.dmg'), 'alt');
+    fs.writeFileSync(path.join(dir, 'Privatura-1.3.0-arm64.dmg'), 'alt');
 
     pruneDownloads(dir, null);
 

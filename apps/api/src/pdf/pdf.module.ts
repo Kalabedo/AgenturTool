@@ -28,7 +28,7 @@ class UnavailablePdfRenderer implements PdfRenderer {
     return Promise.reject(
       ApiError.pdfRenderFailed(
         'PDFs entstehen in der Desktop-Anwendung. Dieser Server läuft ohne sie — ' +
-          'starte AgenturTool als Anwendung, um Rechnungen zu drucken.',
+          'starte Privatura als Anwendung, um Rechnungen zu drucken.',
       ),
     );
   }

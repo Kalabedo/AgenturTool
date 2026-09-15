@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ONBOARDING_STATUS } from '@agentur-tool/shared';
+import { ONBOARDING_STATUS } from '@privatura/shared';
 import { useOnboardingState } from './useOnboarding.js';
 
 /**

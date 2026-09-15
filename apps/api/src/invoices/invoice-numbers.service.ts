@@ -5,7 +5,7 @@ import {
   NUMBER_PATTERN_SETTING_KEY,
   NUMBER_SEQUENCE_SCOPE,
   numberPatternSchema,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { ApiError } from '../common/api-error';
 import { PrismaService } from '../common/prisma.service';
 

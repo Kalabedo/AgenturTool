@@ -13,7 +13,7 @@ export type ThemePreference = 'light' | 'dark' | 'system';
 /** Was am Ende wirklich angezeigt wird. */
 export type ResolvedTheme = 'light' | 'dark';
 
-const STORAGE_KEY = 'agentur-tool.theme';
+const STORAGE_KEY = 'privatura.theme';
 
 interface ThemeApi {
   preference: ThemePreference;

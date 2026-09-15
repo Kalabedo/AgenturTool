@@ -78,8 +78,13 @@ export function AppLayout({ error }: { error?: ReactNode }): JSX.Element {
             Breite an den jeweiligen Seiteninhalt zu koppeln ließ Logo und
             Navigation beim Wechsel zur breiteren Zeiterfassung springen. */}
         <div className="mx-auto flex max-w-[104rem] flex-wrap items-center gap-x-8 gap-y-2 px-4 py-4 sm:px-6">
-          <Link to="/" className="text-base font-semibold tracking-tight text-ink">
-            AgenturTool
+          <Link
+            to="/"
+            className="flex items-center gap-2 text-base font-semibold tracking-tight text-ink"
+            aria-label="Privatura – Dashboard"
+          >
+            <img src="/privatura-icon.png" alt="" className="size-7 rounded-md" />
+            <span>Privatura</span>
           </Link>
           {/* Auf schmalen Bildschirmen darf die Navigation waagerecht
               scrollen, statt die Kopfzeile in vier Zeilen zu zerlegen. */}

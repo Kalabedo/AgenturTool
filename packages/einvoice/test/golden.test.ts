@@ -20,7 +20,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
  * hat, der Validator sagt, ob das Neue gültig ist.
  *
  * Neu schreiben lassen sie sich mit
- * `pnpm --filter @agentur-tool/einvoice golden`.
+ * `pnpm --filter @privatura/einvoice golden`.
  */
 describe('Golden-Dateien', () => {
   for (const [name, xml] of Object.entries(GOLDEN_CASES)) {

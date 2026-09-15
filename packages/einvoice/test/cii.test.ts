@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DOCUMENT_TYPE } from '@agentur-tool/shared';
+import { DOCUMENT_TYPE } from '@privatura/shared';
 import { renderCii } from '../src/cii.js';
 import { buildEinvoiceModel } from '../src/model.js';
 import { EN16931_CII, XRECHNUNG_3_0 } from '../src/profiles.js';

@@ -76,7 +76,7 @@ jobs:
           printf '%s\n' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
 
       - name: Signieren, notarisieren und DMG bauen
-        run: pnpm --filter @agentur-tool/desktop paket --release
+        run: pnpm --filter @privatura/desktop paket --release
         env:
           CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
@@ -94,13 +94,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          DMG_COUNT="$(find apps/desktop/release -maxdepth 1 -name 'AgenturTool-*-${{ matrix.arch }}.dmg' | wc -l | tr -d ' ')"
+          DMG_COUNT="$(find apps/desktop/release -maxdepth 1 -name 'Privatura-*-${{ matrix.arch }}.dmg' | wc -l | tr -d ' ')"
           test "$DMG_COUNT" = 1
-          DMG="$(find apps/desktop/release -maxdepth 1 -name 'AgenturTool-*-${{ matrix.arch }}.dmg' -print -quit)"
+          DMG="$(find apps/desktop/release -maxdepth 1 -name 'Privatura-*-${{ matrix.arch }}.dmg' -print -quit)"
           hdiutil verify "$DMG"
 
-          MOUNT_POINT="$RUNNER_TEMP/agentur-tool-release-dmg"
-          DATA_DIR="$RUNNER_TEMP/agentur-tool-release-smoke"
+          MOUNT_POINT="$RUNNER_TEMP/privatura-release-dmg"
+          DATA_DIR="$RUNNER_TEMP/privatura-release-smoke"
           mkdir -p "$MOUNT_POINT" "$DATA_DIR"
           hdiutil attach "$DMG" -readonly -nobrowse -mountpoint "$MOUNT_POINT" >/dev/null
           trap 'hdiutil detach "$MOUNT_POINT" >/dev/null || true' EXIT
@@ -116,7 +116,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: signed-macos-${{ matrix.arch }}
-          path: apps/desktop/release/AgenturTool-*-${{ matrix.arch }}.dmg
+          path: apps/desktop/release/Privatura-*-${{ matrix.arch }}.dmg
           if-no-files-found: error
 
   windows:
@@ -141,7 +141,7 @@ jobs:
       # Windows-Release muss hier ein Cloud-Signaturweg stehen; die Wahl und
       # ihre Folgen stehen in docs/RELEASE.md.
       - name: Signieren und NSIS-Installer bauen
-        run: pnpm --filter @agentur-tool/desktop paket --release
+        run: pnpm --filter @privatura/desktop paket --release
         env:
           CSC_LINK: ${{ secrets.WINDOWS_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CSC_KEY_PASSWORD }}
@@ -150,10 +150,10 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $installers = @(Get-ChildItem 'apps/desktop/release/AgenturTool-*-x64.exe')
+          $installers = @(Get-ChildItem 'apps/desktop/release/Privatura-*-x64.exe')
           if ($installers.Count -ne 1) { throw "Erwartete genau einen Installer, fand $($installers.Count)." }
 
-          $unpacked = 'apps/desktop/release/win-unpacked/AgenturTool.exe'
+          $unpacked = 'apps/desktop/release/win-unpacked/Privatura.exe'
           foreach ($file in @($installers[0].FullName, $unpacked)) {
             $signature = Get-AuthenticodeSignature $file
             if ($signature.Status -ne 'Valid') {
@@ -161,13 +161,13 @@ jobs:
             }
           }
 
-          $installDir = Join-Path $env:RUNNER_TEMP 'AgenturTool-Installation'
-          $dataDir = Join-Path $env:RUNNER_TEMP 'AgenturTool-Smoke'
+          $installDir = Join-Path $env:RUNNER_TEMP 'Privatura-Installation'
+          $dataDir = Join-Path $env:RUNNER_TEMP 'Privatura-Smoke'
           New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
           $install = Start-Process -FilePath $installers[0].FullName -ArgumentList '/S', "/D=$installDir" -Wait -PassThru
           if ($install.ExitCode -ne 0) { throw "Installer endete mit Code $($install.ExitCode)." }
 
-          $app = Join-Path $installDir 'AgenturTool.exe'
+          $app = Join-Path $installDir 'Privatura.exe'
           $installedSignature = Get-AuthenticodeSignature $app
           if ($installedSignature.Status -ne 'Valid') {
             throw "Installierte Anwendung ist nicht gültig signiert: $($installedSignature.Status)"
@@ -177,14 +177,14 @@ jobs:
           node apps/desktop/scripts/rauchprobe.mjs $app --data-dir $dataDir --reopen
           if ($LASTEXITCODE -ne 0) { throw 'Rauchprobe nach Neustart fehlgeschlagen.' }
 
-          $uninstaller = Join-Path $installDir 'Uninstall AgenturTool.exe'
+          $uninstaller = Join-Path $installDir 'Uninstall Privatura.exe'
           $uninstall = Start-Process -FilePath $uninstaller -ArgumentList '/S' -Wait -PassThru
           if ($uninstall.ExitCode -ne 0) { throw "Deinstallation endete mit Code $($uninstall.ExitCode)." }
 
       - uses: actions/upload-artifact@v4
         with:
           name: signed-windows-x64
-          path: apps/desktop/release/AgenturTool-*-x64.exe
+          path: apps/desktop/release/Privatura-*-x64.exe
           if-no-files-found: error
 
   draft:
@@ -205,7 +205,7 @@ jobs:
       - name: Prüfsummen erzeugen
         run: |
           cd dist
-          sha256sum AgenturTool-*.dmg AgenturTool-*.exe > SHA256SUMS
+          sha256sum Privatura-*.dmg Privatura-*.exe > SHA256SUMS
 
       # Die Datei, die die installierte Anwendung später abfragt. Sie liegt
       # dem Release bei, damit veröffentlichte Prüfsummen und Feed aus
@@ -230,6 +230,6 @@ jobs:
               exit 1
             fi
           else
-            gh release create "$TAG" --draft --generate-notes --title "AgenturTool $TAG" --verify-tag
+            gh release create "$TAG" --draft --generate-notes --title "Privatura $TAG" --verify-tag
           fi
           gh release upload "$TAG" dist/* --clobber

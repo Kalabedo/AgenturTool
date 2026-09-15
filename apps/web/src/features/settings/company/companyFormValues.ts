@@ -1,4 +1,4 @@
-import { centsToInput, type CompanyResponse, type UpdateCompanyInput } from '@agentur-tool/shared';
+import { centsToInput, type CompanyResponse, type UpdateCompanyInput } from '@privatura/shared';
 
 /**
  * Der Eingabetyp des geteilten Schemas ist zugleich der Formulartyp.

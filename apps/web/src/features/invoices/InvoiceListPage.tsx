@@ -18,7 +18,7 @@ import {
   type InvoiceSortField,
   type InvoiceStatus,
   type SortOrder,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js';

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { formatBytes, type UpdateStatus } from '@agentur-tool/shared';
+import { formatBytes, type UpdateStatus } from '@privatura/shared';
 import { Button } from '../../../components/ui/Button.js';
 import { Card } from '../../../components/ui/Card.js';
 import { Checkbox } from '../../../components/ui/Checkbox.js';
@@ -105,7 +105,7 @@ export function UpdatePage(): JSX.Element {
     <div className="space-y-6">
       {header}
 
-      <Card title={`AgenturTool ${current.currentVersion}`} description={describeState(current)}>
+      <Card title={`Privatura ${current.currentVersion}`} description={describeState(current)}>
         <div className="space-y-4">
           {current.available !== null && (
             <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[10rem_1fr]">
@@ -326,7 +326,7 @@ export function UpdatePage(): JSX.Element {
 
       <ConfirmDialog
         open={asking}
-        title={`AgenturTool ${current.ready?.version ?? ''} installieren?`}
+        title={`Privatura ${current.ready?.version ?? ''} installieren?`}
         description={
           'Die Anwendung erstellt ein Backup, installiert die neue Fassung und startet neu. ' +
           'Ungespeicherte Änderungen in einem Rechnungsentwurf gehen dabei verloren — schließe ' +

@@ -2,8 +2,8 @@
  * Erzeugt HTML-Dateien zum Ansehen. Kein Test — ein Werkzeug, um das
  * Layout im Browser zu prüfen, ohne die ganze Anwendung zu starten.
  *
- *   pnpm --filter @agentur-tool/invoice-template preview <zielordner>
- *   pnpm --filter @agentur-tool/invoice-template preview <ordner> --design modern
+ *   pnpm --filter @privatura/invoice-template preview <zielordner>
+ *   pnpm --filter @privatura/invoice-template preview <ordner> --design modern
  *
  * Ohne `--design` entsteht jede Variante für jedes Design, dazu einmal die
  * drei Dichtestufen. Das sind die Dateien, an denen die Designs entstanden
@@ -12,7 +12,7 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { DISCOUNT_TYPE, toIsoDate } from '@agentur-tool/shared';
+import { DISCOUNT_TYPE, toIsoDate } from '@privatura/shared';
 import { buildRenderModel } from '../src/render-model.js';
 import { renderInvoiceDocument } from '../src/server.js';
 import {

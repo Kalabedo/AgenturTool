@@ -6,7 +6,7 @@ import {
   LOGO_RECOMMENDED_MIN_WIDTH_PX,
   formatBytes,
   type CompanyResponse,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { ApiRequestError, apiClient } from '../../../lib/apiClient.js';
 import { queryKeys } from '../../../lib/queryKeys.js';
 import { Button } from '../../../components/ui/Button.js';

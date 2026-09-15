@@ -3,7 +3,7 @@
  *
  * Die Anwendung fragt beim Start eine einzige JSON-Datei (D41):
  *
- *   https://updates.agenturtool.de/stable/updates.json
+ *   https://updates.privatura.de/stable/updates.json
  *
  * Darin stehen die aktuelle Version, ein Satz dazu und je Paket Adresse,
  * Größe und SHA-256. Dieses Skript erzeugt sie aus den fertigen
@@ -33,10 +33,10 @@ import { fileURLToPath } from 'node:url';
 const scriptPath = fileURLToPath(import.meta.url);
 
 /** Wo die Pakete auf der Website liegen. */
-export const DEFAULT_BASE_URL = 'https://updates.agenturtool.de/stable';
+export const DEFAULT_BASE_URL = 'https://updates.privatura.de/stable';
 
 /** Wo die Versionshinweise stehen. `{version}` wird ersetzt. */
-export const DEFAULT_NOTES_URL = 'https://agenturtool.de/releases/{version}';
+export const DEFAULT_NOTES_URL = 'https://privatura.de/releases/{version}';
 
 /**
  * Welcher Dateiname zu welchem Paket gehört.
@@ -142,7 +142,7 @@ export function buildFeed({ version, releasedAt, notes, notesUrl, baseUrl, files
  */
 export function collectPackages(dir, version) {
   return PACKAGES.flatMap(({ platform, suffix }) => {
-    const name = `AgenturTool-${version}${suffix}`;
+    const name = `Privatura-${version}${suffix}`;
     const file = path.join(dir, name);
     if (!fs.existsSync(file)) return [];
 
@@ -166,7 +166,7 @@ if (path.resolve(process.argv[1] ?? '') === scriptPath) {
 
   fs.writeFileSync(out, `${JSON.stringify(feed, null, 2)}\n`, 'utf8');
 
-  process.stdout.write(`${out}: AgenturTool ${feed.version}\n`);
+  process.stdout.write(`${out}: Privatura ${feed.version}\n`);
   for (const file of files) {
     process.stdout.write(`  ${file.platform.padEnd(12)} ${file.name}\n`);
   }

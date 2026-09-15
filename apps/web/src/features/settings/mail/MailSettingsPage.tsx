@@ -12,7 +12,7 @@ import {
   type MailSecurity,
   type MailSettingsResponse,
   type MailTransport,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { apiClient } from '../../../lib/apiClient.js';
 import { fieldErrorsOf, formErrorOf } from '../../../lib/errorMessage.js';
 import { queryKeys } from '../../../lib/queryKeys.js';
@@ -212,12 +212,12 @@ export function MailSettingsPage(): JSX.Element {
     <div className="space-y-6">
       <PageHeader
         title="E-Mail"
-        description="Rechnungen und Zeitnachweise direkt aus AgenturTool verschicken."
+        description="Rechnungen und Zeitnachweise direkt aus Privatura verschicken."
       />
 
       <Card
         title="Versandweg"
-        description="Ohne Einrichtung baut AgenturTool keine Verbindung nach außen auf."
+        description="Ohne Einrichtung baut Privatura keine Verbindung nach außen auf."
       >
         <form className="space-y-5" onSubmit={submit}>
           <Field
@@ -225,7 +225,7 @@ export function MailSettingsPage(): JSX.Element {
             htmlFor="mail-transport"
             hint={
               values.transport === MAIL_TRANSPORT.MAIL_APP
-                ? 'AgenturTool legt den Entwurf samt Anhängen in deinem Mailprogramm an; abgeschickt wird er dort von dir. Bei Apple Mail fragt macOS einmalig um Erlaubnis dafür — ohne sie öffnet AgenturTool stattdessen eine fertige Nachrichtendatei.'
+                ? 'Privatura legt den Entwurf samt Anhängen in deinem Mailprogramm an; abgeschickt wird er dort von dir. Bei Apple Mail fragt macOS einmalig um Erlaubnis dafür — ohne sie öffnet Privatura stattdessen eine fertige Nachrichtendatei.'
                 : undefined
             }
           >

@@ -33,7 +33,7 @@ export const hexColorSchema = z
  * Die mitgelieferten Designs.
  *
  * Die Liste steht hier und nicht in der Template-Registry, weil dieses Paket
- * nicht von `@agentur-tool/invoice-template` abhängen darf — die Abhängigkeit
+ * nicht von `@privatura/invoice-template` abhängen darf — die Abhängigkeit
  * läuft andersherum. Dass beide Listen übereinstimmen, prüft ein Test dort
  * gegen `listTemplates()`.
  */

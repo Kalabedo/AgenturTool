@@ -5,7 +5,7 @@ import {
   summarizeTimeEntries,
   timeEntryInputSchema,
   timeEntryRangeSchema,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -28,7 +28,7 @@ let customerId: number;
 let otherCustomerId: number;
 
 beforeAll(async () => {
-  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentur-tool-zeit-'));
+  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'privatura-zeit-'));
   db = await createTestDatabase();
   prisma = db.prisma;
   timeEntries = new TimeEntriesService(prisma);

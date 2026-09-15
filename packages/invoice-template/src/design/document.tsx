@@ -4,7 +4,7 @@ import {
   formatCents,
   formatDateDe,
   formatQuantity,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import type { InvoiceRenderItem, InvoiceRenderModel } from '../types.js';
 
 /**

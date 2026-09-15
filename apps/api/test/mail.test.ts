@@ -15,7 +15,7 @@ import {
   MAIL_TEMPLATE_KEY,
   MAIL_TRANSPORT,
   TAX_PROFILE_KIND,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { StorageConfig } from '../src/common/config.service';
 import { CompanyService } from '../src/company/company.service';
 import { CustomersService } from '../src/customers/customers.service';
@@ -121,7 +121,7 @@ let handoff: FakeHandoff;
 beforeAll(async () => {
   db = await createTestDatabase();
   prisma = db.prisma;
-  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentur-tool-mail-'));
+  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'privatura-mail-'));
 
   const storage = new StorageConfig({ get: () => dataDir } as never);
   const files = new FilesService(prisma, storage);

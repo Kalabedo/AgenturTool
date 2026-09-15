@@ -8,7 +8,7 @@ import type {
   TaxSnapshot,
   TemplateSnapshot,
   TotalsSnapshot,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 
 /**
  * Das Modell, das ein Template zum Rendern bekommt.

@@ -3,7 +3,7 @@ import {
   ONBOARDING_STEP,
   type OnboardingStepId,
   type UpdateCompanyPayload,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import type { CompanyFormValues } from '../settings/company/companyFormValues.js';
 
 /**

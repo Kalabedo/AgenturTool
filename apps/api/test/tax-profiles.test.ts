@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { PrismaClient } from '@prisma/client';
-import { TAX_PROFILE_KIND, taxProfileInputSchema } from '@agentur-tool/shared';
+import { TAX_PROFILE_KIND, taxProfileInputSchema } from '@privatura/shared';
 import { TaxProfilesService } from '../src/tax-profiles/tax-profiles.service';
 import { CustomersService } from '../src/customers/customers.service';
 import { ApiError } from '../src/common/api-error';

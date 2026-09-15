@@ -9,7 +9,7 @@ import {
   DISCOUNT_TYPE,
   DOCUMENT_KIND,
   TAX_PROFILE_KIND,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { StorageConfig } from '../src/common/config.service';
 import { CompanyService } from '../src/company/company.service';
 import { FilesService } from '../src/files/files.service';
@@ -41,7 +41,7 @@ let dataDir: string;
 beforeAll(async () => {
   db = await createTestDatabase();
   prisma = db.prisma;
-  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentur-tool-einvoice-'));
+  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'privatura-einvoice-'));
 
   const storage = new StorageConfig({ get: () => dataDir } as never);
   const files = new FilesService(prisma, storage);

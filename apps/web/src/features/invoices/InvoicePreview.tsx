@@ -14,13 +14,13 @@ import {
   type IsoDate,
   type TaxProfileResponse,
   type TemplateSettingsResponse,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import {
   embeddedFontCss,
   resolveTemplate,
   buildRenderModel,
   type RenderModelSourceItem,
-} from '@agentur-tool/invoice-template';
+} from '@privatura/invoice-template';
 import { apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 import { TemplateFrame } from '../../components/TemplateFrame.js';

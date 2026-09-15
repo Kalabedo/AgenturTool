@@ -10,7 +10,7 @@ import {
   type TemplateSnapshot,
   type TotalsSnapshot,
   type UnitCode,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import type { InvoiceRenderModel, InvoiceRenderItem } from './types.js';
 
 /** Eine Position, wie sie im Entwurf oder in der Datenbank steht. */

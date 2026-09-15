@@ -26,9 +26,9 @@ describe('canInstall', () => {
 
 describe('windowsInstallCommand', () => {
   it('startet den Installer still und lässt ihn die Anwendung wieder öffnen', () => {
-    const command = windowsInstallCommand('C:\\Users\\tom\\AppData\\AgenturTool-1.4.0-x64.exe');
+    const command = windowsInstallCommand('C:\\Users\\tom\\AppData\\Privatura-1.4.0-x64.exe');
 
-    expect(command.command).toBe('C:\\Users\\tom\\AppData\\AgenturTool-1.4.0-x64.exe');
+    expect(command.command).toBe('C:\\Users\\tom\\AppData\\Privatura-1.4.0-x64.exe');
     // `/S` ohne Rückfragen, `--force-run` startet danach neu — beides
     // versteht der NSIS-Installer von electron-builder.
     expect(command.args).toEqual(['/S', '--force-run']);
@@ -37,11 +37,11 @@ describe('windowsInstallCommand', () => {
 
 describe('macBundlePath', () => {
   it('findet das Bundle, in dem die Anwendung läuft', () => {
-    expect(macBundlePath('/Applications/AgenturTool.app/Contents/MacOS/AgenturTool')).toBe(
-      '/Applications/AgenturTool.app',
+    expect(macBundlePath('/Applications/Privatura.app/Contents/MacOS/Privatura')).toBe(
+      '/Applications/Privatura.app',
     );
-    expect(macBundlePath('/Users/tom/Programme/AgenturTool.app/Contents/MacOS/AgenturTool')).toBe(
-      '/Users/tom/Programme/AgenturTool.app',
+    expect(macBundlePath('/Users/tom/Programme/Privatura.app/Contents/MacOS/Privatura')).toBe(
+      '/Users/tom/Programme/Privatura.app',
     );
   });
 
@@ -51,7 +51,7 @@ describe('macBundlePath', () => {
     // die es beim nächsten Start nicht mehr gibt.
     expect(
       macBundlePath(
-        '/private/var/folders/x/AppTranslocation/1234/d/AgenturTool.app/Contents/MacOS/AgenturTool',
+        '/private/var/folders/x/AppTranslocation/1234/d/Privatura.app/Contents/MacOS/Privatura',
       ),
     ).toBeNull();
   });
@@ -64,21 +64,21 @@ describe('macBundlePath', () => {
 
 describe('macInstallCommands', () => {
   const commands = macInstallCommands({
-    dmg: '/Users/tom/Library/Application Support/AgenturTool/Updates/AgenturTool-1.4.0-arm64.dmg',
-    mountPoint: '/Applications/.agentur-tool-update-ab12/abbild',
-    appInDmg: '/Applications/.agentur-tool-update-ab12/abbild/AgenturTool.app',
-    staged: '/Applications/.agentur-tool-update-ab12/AgenturTool.app',
+    dmg: '/Users/tom/Library/Application Support/Privatura/Updates/Privatura-1.4.0-arm64.dmg',
+    mountPoint: '/Applications/.privatura-update-ab12/abbild',
+    appInDmg: '/Applications/.privatura-update-ab12/abbild/Privatura.app',
+    staged: '/Applications/.privatura-update-ab12/Privatura.app',
   });
 
   it('hängt das Abbild ohne Fenster und nur lesend ein', () => {
     expect(commands.attach.command).toBe('hdiutil');
     expect(commands.attach.args).toEqual([
       'attach',
-      '/Users/tom/Library/Application Support/AgenturTool/Updates/AgenturTool-1.4.0-arm64.dmg',
+      '/Users/tom/Library/Application Support/Privatura/Updates/Privatura-1.4.0-arm64.dmg',
       '-nobrowse',
       '-readonly',
       '-mountpoint',
-      '/Applications/.agentur-tool-update-ab12/abbild',
+      '/Applications/.privatura-update-ab12/abbild',
     ]);
   });
 
@@ -104,7 +104,7 @@ describe('macInstallCommands', () => {
      */
     expect(commands.attach.command).toBe('hdiutil');
     expect(commands.attach.args).toContain(
-      '/Users/tom/Library/Application Support/AgenturTool/Updates/AgenturTool-1.4.0-arm64.dmg',
+      '/Users/tom/Library/Application Support/Privatura/Updates/Privatura-1.4.0-arm64.dmg',
     );
 
     for (const command of Object.values(commands)) {
@@ -118,7 +118,7 @@ describe('bundleVersion', () => {
   it('liest die Fassung aus dem Info.plist', () => {
     const plist = `<?xml version="1.0" encoding="UTF-8"?>
 <plist version="1.0"><dict>
-  <key>CFBundleName</key><string>AgenturTool</string>
+  <key>CFBundleName</key><string>Privatura</string>
   <key>CFBundleShortVersionString</key><string>1.4.0</string>
   <key>CFBundleVersion</key><string>1.4.0</string>
 </dict></plist>`;

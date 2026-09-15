@@ -36,7 +36,7 @@ const REFERENCE_FILE = path.join(__dirname, 'fixtures', 'pdf-reference.json');
  * Die Referenz neu aufnehmen — ausdrücklich kein Routinegriff.
  *
  *   UPDATE_PDF_REFERENCE=1 xvfb-run -a npx vitest run \
- *     --project @agentur-tool/api test/pdf-electron.test.ts
+ *     --project @privatura/api test/pdf-electron.test.ts
  *
  * Wer sie neu aufnimmt, erklärt damit, dass sich das Dokument ändern
  * *durfte*. Die erste Aufnahme entstand mit dem Puppeteer-Weg, den es
@@ -115,7 +115,7 @@ let harnessOutput: string;
 beforeAll(() => {
   if (!available) return;
 
-  workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentur-tool-electron-'));
+  workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'privatura-electron-'));
   const input = path.join(workDir, 'documents.json');
   const output = path.join(workDir, 'pdf');
   fs.writeFileSync(input, JSON.stringify([...referenceDocuments(), PHONING_HOME]), 'utf8');

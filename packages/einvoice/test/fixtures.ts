@@ -7,8 +7,8 @@ import {
   UNIT_CODE,
   type IsoDate,
   type TotalsSnapshot,
-} from '@agentur-tool/shared';
-import type { RenderModelSource } from '@agentur-tool/invoice-template';
+} from '@privatura/shared';
+import type { RenderModelSource } from '@privatura/invoice-template';
 
 /**
  * Eine vollständige, ausgestellte Rechnung als Quelle.

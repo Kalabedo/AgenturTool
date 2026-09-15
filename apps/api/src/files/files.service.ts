@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { Injectable } from '@nestjs/common';
 import type { Asset } from '@prisma/client';
-import { LOGO_MAX_BYTES, formatBytes } from '@agentur-tool/shared';
+import { LOGO_MAX_BYTES, formatBytes } from '@privatura/shared';
 import { ApiError } from '../common/api-error';
 import { StorageConfig } from '../common/config.service';
 import { PrismaService } from '../common/prisma.service';

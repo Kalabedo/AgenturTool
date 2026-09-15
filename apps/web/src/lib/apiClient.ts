@@ -41,7 +41,7 @@ export class ApiRequestError extends Error {
  * AuthGate — hört zu und fragt die Sitzung neu ab. Ohne das bliebe nach dem
  * Ablauf eine Oberfläche stehen, in der jede Aktion still fehlschlägt.
  */
-export const SESSION_EXPIRED_EVENT = 'agentur-tool:session-expired';
+export const SESSION_EXPIRED_EVENT = 'privatura:session-expired';
 
 async function toError(response: Response): Promise<ApiRequestError> {
   if (response.status === 401) {

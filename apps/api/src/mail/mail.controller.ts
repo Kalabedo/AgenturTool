@@ -29,7 +29,7 @@ import {
   type MailTemplateKey,
   type MailTemplatePayload,
   type MailTemplateResponse,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { MailService } from './mail.service';
 import { MailSettingsService } from './mail-settings.service';

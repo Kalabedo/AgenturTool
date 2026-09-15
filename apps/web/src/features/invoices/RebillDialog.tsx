@@ -8,7 +8,7 @@ import {
   toIsoDate,
   type InvoiceResponse,
   type RebillPreviewResponse,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 import { formErrorOf } from '../../lib/errorMessage.js';

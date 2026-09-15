@@ -12,7 +12,7 @@ import {
   type CustomerResponse,
   type IsoDate,
   type TimeEntryResponse,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 import { Button } from '../../components/ui/Button.js';

@@ -1,5 +1,5 @@
-import { buildRenderModel, embeddedFontCss, listTemplates } from '@agentur-tool/invoice-template';
-import type { TemplateSnapshot } from '@agentur-tool/shared';
+import { buildRenderModel, embeddedFontCss, listTemplates } from '@privatura/invoice-template';
+import type { TemplateSnapshot } from '@privatura/shared';
 import { TemplateFrame } from '../../components/TemplateFrame.js';
 
 interface DesignPickerProps {

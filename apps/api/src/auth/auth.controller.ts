@@ -1,10 +1,6 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import {
-  loginInputSchema,
-  type AuthSessionResponse,
-  type LoginPayload,
-} from '@agentur-tool/shared';
+import { loginInputSchema, type AuthSessionResponse, type LoginPayload } from '@privatura/shared';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { AuthConfig } from './auth.config';
 import { AuthService } from './auth.service';

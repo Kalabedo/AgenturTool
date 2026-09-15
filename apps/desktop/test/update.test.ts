@@ -18,8 +18,8 @@ import { UpdateService } from '../src/update/update-service';
  */
 
 const FEED = {
-  url: 'https://updates.agenturtool.de/stable/updates.json',
-  allowedHosts: ['updates.agenturtool.de', 'agenturtool.de'],
+  url: 'https://updates.privatura.de/stable/updates.json',
+  allowedHosts: ['updates.privatura.de', 'privatura.de'],
 };
 
 const SHA = 'b'.repeat(64);
@@ -30,15 +30,15 @@ function feedBody(version = '1.4.0'): string {
     version,
     releasedAt: '2026-09-13',
     notes: 'Schnellere Vorschau.',
-    notesUrl: 'https://agenturtool.de/releases',
+    notesUrl: 'https://privatura.de/releases',
     downloads: {
       'macos-arm64': {
-        url: `https://updates.agenturtool.de/stable/AgenturTool-${version}-arm64.dmg`,
+        url: `https://updates.privatura.de/stable/Privatura-${version}-arm64.dmg`,
         sizeBytes: 98_000_000,
         sha256: SHA,
       },
       'windows-x64': {
-        url: `https://updates.agenturtool.de/stable/AgenturTool-${version}-x64.exe`,
+        url: `https://updates.privatura.de/stable/Privatura-${version}-x64.exe`,
         sizeBytes: 92_000_000,
         sha256: SHA,
       },
@@ -97,7 +97,7 @@ function service(overrides: Partial<ConstructorParameters<typeof UpdateService>[
 }
 
 beforeEach(() => {
-  stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentur-tool-update-'));
+  stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'privatura-update-'));
   updatesDir = path.join(stateDir, 'Updates');
   opened.length = 0;
   revealed.length = 0;
@@ -115,7 +115,7 @@ describe('updateFeedConfig', () => {
   it('nimmt ohne Angabe die eingebaute Adresse', () => {
     const config = updateFeedConfig(undefined);
     expect(config.url).toBe(DEFAULT_UPDATE_FEED_URL);
-    expect(config.allowedHosts).toContain('updates.agenturtool.de');
+    expect(config.allowedHosts).toContain('updates.privatura.de');
   });
 
   it('lässt sich abschalten', () => {
@@ -130,7 +130,7 @@ describe('updateFeedConfig', () => {
     expect(config.allowedHosts).toEqual(['test.example.de']);
 
     expect(() => updateFeedConfig('http://test.example.de/feed.json')).toThrow('HTTPS');
-    expect(() => updateFeedConfig('irgendwas')).toThrow('AGENTUR_TOOL_UPDATE_FEED');
+    expect(() => updateFeedConfig('irgendwas')).toThrow('PRIVATURA_UPDATE_FEED');
   });
 });
 
@@ -163,7 +163,7 @@ describe('UpdateService', () => {
     const updates = service({ platform: 'linux', arch: 'x64' });
     await updates.check();
     expect(await updates.openDownload()).toBe(true);
-    expect(opened.at(-1)).toBe('https://agenturtool.de/releases');
+    expect(opened.at(-1)).toBe('https://privatura.de/releases');
   });
 
   it('öffnet das Paket im Browser und lädt nichts selbst', async () => {
@@ -171,7 +171,7 @@ describe('UpdateService', () => {
     await updates.check();
 
     expect(await updates.openDownload()).toBe(true);
-    expect(opened).toEqual(['https://updates.agenturtool.de/stable/AgenturTool-1.4.0-arm64.dmg']);
+    expect(opened).toEqual(['https://updates.privatura.de/stable/Privatura-1.4.0-arm64.dmg']);
   });
 
   it('öffnet nichts, solange es nichts zu laden gibt', async () => {
@@ -217,7 +217,7 @@ describe('UpdateService', () => {
     const status = await service({ fetchImpl: offline }).check();
 
     expect(status.state).toBe('fehler');
-    expect(status.error).toBe('Der Updatefeed ist nicht erreichbar (updates.agenturtool.de).');
+    expect(status.error).toBe('Der Updatefeed ist nicht erreichbar (updates.privatura.de).');
   });
 
   it('prüft nicht öfter als einmal in 24 Stunden', async () => {
@@ -305,10 +305,10 @@ describe('UpdateService — der ganze Weg', () => {
       version,
       releasedAt: '2026-09-13',
       notes: 'Schnellere Vorschau.',
-      notesUrl: 'https://agenturtool.de/releases',
+      notesUrl: 'https://privatura.de/releases',
       downloads: {
         'macos-arm64': {
-          url: `https://updates.agenturtool.de/stable/AgenturTool-${version}-arm64.dmg`,
+          url: `https://updates.privatura.de/stable/Privatura-${version}-arm64.dmg`,
           sizeBytes: PAKET.byteLength,
           sha256: sha,
         },
@@ -467,7 +467,7 @@ describe('UpdateService — ein Feed, der Unsinn erzählt', () => {
       downloads: {
         // Kein Paket, sondern ein Verzeichnis.
         'macos-arm64': {
-          url: 'https://updates.agenturtool.de/stable/',
+          url: 'https://updates.privatura.de/stable/',
           sizeBytes: 10,
           sha256: SHA,
         },

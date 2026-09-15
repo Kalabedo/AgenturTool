@@ -5,7 +5,7 @@ import {
   type MailTemplateKey,
   type MailTemplatePayload,
   type MailTemplateResponse,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import type { MailTemplate } from '@prisma/client';
 import { ApiError } from '../common/api-error';
 import { PrismaService } from '../common/prisma.service';

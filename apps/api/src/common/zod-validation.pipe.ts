@@ -3,7 +3,7 @@ import { ZodError, type ZodTypeAny, type z } from 'zod';
 import { ApiError } from './api-error';
 
 /**
- * Validiert eingehende Daten gegen ein Zod-Schema aus `@agentur-tool/shared`.
+ * Validiert eingehende Daten gegen ein Zod-Schema aus `@privatura/shared`.
  *
  * Bewusst statt class-validator: Die Schemas im shared-Paket sind damit die
  * einzige Validierungsquelle für Frontend und Backend. Zwei parallele

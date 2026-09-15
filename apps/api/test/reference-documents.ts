@@ -28,12 +28,12 @@ import {
   type TemplateSnapshot,
   type TimeEntryRangeQuery,
   type TimeEntryResponse,
-} from '@agentur-tool/shared';
-import { buildRenderModel, type RenderModelSource } from '@agentur-tool/invoice-template';
+} from '@privatura/shared';
+import { buildRenderModel, type RenderModelSource } from '@privatura/invoice-template';
 import {
   renderInvoiceDocument,
   renderInvoiceFooterTemplate,
-} from '@agentur-tool/invoice-template/server';
+} from '@privatura/invoice-template/server';
 import { TimeReportService } from '../src/pdf/time-report.service';
 
 /** Ein fertiges Dokument, so wie es beim Renderer ankommt. */

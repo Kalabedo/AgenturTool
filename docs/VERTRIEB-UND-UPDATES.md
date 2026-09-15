@@ -17,8 +17,8 @@
   signierte Pakete. Die Anwendung prüft, lädt und installiert über den
   Electron-Hauptprozess, erzeugt vorher ein Backup und startet nur mit
   Zustimmung des Nutzers neu. Umgesetzt; siehe Architektur Abschnitt 28.
-- **Stabile App-Identität:** Produktname `AgenturTool`, App-ID
-  `de.agenturtool.app`, bestehende Datenverzeichnisse und dieselben
+- **Stabile App-Identität:** Produktname `Privatura`, App-ID
+  `de.privatura.app`, bestehende Datenverzeichnisse und dieselben
   Signaturidentitäten ändern sich nach dem öffentlichen Release nicht.
 - **Datenschutzgrenze:** Updateprüfung, Lizenzaktivierung und bewusst
   ausgelöster E-Mail-Versand sind technisch getrennte Netzwerkzwecke. Es gibt
@@ -34,7 +34,7 @@ festgehalten.
 
 ## Vertriebskonzept
 
-AgenturTool startet mit der eigenen Website als primärem Verkaufskanal. Die
+Privatura startet mit der eigenen Website als primärem Verkaufskanal. Die
 Website verkauft eine Lizenz und bietet die vorhandenen signierten Installer
 für macOS und Windows an. Die Anwendung bleibt lokal und eigenständig; nur
 Lizenzaktivierung, manuelle E-Mail-Funktionen und die Updateprüfung benötigen
@@ -82,7 +82,7 @@ festgelegt.
 
 ## Verkauf und Download über die Website
 
-1. Der Besucher wählt macOS oder Windows und kauft AgenturTool.
+1. Der Besucher wählt macOS oder Windows und kauft Privatura.
 2. Der Zahlungsanbieter berechnet den korrekten Endpreis und stellt den
    Kaufbeleg aus.
 3. Der Käufer erhält per E-Mail einen Lizenzschlüssel und einen persönlichen
@@ -150,12 +150,12 @@ Release-Pipeline vorgesehen.
 
 Beispiel für das erste Banner:
 
-> AgenturTool 1.4 ist verfügbar · Verbesserte Exporte und Fehlerkorrekturen  
+> Privatura 1.4 ist verfügbar · Verbesserte Exporte und Fehlerkorrekturen
 > Was ist neu? · Update laden · Später
 
 Nach dem Download:
 
-> AgenturTool 1.4 ist bereit. Vor der Installation wird automatisch ein
+> Privatura 1.4 ist bereit. Vor der Installation wird automatisch ein
 > Backup erstellt.  
 > Neu starten und installieren · Später
 
@@ -182,8 +182,8 @@ Ablauf steht in [`RELEASE.md`](RELEASE.md). Der stabile Kanal liegt unter
 der eigenen Domain:
 
 ```text
-https://updates.agenturtool.de/stable/updates.json
-https://updates.agenturtool.de/stable/AgenturTool-<Version>-<arch>.<ext>
+https://updates.privatura.de/stable/updates.json
+https://updates.privatura.de/stable/Privatura-<Version>-<arch>.<ext>
 ```
 
 Der Updatefeed enthält nur:
@@ -225,7 +225,7 @@ schmale, typisierte Brücke. Externe Inhalte werden nie im App-Fenster geladen.
 - [ ] Produkt-, Datenschutz-, Widerrufs- und Supportseiten erstellen.
 - [ ] Lizenzformat und Offline-Verhalten definieren.
 - [x] Updatefeed aufbauen; ein Testkanal lässt sich über
-      `AGENTUR_TOOL_UPDATE_FEED` gegen dieselbe Anwendung prüfen.
+      `PRIVATURA_UPDATE_FEED` gegen dieselbe Anwendung prüfen.
 - [x] Releasepipeline erzeugt die Feed-Datei aus den fertigen Paketen.
 - [ ] Releasepipeline um Updater-Artefakte (macOS-ZIP) und atomare
       Veröffentlichung erweitern — erst nötig, wenn installiert statt nur

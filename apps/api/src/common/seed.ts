@@ -5,7 +5,7 @@ import {
   TAX_PROFILE_KIND,
   VAT_EXEMPTION_REASON_CODE,
   type MailTemplateKey,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import type { PrismaClient } from '@prisma/client';
 
 /** Was nach dem Seed in der Datenbank steht. */

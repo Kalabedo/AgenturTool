@@ -12,7 +12,7 @@ export function useDocumentTitle(title: string | undefined): void {
     if (title === undefined) return;
 
     const previous = document.title;
-    document.title = `${title} · AgenturTool`;
+    document.title = `${title} · Privatura`;
     return () => {
       document.title = previous;
     };

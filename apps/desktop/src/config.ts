@@ -44,7 +44,7 @@ export function pdfTimeoutMs(raw: string | undefined = process.env.PDF_TIMEOUT_M
  * darf sie trotzdem ersetzen — das ist der Weg, den Updatepfad gegen eine
  * Testdomain zu prüfen, bevor ein Release herausgeht.
  */
-export const DEFAULT_UPDATE_FEED_URL = 'https://updates.agenturtool.de/stable/updates.json';
+export const DEFAULT_UPDATE_FEED_URL = 'https://updates.privatura.de/stable/updates.json';
 
 /**
  * Die Hosts, von denen Downloads und Hinweisseiten stammen dürfen.
@@ -53,7 +53,7 @@ export const DEFAULT_UPDATE_FEED_URL = 'https://updates.agenturtool.de/stable/up
  * veränderter Feed auf ein beliebiges Paket zeigen. Sie ist deshalb kurz
  * und gehört zur Anwendung, nicht zum Feed.
  */
-const DEFAULT_UPDATE_HOSTS = ['updates.agenturtool.de', 'agenturtool.de', 'www.agenturtool.de'];
+const DEFAULT_UPDATE_HOSTS = ['updates.privatura.de', 'privatura.de', 'www.privatura.de'];
 
 export interface UpdateFeedConfig {
   /** Die Feed-Adresse — `null`, wenn die Prüfung abgeschaltet ist. */
@@ -63,7 +63,7 @@ export interface UpdateFeedConfig {
 }
 
 /**
- * Was aus `AGENTUR_TOOL_UPDATE_FEED` folgt.
+ * Was aus `PRIVATURA_UPDATE_FEED` folgt.
  *
  * Leer heißt: die eingebaute Adresse. `aus` schaltet die Prüfung ganz ab —
  * das braucht die Rauchprobe, die belegen soll, dass beim Start nichts den
@@ -72,7 +72,7 @@ export interface UpdateFeedConfig {
  * nebenbei die Produktionsadressen mit freischalten.
  */
 export function updateFeedConfig(
-  raw: string | undefined = process.env.AGENTUR_TOOL_UPDATE_FEED,
+  raw: string | undefined = process.env.PRIVATURA_UPDATE_FEED,
 ): UpdateFeedConfig {
   if (raw === undefined || raw.trim() === '') {
     return { url: DEFAULT_UPDATE_FEED_URL, allowedHosts: DEFAULT_UPDATE_HOSTS };
@@ -88,12 +88,12 @@ export function updateFeedConfig(
     parsed = new URL(value);
   } catch {
     throw new Error(
-      `AGENTUR_TOOL_UPDATE_FEED muss „aus" oder eine HTTPS-Adresse sein (erhalten: ${value}).`,
+      `PRIVATURA_UPDATE_FEED muss „aus" oder eine HTTPS-Adresse sein (erhalten: ${value}).`,
     );
   }
 
   if (parsed.protocol !== 'https:') {
-    throw new Error(`AGENTUR_TOOL_UPDATE_FEED muss HTTPS sein (erhalten: ${value}).`);
+    throw new Error(`PRIVATURA_UPDATE_FEED muss HTTPS sein (erhalten: ${value}).`);
   }
 
   return { url: parsed.toString(), allowedHosts: [parsed.hostname] };
@@ -113,7 +113,7 @@ export function updateFeedConfig(
  * nicht scheitern.
  */
 export function forcedDailyBackup(
-  raw: string | undefined = process.env.AGENTUR_TOOL_BACKUP_TAEGLICH,
+  raw: string | undefined = process.env.PRIVATURA_BACKUP_TAEGLICH,
 ): boolean {
   return raw?.trim() === 'erzwingen';
 }

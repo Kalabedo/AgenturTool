@@ -1,4 +1,4 @@
-import type { TemplateDensityValue } from '@agentur-tool/shared';
+import type { TemplateDensityValue } from '@privatura/shared';
 /**
  * Die Dichte: drei Stufen, ein Multiplikator.
  *

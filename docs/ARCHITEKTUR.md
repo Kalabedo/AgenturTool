@@ -1,9 +1,9 @@
-# Projektplan: Eigene Rechnungssoftware ("AgenturTool")
+# Projektplan: Eigene Rechnungssoftware ("Privatura")
 
 **Status:** v2.0 — V1 steht, und die Anwendung wird als Desktop-Anwendung
 für macOS und Windows ausgeliefert (D1, D34). Die Daten sind gesichert und
 der Weg zurück ist einmal wirklich gegangen worden (Abschnitt 17).
-**Repository:** `Kalabedo/AgenturTool`
+**Repository:** `Kalabedo/Privatura`
 
 Dieses Dokument ist die verbindliche Architekturgrundlage. Es wird mit dem Code
 fortgeschrieben: Wenn eine Entscheidung sich im Lauf der Umsetzung ändert, wird
@@ -50,7 +50,7 @@ sie hier korrigiert und nicht nur im Code.
 | D39 | Lizenzmodell             | **Einmalkauf mit dauerhaftem Nutzungsrecht**; zwölf Monate Updates inklusive, danach optional bezahlbare Verlängerung des Updatezeitraums                                                                                                                                                                                                                                                                                                                                                                  |
 | D40 | Offline-Nutzung          | **Keine dauerhafte Aktivierungspflicht.** Nach einmaliger Aktivierung beziehungsweise Import einer signierten Lizenzdatei funktioniert die berechtigte Version dauerhaft offline                                                                                                                                                                                                                                                                                                                           |
 | D41 | Anwendungsupdates        | **Eigener, signierter Updatekanal** über eine fest erlaubte HTTPS-Domain; Prüfung im Electron-Hauptprozess, Installation nur nach Zustimmung und lokalem Backup                                                                                                                                                                                                                                                                                                                                            |
-| D42 | App-Identität            | **Stabil ab öffentlichem Release:** `AgenturTool`, App-ID `de.agenturtool.app`, bestehende Datenpfade und dieselben Herausgeber-/Signaturidentitäten                                                                                                                                                                                                                                                                                                                                                       |
+| D42 | App-Identität            | **Stabil ab öffentlichem Release:** `Privatura`, App-ID `de.privatura.app`, bestehende Datenpfade und dieselben Herausgeber-/Signaturidentitäten                                                                                                                                                                                                                                                                                                                                                           |
 | D43 | Externe Verbindungen     | **Nach Zweck getrennt und minimal erlaubt:** Updates, Aktivierung und bewusst ausgelöster E-Mail-Versand; keine Telemetrie und keine Kunden- oder Rechnungsdaten beim Updatecheck                                                                                                                                                                                                                                                                                                                          |
 | D44 | Preisvalidierung         | **Vor Ausbau des Vertriebs und weiterer großer Module** mit Solo-Agenturen testen; Preis zunächst Hypothese, kein allein aus Entwicklungskosten abgeleiteter Beschluss                                                                                                                                                                                                                                                                                                                                     |
 | D45 | E-Mail-Versandwege       | **Zwei Wege mit verschiedenen Zusagen:** SMTP verschickt selbst und setzt den Versandvermerk; die lokale Mail-Anwendung bekommt einen fertigen Entwurf samt Anhängen (Apple Mail über AppleScript, sonst als `.eml`), und der Vermerk bleibt beim Benutzer. Vorbelegung ist „kein Versand" (Abschnitt 27)                                                                                                                                                                                                  |
@@ -172,7 +172,7 @@ neu. Das Frontend rechnet nur für die sofortige UI-Reaktion.
 pnpm Workspaces, kein Turborepo im MVP (bei 4 Paketen unnötig; nachrüstbar).
 
 ```
-agentur-tool/
+privatura/
 ├── apps/
 │   ├── web/          React SPA
 │   ├── api/          Node-Backend
@@ -918,7 +918,7 @@ Netzwerk noch eine verlässliche Schriftauswahl hat; eine per URL eingebundene
 Schrift fiele dort still auf einen Ersatz zurück, und ein Ersatz bricht
 Zeilen anders um. Die Vorschau zeigte dann etwas anderes als das PDF —
 genau das, was die gemeinsame Komponente verhindern soll. `pnpm --filter
-@agentur-tool/invoice-template fonts` erzeugt die Datei neu; sie ist
+@privatura/invoice-template fonts` erzeugt die Datei neu; sie ist
 eingecheckt, damit der Build nicht an der Erreichbarkeit von npm hängt.
 
 **Seitenränder kommen im Druck aus `@page` (D31).** Ein Padding auf der
@@ -1538,7 +1538,7 @@ um und überschreibt die Hülle.
 **Gepackt wird das echte Paket, nicht ein erfundenes.** Ein erzeugtes
 Manifest ohne `dependencies` ergab ein `app.asar` von 61 kB, in dem der
 gesamte Server fehlte. Deshalb ist `paket/` der Abzug von
-`@agentur-tool/desktop` mit dessen eigener Abhängigkeitsliste. Das
+`@privatura/desktop` mit dessen eigener Abhängigkeitsliste. Das
 Frontend liegt bewusst daneben unter `web/` statt in `node_modules`: Als
 Abhängigkeit eingetragen brächte es React, den Router und alles Weitere
 mit, obwohl Vite genau das längst gebündelt hat.
@@ -1714,8 +1714,8 @@ am Backend brauchen dort einen Neustart. Dafür gibt es PDFs.
 **Betrieb.** Die installierte Anwendung: Doppelklick, eigenes Fenster.
 Server und Frontend stecken darin, der Browser für die PDF-Erzeugung
 ebenfalls. Die Daten liegen außerhalb, unter
-`~/Library/Application Support/AgenturTool/Daten` beziehungsweise
-`%APPDATA%\AgenturTool\Daten`, und überleben jedes Update (Abschnitt 16a).
+`~/Library/Application Support/Privatura/Daten` beziehungsweise
+`%APPDATA%\Privatura\Daten`, und überleben jedes Update (Abschnitt 16a).
 
 ---
 
@@ -2041,7 +2041,7 @@ weil beide Fassungen gleich plausibel aussehen. Deshalb steht jede Gruppe in
 
 Die eigenen Tests prüfen, ob herauskommt, was gedacht war. Ob das Gedachte
 stimmt, sagt nur, wer die Regeln gemacht hat. `pnpm --filter
-@agentur-tool/einvoice pruefen` lässt den offiziellen **KoSIT-Validator**
+@privatura/einvoice pruefen` lässt den offiziellen **KoSIT-Validator**
 über die Golden-Dateien laufen; die CI tut dasselbe bei jedem Push.
 
 Beim ersten Lauf hat er vier Dinge gefunden, die keine Selbstprüfung
@@ -2104,7 +2104,7 @@ ein Kundenname darf beim Öffnen einer CSV niemals Programmtext werden.
 
 ### Warum noch kein DATEV-Buchungsstapel
 
-Das DATEV-Format verlangt fachliche Angaben, die AgenturTool bewusst noch
+Das DATEV-Format verlangt fachliche Angaben, die Privatura bewusst noch
 nicht besitzt: mindestens Sach-/Debitorenkonten, die Abbildung von
 Steuerkategorien auf Steuerschlüssel sowie Berater- und Mandantennummer. Diese
 Werte zu raten würde eine formal importierbare, fachlich aber falsche Datei
@@ -2330,7 +2330,7 @@ Eine Datei auf einer festen HTTPS-Adresse, erzeugt von der Releasepipeline
   "version": "1.4.0",
   "releasedAt": "2026-09-13",
   "notes": "Verbesserte Exporte und Fehlerkorrekturen.",
-  "notesUrl": "https://agenturtool.de/releases/1.4.0",
+  "notesUrl": "https://privatura.de/releases/1.4.0",
   "downloads": {
     "macos-arm64": { "url": "…-arm64.dmg", "sizeBytes": 98000000, "sha256": "…" },
     "macos-x64": { "url": "…-x64.dmg", "sizeBytes": 101000000, "sha256": "…" },
@@ -2388,7 +2388,7 @@ erwarteten vergleichen, mit `ditto` neben die eigene Installation kopieren —
 `ditto` und nicht `cp`, weil eine Signatur, die den Kopiervorgang nicht
 übersteht, keine mehr ist — und dann zwei `rename` auf demselben Volume:
 das alte Bundle beiseite, das neue an seine Stelle. Es gibt keinen
-Zwischenzustand, in dem `AgenturTool.app` halb aus zwei Fassungen besteht;
+Zwischenzustand, in dem `Privatura.app` halb aus zwei Fassungen besteht;
 scheitert der zweite Schritt, kommt der erste zurück.
 
 Das alte Bundle bleibt bis zum nächsten Start liegen — aus ihm läuft der
@@ -2438,7 +2438,7 @@ einmal in 24 Stunden; der Zeitpunkt steht in `aktualisierung.json` neben der
 Fensterdatei und überlebt deshalb auch den Neustart. Ebenso das geladene
 Paket: Wer „Später" wählt, soll beim nächsten Start nicht erneut laden
 müssen. Abschalten lässt sich das an zwei Stellen: der Haken unter
-Einstellungen → Updates und `AGENTUR_TOOL_UPDATE_FEED=aus` für eine ganze
+Einstellungen → Updates und `PRIVATURA_UPDATE_FEED=aus` für eine ganze
 Installation. Die Rauchprobe setzt genau diese Variable und prüft, dass der
 Endpunkt „abgeschaltet" meldet — das Versprechen „keine Anfrage nach außen"
 gilt dort unverändert.

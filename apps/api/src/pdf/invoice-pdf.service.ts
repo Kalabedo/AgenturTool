@@ -24,16 +24,16 @@ import {
   type TaxSnapshot,
   type TemplateSnapshot,
   type TotalsSnapshot,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import {
   buildRenderModel,
   type InvoiceRenderModel,
   type RenderModelSourceItem,
-} from '@agentur-tool/invoice-template';
+} from '@privatura/invoice-template';
 import {
   renderInvoiceDocument,
   renderInvoiceFooterTemplate,
-} from '@agentur-tool/invoice-template/server';
+} from '@privatura/invoice-template/server';
 import { ApiError } from '../common/api-error';
 import { PrismaService } from '../common/prisma.service';
 import { CompanyService } from '../company/company.service';

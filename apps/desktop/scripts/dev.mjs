@@ -62,7 +62,7 @@ async function waitForVite(timeoutMs = 60_000) {
   throw new Error(`Der Vite-Server war nach ${String(timeoutMs)} ms nicht unter ${DEV_URL}.`);
 }
 
-const vite = start('pnpm', ['--filter', '@agentur-tool/web', 'dev'], { cwd: repoRoot });
+const vite = start('pnpm', ['--filter', '@privatura/web', 'dev'], { cwd: repoRoot });
 vite.on('exit', (code) => {
   if (code !== 0 && code !== null) {
     stopAll();
@@ -74,7 +74,7 @@ await waitForVite();
 
 const electron = start('pnpm', ['exec', 'electron', 'dist/main.js'], {
   cwd: desktopDir,
-  env: { ...process.env, AGENTUR_TOOL_DEV_URL: DEV_URL },
+  env: { ...process.env, PRIVATURA_DEV_URL: DEV_URL },
 });
 
 electron.on('exit', (code) => {

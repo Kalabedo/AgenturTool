@@ -1,10 +1,5 @@
 import { forwardRef, useState, type ChangeEvent, type FocusEvent, type KeyboardEvent } from 'react';
-import {
-  TIME_GRID_MINUTES,
-  formatTimeOfDay,
-  parseTimeInput,
-  snapToGrid,
-} from '@agentur-tool/shared';
+import { TIME_GRID_MINUTES, formatTimeOfDay, parseTimeInput, snapToGrid } from '@privatura/shared';
 import { Input } from '../../components/ui/Input.js';
 
 interface TimeInputProps {

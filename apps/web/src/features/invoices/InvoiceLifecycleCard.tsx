@@ -9,7 +9,7 @@ import {
   isCancellable,
   toIsoDate,
   type InvoiceResponse,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { ApiRequestError, apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 import { Button } from '../../components/ui/Button.js';

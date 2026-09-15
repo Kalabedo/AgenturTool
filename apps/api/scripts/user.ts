@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { config as loadEnv } from 'dotenv';
 import { PrismaClient } from '@prisma/client';
 import { Algorithm, hash as argonHash } from '@node-rs/argon2';
-import { PASSWORD_MIN_LENGTH, passwordSchema } from '@agentur-tool/shared';
+import { PASSWORD_MIN_LENGTH, passwordSchema } from '@privatura/shared';
 
 const apiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 loadEnv({ path: path.join(apiRoot, '../../.env') });

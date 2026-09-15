@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { PrismaClient } from '@prisma/client';
-import { updateTemplateSettingsSchema } from '@agentur-tool/shared';
+import { updateTemplateSettingsSchema } from '@privatura/shared';
 import { TemplateSettingsService } from '../src/template-settings/template-settings.service';
 import { createTestDatabase, type TestDatabase } from './database.helper';
 

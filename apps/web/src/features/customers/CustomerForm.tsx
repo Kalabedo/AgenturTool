@@ -13,7 +13,7 @@ import {
   type CustomerResponse,
   type ElectronicAddressScheme,
   type TaxProfileResponse,
-} from '@agentur-tool/shared';
+} from '@privatura/shared';
 import { apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 import { Select } from '../../components/ui/Select.js';

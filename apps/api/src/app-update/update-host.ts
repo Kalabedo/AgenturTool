@@ -15,7 +15,7 @@
  * nicht, und der Endpunkt sagt genau das. Eine Weboberfläche im Browser
  * aktualisiert sich, indem man sie neu lädt.
  */
-import type { UpdateStatus } from '@agentur-tool/shared';
+import type { UpdateStatus } from '@privatura/shared';
 
 export interface UpdateHost {
   /** Der zuletzt bekannte Zustand; fragt nichts nach draußen. */

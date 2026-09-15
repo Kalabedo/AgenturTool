@@ -7,7 +7,7 @@
  * nicht kennen müssen.
  *
  * Der Zustand liegt in beiden Fällen außerhalb: `app.getPath('userData')`,
- * auf einem Mac also `~/Library/Application Support/AgenturTool`. Er gehört
+ * auf einem Mac also `~/Library/Application Support/Privatura`. Er gehört
  * dem Benutzer, nicht der Installation — ein Update darf ihn nicht
  * anfassen, und eine Deinstallation nicht mitnehmen.
  */
@@ -58,7 +58,7 @@ function resolveWebRoot(apiDir: string): string {
 }
 
 export function resolvePaths(): AppPaths {
-  const apiDir = path.dirname(require.resolve('@agentur-tool/api/package.json'));
+  const apiDir = path.dirname(require.resolve('@privatura/api/package.json'));
 
   // Die Geschäftsdaten in einen eigenen Unterordner, nicht direkt nach
   // `userData`: Dort legt Chromium seine Caches, Cookies und Datenbanken

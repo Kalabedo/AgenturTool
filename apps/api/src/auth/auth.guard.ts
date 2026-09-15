@@ -1,7 +1,7 @@
 import { Injectable, type CanActivate, type ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
-import type { AuthUser } from '@agentur-tool/shared';
+import type { AuthUser } from '@privatura/shared';
 import { ApiError } from '../common/api-error';
 import { AuthConfig } from './auth.config';
 import { AuthService } from './auth.service';
