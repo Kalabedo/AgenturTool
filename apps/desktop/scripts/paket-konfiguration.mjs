@@ -66,18 +66,31 @@ export function requiredReleaseEnvironment(platform) {
   }
 
   if (platform === 'win32') {
-    return ['CSC_LINK', 'CSC_KEY_PASSWORD'];
+    // Signiert wird über das Cloud-HSM von SSL.com und nicht mit einer
+    // Zertifikatsdatei: Seit dem 1. Juni 2023 gibt keine öffentlich
+    // vertraute Zertifizierungsstelle mehr eine PFX mit exportierbarem
+    // privatem Schlüssel heraus, wie `CSC_LINK` sie erwartet. Die
+    // Zugangsdaten gehen an `scripts/signieren-windows.mjs`;
+    // `CODE_SIGN_TOOL_PATH` zeigt auf das entpackte Werkzeug.
+    return [
+      'SSL_COM_USERNAME',
+      'SSL_COM_PASSWORD',
+      'SSL_COM_CREDENTIAL_ID',
+      'SSL_COM_TOTP_SECRET',
+      'CODE_SIGN_TOOL_PATH',
+    ];
   }
 
   throw new Error(`Release-Pakete werden auf ${platform} nicht unterstützt.`);
 }
 
-// Variablen, deren Wert ein Dateipfad ist und keine Zeichenkette, die für
-// sich steht. `notarytool` bekommt den Schlüssel als Datei (`--key`), und
-// electron-builder reicht `APPLE_API_KEY` unverändert dorthin weiter.
+// Variablen, deren Wert ein Pfad ist und keine Zeichenkette, die für sich
+// steht. `notarytool` bekommt den Schlüssel als Datei (`--key`), und
+// electron-builder reicht `APPLE_API_KEY` unverändert dorthin weiter;
+// `CODE_SIGN_TOOL_PATH` ist das Verzeichnis, in dem CodeSignTool liegt.
 const RELEASE_FILE_ENVIRONMENT = {
   darwin: ['APPLE_API_KEY'],
-  win32: [],
+  win32: ['CODE_SIGN_TOOL_PATH'],
 };
 
 export function missingReleaseEnvironment(platform, env = process.env) {
@@ -91,8 +104,9 @@ export function missingReleaseEnvironment(platform, env = process.env) {
  * Pfadvariablen, die auf nichts zeigen.
  *
  * Ohne diese Prüfung fiele der fehlende Schlüssel erst nach dem vollständigen
- * Bau auf, beim Aufruf von `notarytool` — also nach einer halben Stunde.
- * Genannt wird wie überall nur der Variablenname.
+ * Bau auf, beim Aufruf von `notarytool` beziehungsweise von CodeSignTool —
+ * also nach einer halben Stunde. Genannt wird wie überall nur der
+ * Variablenname.
  */
 export function unreadableReleaseFiles(platform, env = process.env, exists = defaultExists) {
   const names = RELEASE_FILE_ENVIRONMENT[platform] ?? [];

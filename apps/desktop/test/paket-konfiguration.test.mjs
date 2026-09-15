@@ -42,10 +42,12 @@ describe('Paket-Konfiguration', () => {
   it('nennt fehlende Release-Geheimnisse, ohne Werte zu benötigen', () => {
     expect(
       missingReleaseEnvironment('win32', {
-        CSC_LINK: 'certificate',
-        CSC_KEY_PASSWORD: ' ',
+        SSL_COM_USERNAME: 'tom',
+        SSL_COM_PASSWORD: 'geheim',
+        SSL_COM_CREDENTIAL_ID: ' ',
+        SSL_COM_TOTP_SECRET: 'base32',
       }),
-    ).toEqual(['CSC_KEY_PASSWORD']);
+    ).toEqual(['SSL_COM_CREDENTIAL_ID', 'CODE_SIGN_TOOL_PATH']);
     expect(missingReleaseEnvironment('darwin', {})).toEqual([
       'CSC_LINK',
       'CSC_KEY_PASSWORD',
@@ -68,6 +70,21 @@ describe('Paket-Konfiguration', () => {
     // sonst zweimal gemeldet.
     expect(unreadableReleaseFiles('darwin', { APPLE_API_KEY: ' ' }, vorhanden)).toEqual([]);
     expect(unreadableReleaseFiles('win32', {}, vorhanden)).toEqual([]);
+  });
+
+  it('erkennt ein CodeSignTool-Verzeichnis, das es nicht gibt', () => {
+    const vorhanden = (pfad) => pfad === 'C:/werkzeuge/CodeSignTool';
+
+    expect(
+      unreadableReleaseFiles(
+        'win32',
+        { CODE_SIGN_TOOL_PATH: 'C:/werkzeuge/CodeSignTool' },
+        vorhanden,
+      ),
+    ).toEqual([]);
+    expect(unreadableReleaseFiles('win32', { CODE_SIGN_TOOL_PATH: 'C:/weg' }, vorhanden)).toEqual([
+      'CODE_SIGN_TOOL_PATH',
+    ]);
   });
 });
 

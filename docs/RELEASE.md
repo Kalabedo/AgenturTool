@@ -27,15 +27,17 @@ gesetzter Tag ohne menschliche Freigabe Zugriff auf die Zertifikate erhält.
 
 Die Umgebung enthält ausschließlich diese Secrets:
 
-| Secret                     | Inhalt                                        |
-| -------------------------- | --------------------------------------------- |
-| `MAC_CSC_LINK`             | Developer-ID-Application-Zertifikat als P12   |
-| `MAC_CSC_KEY_PASSWORD`     | Passwort der P12-Datei                        |
-| `APPLE_API_KEY_P8`         | App-Store-Connect-Schlüssel, Inhalt der `.p8` |
-| `APPLE_API_KEY_ID`         | Kennung des Schlüssels, zehnstellig           |
-| `APPLE_API_ISSUER`         | Issuer-ID des Teams, eine UUID                |
-| `WINDOWS_CSC_LINK`         | Windows-Signatur — Weg offen, siehe unten     |
-| `WINDOWS_CSC_KEY_PASSWORD` | Windows-Signatur — Weg offen, siehe unten     |
+| Secret                  | Inhalt                                        |
+| ----------------------- | --------------------------------------------- |
+| `MAC_CSC_LINK`          | Developer-ID-Application-Zertifikat als P12   |
+| `MAC_CSC_KEY_PASSWORD`  | Passwort der P12-Datei                        |
+| `APPLE_API_KEY_P8`      | App-Store-Connect-Schlüssel, Inhalt der `.p8` |
+| `APPLE_API_KEY_ID`      | Kennung des Schlüssels, zehnstellig           |
+| `APPLE_API_ISSUER`      | Issuer-ID des Teams, eine UUID                |
+| `SSL_COM_USERNAME`      | Konto bei SSL.com eSigner                     |
+| `SSL_COM_PASSWORD`      | Passwort dieses Kontos                        |
+| `SSL_COM_CREDENTIAL_ID` | Kennung des Signaturzertifikats im eSigner    |
+| `SSL_COM_TOTP_SECRET`   | Base32-Geheimnis für die Zweitbestätigung     |
 
 Die P12 wird als einzeiliger Base64-Inhalt gespeichert:
 
@@ -88,41 +90,83 @@ Wer lokal signiert, darf `APPLE_ID` und `APPLE_APP_SPECIFIC_PASSWORD` nicht
 gesetzt haben: electron-builder prüft sie zuerst und bricht ab, sobald eine
 von beiden allein in der Umgebung steht.
 
-## Windows-Signatur: offener Punkt
+## Windows-Zertifikat einrichten
 
-**Der Windows-Job des Workflows ist so, wie er dasteht, nicht mehr
-befüllbar.** `WINDOWS_CSC_LINK` erwartet eine PFX-Datei mit exportierbarem
-privatem Schlüssel; seit dem 1. Juni 2023 verlangen die Baseline Requirements
-des CA/Browser-Forums für jedes Code-Signing-Zertifikat — OV wie EV —, dass
-der private Schlüssel auf zertifizierter Hardware erzeugt wird und
-nicht-exportierbar bleibt. Keine öffentlich vertraute CA gibt seitdem noch
-eine herunterladbare PFX heraus. Seit dem 1. März 2026 gilt zusätzlich eine
-Höchstlaufzeit von 460 Tagen, das Zertifikat ist also etwa jährlich zu
-erneuern.
+Signiert wird über ein **Cloud-HSM bei SSL.com (eSigner)**. Der Grund ist
+keine Vorliebe: Seit dem 1. Juni 2023 verlangen die Baseline Requirements des
+CA/Browser-Forums für jedes Code-Signing-Zertifikat — OV wie EV —, dass der
+private Schlüssel auf zertifizierter Hardware erzeugt wird und
+nicht-exportierbar bleibt. Eine herunterladbare PFX, wie `CSC_LINK` sie
+erwartet, gibt seitdem keine öffentlich vertraute Zertifizierungsstelle mehr
+heraus.
 
-Vor dem ersten Windows-Release ist deshalb einer dieser Wege zu wählen:
+Von den drei gangbaren Wegen bleibt damit dieser:
 
-- **Azure Artifact Signing** (früher Trusted Signing). Etwa zehn Dollar im
-  Monat, keine Hardware, von electron-builder 25 über `win.azureSignOptions`
-  unmittelbar unterstützt. Voraussetzung ist eine geprüfte Organisation;
-  Einzelentwickler sind bislang auf die USA und Kanada beschränkt, und die
-  Organisationsprüfung verlangt etwa drei Jahre nachweisbare Geschäftshistorie.
-- **Cloud-HSM einer klassischen CA** (SSL.com eSigner, DigiCert KeyLocker,
-  GlobalSign, Certum). Teurer, dafür auch als Einzelperson zu bekommen. Die
-  Signatur läuft über ein Skript in `win.sign`.
-- **USB-Token.** Ein von GitHub gehosteter Runner sieht ihn nicht. Das hieße
-  eigener Runner oder Signieren von Hand — und damit das Ende des
-  geschlossenen Releaselaufs.
+- **Azure Artifact Signing** wäre billiger, verlangt aber eine geprüfte
+  Organisation mit mehrjähriger nachweisbarer Geschäftshistorie; für
+  Einzelpersonen ist es bislang auf die USA und Kanada beschränkt.
+- **Certum** ist als Einzelperson zu bekommen, signiert aber über SimplySign
+  und dessen Desktop-Anwendung mit interaktiver Anmeldung. Das verträgt sich
+  nicht mit einem Lauf, den niemand begleitet.
+- **SSL.com eSigner** stellt auch an Einzelpersonen aus und bringt mit
+  `CodeSignTool` ein Kommandozeilenwerkzeug mit, das ohne Sitzung und ohne
+  Bildschirm auskommt. Die Zweitbestätigung läuft über ein TOTP-Geheimnis,
+  das als Secret hinterlegt wird.
 
-Zwei Dinge hängen daran:
+Ein USB-Token scheidet aus: Ein von GitHub gehosteter Runner sieht ihn nicht.
 
-- Bei kurzlebigen Cloud-Zertifikaten — bei Azure lebt jedes nur wenige Tage —
-  entscheidet allein der RFC-3161-Zeitstempel darüber, ob der Installer in
-  einem Monat noch gültig ist. Die Prüfung im Workflow sieht bisher nur
-  `Status`; sobald der Weg steht, gehört `TimeStamperCertificate` dazu.
-- Die Signaturidentität ist nach dem öffentlichen Release festgelegt (D43,
-  `VERTRIEB-UND-UPDATES.md`). Ein späterer Wechsel des Ausstellers setzt die
-  SmartScreen-Reputation zurück. Die Wahl fällt vor 1.0, nicht danach.
+### Einmalig einzurichten
+
+1. **Zertifikat bestellen.** Bei SSL.com ein Code-Signing-Zertifikat als
+   _Individual_ beziehungsweise für das eigene Unternehmen, mit **eSigner
+   Cloud Signing**. Die Identitätsprüfung dauert je nach Nachweislage einige
+   Tage; für Einzelpersonen läuft sie über Ausweis und Videoabgleich.
+2. **eSigner aktivieren** und das Zertifikat dem Cloud-Schlüssel zuordnen.
+   Die `credential_id` steht anschließend in der eSigner-Übersicht.
+3. **TOTP-Geheimnis erzeugen.** Im eSigner unter den Einstellungen für
+   automatisiertes Signieren. Hinterlegt wird nicht der sechsstellige Code,
+   sondern das **Base32-Geheimnis** dahinter — CodeSignTool rechnet sich den
+   Code daraus selbst aus. Die Anmeldung mit einer App am Telefon bleibt
+   davon unberührt.
+4. **Die vier Secrets** in der Umgebung `release` hinterlegen (Tabelle oben).
+   Eine Datei wird nirgends gebraucht; der private Schlüssel verlässt das HSM
+   nie.
+
+Mehr ist nicht zu tun: Der Workflow lädt `CodeSignTool` selbst herunter
+(feste Fassung in `CODE_SIGN_TOOL_VERSION`), und
+`apps/desktop/scripts/signieren-windows.mjs` hängt sich als
+`win.signtoolOptions.sign` in electron-builder ein. Signiert werden dadurch
+die Anwendung, der Deinstallierer und der Installer — jeder über denselben
+Weg.
+
+### Was daran jährlich wiederkehrt
+
+Seit dem 1. März 2026 gilt für Code-Signing-Zertifikate eine Höchstlaufzeit
+von 460 Tagen. Das Zertifikat ist also etwa jährlich zu erneuern, und mit ihm
+ändert sich die `credential_id`. Deshalb steht sie als eigenes Secret und
+wird nicht weggelassen: Während der Erneuerung liegen kurzzeitig zwei
+Zertifikate im Konto, und CodeSignTool entschiede sonst allein, mit welchem
+es signiert.
+
+Dass ein abgelaufenes Zertifikat die schon ausgelieferten Installer nicht
+ungültig macht, hängt allein am **RFC-3161-Zeitstempel**. CodeSignTool setzt
+ihn von sich aus; der Workflow prüft ihn danach ausdrücklich mit
+(`TimeStamperCertificate`), denn eine gültige Signatur ohne Zeitstempel sähe
+am Releasetag genauso gut aus und wäre ein Jahr später wertlos.
+
+### Was der Workflow nicht erzwingen kann
+
+Eine neue Signaturidentität besitzt anfangs noch keinen SmartScreen-Ruf. Der
+Workflow kann die Authenticode-Gültigkeit erzwingen, nicht Microsofts externe
+Reputationsbewertung — die baut sich über Downloadzahlen auf. Mit einem
+EV-Zertifikat entfällt die Wartezeit sofort; das ist dessen einziger
+praktischer Vorteil gegenüber OV.
+
+Und: **Die Signaturidentität ist nach dem ersten öffentlichen Release
+festgelegt** (D43, `VERTRIEB-UND-UPDATES.md`). Ein späterer Wechsel des
+Ausstellers setzt die aufgebaute Reputation zurück. Ein Wechsel fasst im Code
+nur `codeSignToolArguments` in `signieren-windows.mjs` und die Secret-Namen
+an — teuer ist er nicht technisch, sondern gegenüber den Kunden.
 
 ## Veröffentlichung
 

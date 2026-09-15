@@ -125,6 +125,12 @@ jobs:
     name: Signieren (Windows x64)
     runs-on: windows-2025
     timeout-minutes: 45
+    env:
+      # Die Fassung von CodeSignTool steht fest, damit ein Release nicht
+      # davon abhängt, was der Aussteller gerade als „latest" führt. Zum
+      # Anheben: Fassung auf der Releaseseite von SSLcom/CodeSignTool
+      # nachsehen, hier eintragen, einmal durchlaufen lassen.
+      CODE_SIGN_TOOL_VERSION: v1.3.0
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -132,19 +138,53 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      # CodeSignTool ist ein Java-Programm. Auf dem Runner liegt zwar eine
+      # Java-Fassung vor, aber welche, ist nicht zugesagt.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
 
-      # Achtung: Dieser Weg setzt eine PFX-Datei mit exportierbarem privatem
-      # Schlüssel voraus, und die stellt seit dem 1. Juni 2023 keine
-      # öffentlich vertraute Zertifizierungsstelle mehr aus. Vor dem ersten
-      # Windows-Release muss hier ein Cloud-Signaturweg stehen; die Wahl und
-      # ihre Folgen stehen in docs/RELEASE.md.
+      # Signiert wird über das Cloud-HSM des Ausstellers: Seit dem
+      # 1. Juni 2023 verlangen die Baseline Requirements des
+      # CA/Browser-Forums, dass der private Schlüssel auf zertifizierter
+      # Hardware entsteht und nicht-exportierbar bleibt. Eine PFX zum
+      # Herunterladen, wie `CSC_LINK` sie erwartet, gibt es deshalb nicht
+      # mehr. Den Aufruf macht `apps/desktop/scripts/signieren-windows.mjs`
+      # als Haken von electron-builder; hier wird nur das Werkzeug
+      # bereitgelegt.
+      - name: CodeSignTool bereitlegen
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $release = gh api "repos/SSLcom/CodeSignTool/releases/tags/$env:CODE_SIGN_TOOL_VERSION" | ConvertFrom-Json
+          $asset = $release.assets | Where-Object { $_.name -match '(?i)windows.*\.zip$' } | Select-Object -First 1
+          if (-not $asset) {
+            throw "CodeSignTool $env:CODE_SIGN_TOOL_VERSION enthält kein Windows-Paket."
+          }
+
+          $zip = Join-Path $env:RUNNER_TEMP 'CodeSignTool.zip'
+          $dir = Join-Path $env:RUNNER_TEMP 'codesigntool'
+          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zip
+          Expand-Archive -Path $zip -DestinationPath $dir -Force
+
+          # Je nach Fassung liegt das Skript unmittelbar im Archiv oder in
+          # einem Unterverzeichnis mit der Versionsnummer im Namen.
+          $bat = Get-ChildItem -Path $dir -Filter 'CodeSignTool.bat' -Recurse | Select-Object -First 1
+          if (-not $bat) { throw 'CodeSignTool.bat liegt nicht im entpackten Paket.' }
+          "CODE_SIGN_TOOL_PATH=$($bat.DirectoryName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
       - name: Signieren und NSIS-Installer bauen
         run: pnpm --filter @agentur-tool/desktop paket --release
         env:
-          CSC_LINK: ${{ secrets.WINDOWS_CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CSC_KEY_PASSWORD }}
+          SSL_COM_USERNAME: ${{ secrets.SSL_COM_USERNAME }}
+          SSL_COM_PASSWORD: ${{ secrets.SSL_COM_PASSWORD }}
+          SSL_COM_CREDENTIAL_ID: ${{ secrets.SSL_COM_CREDENTIAL_ID }}
+          SSL_COM_TOTP_SECRET: ${{ secrets.SSL_COM_TOTP_SECRET }}
 
       - name: Signaturen, Installation und Laufzeit prüfen
         shell: pwsh
@@ -158,6 +198,13 @@ jobs:
             $signature = Get-AuthenticodeSignature $file
             if ($signature.Status -ne 'Valid') {
               throw "Ungültige Authenticode-Signatur für $file: $($signature.Status)"
+            }
+            # Ohne Zeitstempel gilt die Signatur nur, solange das Zertifikat
+            # gilt — und ein Cloud-Zertifikat lebt höchstens 460 Tage. Ein
+            # ausgelieferter Installer wäre dann eines Tages ungültig, ohne
+            # dass sich an ihm etwas geändert hat.
+            if (-not $signature.TimeStamperCertificate) {
+              throw "Signatur ohne RFC-3161-Zeitstempel für $file."
             }
           }
 

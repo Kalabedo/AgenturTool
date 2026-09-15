@@ -22,11 +22,15 @@ Deutschland und anschließend auf einer breiteren Nutzung in der EU.
     voraussetzen.
   - Signierte und notarisierte macOS-DMGs sowie signierte Windows-Installer
     auf einer eigenen Downloadseite anbieten.
-  - Offen und vor 1.0 zu entscheiden: der Windows-Signaturweg. Eine
-    exportierbare PFX, wie sie der Releaselauf heute erwartet, gibt keine
-    öffentlich vertraute CA mehr aus. Wege und Folgen stehen in
-    [`RELEASE.md`](RELEASE.md); die Identität lässt sich nach dem ersten
-    öffentlichen Release nicht mehr wechseln, ohne die SmartScreen-Reputation
+  - ✅ Den Windows-Signaturweg entschieden und gebaut: Cloud-HSM bei
+    SSL.com (eSigner), signiert über `CodeSignTool` als Haken von
+    electron-builder. Eine exportierbare PFX, wie der Releaselauf sie zuvor
+    erwartete, gibt keine öffentlich vertraute CA mehr aus; Azure verlangt
+    eine geprüfte Organisation, Certum eine interaktive Anmeldung. Die
+    Abwägung steht in [`RELEASE.md`](RELEASE.md).
+  - Noch zu beschaffen, bevor das erste Windows-Paket entstehen kann: das
+    Zertifikat selbst samt eSigner-Zugang und TOTP-Geheimnis. Die Identität
+    lässt sich danach nicht mehr wechseln, ohne die SmartScreen-Reputation
     zu verlieren.
   - Später zusätzlich einen Eintrag im Microsoft Store prüfen. Den Mac App
     Store erst nach einer technischen Prüfung der Sandbox-Anforderungen

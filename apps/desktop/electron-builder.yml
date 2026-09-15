@@ -91,8 +91,25 @@ win:
     - target: nsis
       arch:
         - x64
-  # Pull-Request-Pakete bleiben bewusst unsigniert. `paket --release`
-  # erzwingt dagegen eine gültige Signatur.
+
+  signtoolOptions:
+    # Signiert wird nicht mit einer Zertifikatsdatei, sondern über das
+    # Cloud-HSM des Ausstellers — seit Juni 2023 gibt keine öffentlich
+    # vertraute Zertifizierungsstelle mehr eine PFX mit exportierbarem
+    # privatem Schlüssel heraus. Was das Skript tut und warum, steht darin.
+    sign: scripts/signieren-windows.mjs
+
+    # Nur SHA-256. Ohne diese Zeile ruft electron-builder den Haken je
+    # Datei zweimal auf — der erste Durchgang gälte SHA-1, das Windows
+    # seit 2016 nicht mehr als Signatur anerkennt. CodeSignTool kennt
+    # diesen Unterschied nicht und signierte dieselbe Datei schlicht ein
+    # zweites Mal.
+    signingHashAlgorithms:
+      - sha256
+
+  # Pull-Request-Pakete bleiben bewusst unsigniert: Ohne
+  # `AGENTUR_TOOL_RELEASE=1` überspringt das Skript die Signatur.
+  # `paket --release` erzwingt dagegen eine gültige Signatur.
 
 linux:
   # Der Dateiname des Programms. Ohne ihn leitet electron-builder ihn aus
