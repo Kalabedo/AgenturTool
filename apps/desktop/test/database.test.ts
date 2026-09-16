@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { pendingMigrations } from '../src/database';
+import { pendingMigrations, prismaEngineEnvironment } from '../src/database';
 
 /**
  * Welche Migrationen `migrate deploy` gleich anwenden wird.
@@ -62,5 +62,27 @@ describe('pendingMigrations', () => {
 
   it('meldet nichts, wenn es das Verzeichnis nicht gibt', () => {
     expect(pendingMigrations([], path.join(migrationsDir, 'gibt-es-nicht'))).toEqual([]);
+  });
+});
+
+describe('prismaEngineEnvironment', () => {
+  it('verhindert, dass Prisma signierte Engines im App-Bundle ersetzt', () => {
+    fs.writeFileSync(path.join(migrationsDir, 'schema-engine-darwin-arm64'), 'schema');
+    fs.writeFileSync(path.join(migrationsDir, 'libquery_engine-darwin-arm64.dylib.node'), 'query');
+
+    expect(prismaEngineEnvironment(migrationsDir)).toEqual({
+      PRISMA_SCHEMA_ENGINE_BINARY: path.join(migrationsDir, 'schema-engine-darwin-arm64'),
+      PRISMA_QUERY_ENGINE_LIBRARY: path.join(
+        migrationsDir,
+        'libquery_engine-darwin-arm64.dylib.node',
+      ),
+    });
+  });
+
+  it('bricht bei fehlenden oder mehrdeutigen nativen Engines ab', () => {
+    expect(() => prismaEngineEnvironment(migrationsDir)).toThrow('Schema-Engine');
+    fs.writeFileSync(path.join(migrationsDir, 'schema-engine-a'), 'a');
+    fs.writeFileSync(path.join(migrationsDir, 'schema-engine-b'), 'b');
+    expect(() => prismaEngineEnvironment(migrationsDir)).toThrow('2 gefunden');
   });
 });

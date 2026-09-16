@@ -33,11 +33,13 @@ export interface PrepareOptions {
   prismaDir: string;
   /** Die Prisma-CLI (`node_modules/prisma/build/index.js`). */
   prismaCli: string;
+  /** Verzeichnis mit Schema- und Query-Engine für die native Architektur. */
+  prismaEnginesDir: string;
   log: (message: string) => void;
 }
 
 export async function prepareDatabase(options: PrepareOptions): Promise<void> {
-  const { databaseFile, dataDir, prismaDir, prismaCli, log } = options;
+  const { databaseFile, dataDir, prismaDir, prismaCli, prismaEnginesDir, log } = options;
   const databaseUrl = `file:${databaseFile}`;
 
   fs.mkdirSync(dataDir, { recursive: true });
@@ -52,7 +54,7 @@ export async function prepareDatabase(options: PrepareOptions): Promise<void> {
     fs.writeFileSync(databaseFile, '');
   }
 
-  migrate({ databaseUrl, prismaDir, prismaCli, log });
+  migrate({ databaseUrl, prismaDir, prismaCli, prismaEnginesDir, log });
 
   const prisma = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
   try {
@@ -169,9 +171,11 @@ function migrate(options: {
   databaseUrl: string;
   prismaDir: string;
   prismaCli: string;
+  prismaEnginesDir: string;
   log: (message: string) => void;
 }): void {
-  const { databaseUrl, prismaDir, prismaCli, log } = options;
+  const { databaseUrl, prismaDir, prismaCli, prismaEnginesDir, log } = options;
+  const engineEnvironment = prismaEngineEnvironment(prismaEnginesDir);
 
   const output = execFileSync(
     process.execPath,
@@ -182,6 +186,7 @@ function migrate(options: {
         ...process.env,
         ELECTRON_RUN_AS_NODE: '1',
         DATABASE_URL: databaseUrl,
+        ...engineEnvironment,
         // Prisma fragt sonst beim ersten Lauf nach anonymen Statistiken.
         CHECKPOINT_DISABLE: '1',
       },
@@ -196,4 +201,37 @@ function migrate(options: {
       ? 'Datenbank ist auf Stand.'
       : 'Migrationen angewandt.',
   );
+}
+
+/**
+ * Die bereits paketierten Engines ausdrücklich an die Prisma-CLI geben.
+ *
+ * macOS-Codesigning verändert die Mach-O-Datei und damit ihren Hash. Ohne
+ * diese Pfade hält Primas Download-Cache die korrekt signierte Engine für
+ * beschädigt und versucht, sie im schreibgeschützten App-Bundle zu ersetzen.
+ * Ein Store-/DMG-Paket darf seine signierten Programmdateien nie verändern.
+ */
+export function prismaEngineEnvironment(enginesDir: string): {
+  PRISMA_SCHEMA_ENGINE_BINARY: string;
+  PRISMA_QUERY_ENGINE_LIBRARY: string;
+} {
+  const files = fs.readdirSync(enginesDir, { withFileTypes: true });
+  const findOne = (description: string, matches: (name: string) => boolean): string => {
+    const candidates = files.filter((entry) => entry.isFile() && matches(entry.name));
+    if (candidates.length !== 1) {
+      throw new Error(
+        `${description}: genau eine native Engine erwartet, ${String(candidates.length)} gefunden.`,
+      );
+    }
+    return path.join(enginesDir, candidates[0]!.name);
+  };
+
+  return {
+    PRISMA_SCHEMA_ENGINE_BINARY: findOne('Prisma Schema-Engine', (name) =>
+      /^schema-engine-/u.test(name),
+    ),
+    PRISMA_QUERY_ENGINE_LIBRARY: findOne('Prisma Query-Engine', (name) =>
+      /^libquery_engine-.*\.(?:dylib|so|dll)\.node$/u.test(name),
+    ),
+  };
 }

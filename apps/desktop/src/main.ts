@@ -146,6 +146,7 @@ async function start(): Promise<void> {
       dataDir: paths.dataDir,
       prismaDir: paths.prismaDir,
       prismaCli: paths.prismaCli,
+      prismaEnginesDir: paths.prismaEnginesDir,
       log,
     });
 

@@ -24,6 +24,8 @@ export interface AppPaths {
   prismaDir: string;
   /** Einstiegspunkt der Prisma-CLI. */
   prismaCli: string;
+  /** Verzeichnis der zur nativen Architektur passenden Prisma-Engines. */
+  prismaEnginesDir: string;
   /** Datenverzeichnis: Datenbank, Assets, PDFs, Sicherungen. */
   dataDir: string;
   /** Electrons eigener Zustand — Caches, Cookies, Fenstergrößen. */
@@ -60,6 +62,9 @@ function resolveWebRoot(apiDir: string): string {
 
 export function resolvePaths(): AppPaths {
   const apiDir = path.dirname(require.resolve('@privatura/api/package.json'));
+  const prismaPackageDir = path.dirname(
+    require.resolve('prisma/package.json', { paths: [apiDir] }),
+  );
 
   // Die Geschäftsdaten in einen eigenen Unterordner, nicht direkt nach
   // `userData`: Dort legt Chromium seine Caches, Cookies und Datenbanken
@@ -75,6 +80,9 @@ export function resolvePaths(): AppPaths {
     // Aus dem Blickwinkel des API-Pakets aufgelöst: `prisma` ist dessen
     // Abhängigkeit, nicht die der Desktop-Hülle.
     prismaCli: require.resolve('prisma/build/index.js', { paths: [apiDir] }),
+    prismaEnginesDir: path.dirname(
+      require.resolve('@prisma/engines/package.json', { paths: [prismaPackageDir] }),
+    ),
     dataDir,
     stateDir,
     updatesDir: path.join(stateDir, 'Updates'),
