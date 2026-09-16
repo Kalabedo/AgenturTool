@@ -12,22 +12,40 @@ import { validateReleaseTag } from '../scripts/release-preflight.mjs';
 
 describe('Paket-Konfiguration', () => {
   it('akzeptiert nur die dokumentierten Paketoptionen', () => {
-    expect(parsePackageArguments([])).toEqual({ onlyTree: false, release: false, store: false });
+    expect(parsePackageArguments([])).toEqual({
+      onlyTree: false,
+      release: false,
+      store: false,
+      keychain: false,
+    });
     expect(parsePackageArguments(['--nur-baum'])).toEqual({
       onlyTree: true,
       release: false,
       store: false,
+      keychain: false,
     });
     expect(parsePackageArguments(['--release'])).toEqual({
       onlyTree: false,
       release: true,
       store: false,
+      keychain: false,
     });
     expect(parsePackageArguments(['--store', '--release'])).toEqual({
       onlyTree: false,
       release: true,
       store: true,
+      keychain: false,
     });
+    expect(parsePackageArguments(['--release', '--keychain'])).toEqual({
+      onlyTree: false,
+      release: true,
+      store: false,
+      keychain: true,
+    });
+    expect(() => parsePackageArguments(['--keychain'])).toThrow('nur zusammen mit --release');
+    expect(() => parsePackageArguments(['--release', '--store', '--keychain'])).toThrow(
+      'können nicht zusammen',
+    );
     expect(() => parsePackageArguments(['--store', '--nur-baum'])).toThrow('können nicht zusammen');
     expect(() => parsePackageArguments(['--x64'])).toThrow('Unbekannte Paketoption');
     expect(() => parsePackageArguments(['--nur-baum', '--release'])).toThrow(
@@ -66,6 +84,11 @@ describe('Paket-Konfiguration', () => {
     expect(missingReleaseEnvironment('darwin', {})).toEqual([
       'CSC_LINK',
       'CSC_KEY_PASSWORD',
+      'APPLE_API_KEY',
+      'APPLE_API_KEY_ID',
+      'APPLE_API_ISSUER',
+    ]);
+    expect(missingReleaseEnvironment('darwin', {}, { keychain: true })).toEqual([
       'APPLE_API_KEY',
       'APPLE_API_KEY_ID',
       'APPLE_API_ISSUER',

@@ -22,7 +22,9 @@
  *
  * Mit `--nur-baum` endet der Lauf nach dem Aufbau von `paket/`, ohne
  * electron-builder zu rufen. `--release` verlangt auf macOS die
- * Signatur-Zugangsdaten; auf Windows ist zusätzlich `--store` erforderlich.
+ * Signatur-Zugangsdaten; mit `--keychain` darf macOS die bereits installierte
+ * Developer-ID-Identität verwenden. Auf Windows ist zusätzlich `--store`
+ * erforderlich.
  * `--store` baut das Uploadpaket mit der Partner-Center-Identität.
  */
 import fs from 'node:fs';
@@ -41,6 +43,9 @@ const repoRoot = path.resolve(desktopDir, '../..');
 const paketDir = path.join(desktopDir, 'paket');
 const releaseDir = path.join(desktopDir, 'release');
 const options = parsePackageArguments(process.argv.slice(2));
+if (options.keychain && process.platform !== 'darwin') {
+  throw new Error('--keychain wird nur für lokale macOS-Releases unterstützt.');
+}
 if (options.release && process.platform === 'win32' && !options.store) {
   throw new Error(
     'Windows-Releases werden ausschließlich mit --store --release für den Microsoft Store gebaut.',
@@ -52,7 +57,9 @@ if (options.store && process.arch !== 'x64') {
 }
 
 if (options.release && !options.store) {
-  const missing = missingReleaseEnvironment(process.platform);
+  const missing = missingReleaseEnvironment(process.platform, process.env, {
+    keychain: options.keychain,
+  });
   if (missing.length > 0) {
     throw new Error(`Release-Zugangsdaten fehlen: ${missing.join(', ')}`);
   }
@@ -188,6 +195,11 @@ if (options.onlyTree) {
 
   run('pnpm', builderArguments, desktopDir, {
     PRIVATURA_RELEASE: options.release ? '1' : '0',
+    ...(options.keychain
+      ? {
+          CSC_IDENTITY_AUTO_DISCOVERY: 'true',
+        }
+      : {}),
     ...(options.store
       ? {
           CSC_LINK: '',

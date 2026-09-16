@@ -9,7 +9,7 @@ const NODE_TO_ELECTRON_PLATFORM = {
 };
 
 export function parsePackageArguments(args) {
-  const supported = new Set(['--nur-baum', '--release', '--store']);
+  const supported = new Set(['--nur-baum', '--release', '--store', '--keychain']);
   const unknown = args.filter((argument) => !supported.has(argument));
 
   if (unknown.length > 0) {
@@ -19,14 +19,21 @@ export function parsePackageArguments(args) {
   const onlyTree = args.includes('--nur-baum');
   const release = args.includes('--release');
   const store = args.includes('--store');
+  const keychain = args.includes('--keychain');
 
   if (onlyTree && release) {
     throw new Error('--nur-baum und --release können nicht zusammen verwendet werden.');
   }
   if (onlyTree && store)
     throw new Error('--nur-baum und --store können nicht zusammen verwendet werden.');
+  if (keychain && !release) {
+    throw new Error('--keychain kann nur zusammen mit --release verwendet werden.');
+  }
+  if (keychain && store) {
+    throw new Error('--keychain und --store können nicht zusammen verwendet werden.');
+  }
 
-  return { onlyTree, release, store };
+  return { onlyTree, release, store, keychain };
 }
 
 /** Nur echte Partner-Center-Identitäten dürfen in ein Store-Uploadpaket. */
@@ -75,7 +82,7 @@ export function assertNativeBuildTarget(
   }
 }
 
-export function requiredReleaseEnvironment(platform) {
+export function requiredReleaseEnvironment(platform, options = {}) {
   if (platform === 'darwin') {
     // Notarisiert wird mit einem App-Store-Connect-Schlüssel, nicht mit
     // Apple-ID und app-spezifischem Passwort. Der Schlüssel hängt an keinem
@@ -88,8 +95,7 @@ export function requiredReleaseEnvironment(platform) {
     // der Umgebung eines Release-Laufs darf deshalb keine von beiden
     // stehen — auch nicht aus Gewohnheit von einem früheren Weg.
     return [
-      'CSC_LINK',
-      'CSC_KEY_PASSWORD',
+      ...(options.keychain ? [] : ['CSC_LINK', 'CSC_KEY_PASSWORD']),
       'APPLE_API_KEY',
       'APPLE_API_KEY_ID',
       'APPLE_API_ISSUER',
@@ -111,8 +117,8 @@ const RELEASE_FILE_ENVIRONMENT = {
   win32: [],
 };
 
-export function missingReleaseEnvironment(platform, env = process.env) {
-  return requiredReleaseEnvironment(platform).filter((name) => {
+export function missingReleaseEnvironment(platform, env = process.env, options = {}) {
+  return requiredReleaseEnvironment(platform, options).filter((name) => {
     const value = env[name];
     return value === undefined || value.trim() === '';
   });

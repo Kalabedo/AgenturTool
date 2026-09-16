@@ -82,6 +82,24 @@ Wer lokal signiert, darf `APPLE_ID` und `APPLE_APP_SPECIFIC_PASSWORD` nicht
 gesetzt haben: electron-builder prüft sie zuerst und bricht ab, sobald eine
 von beiden allein in der Umgebung steht.
 
+### Lokaler macOS-Release mit dem Schlüsselbund
+
+Ist die Developer-ID-Identität samt privatem Schlüssel bereits im lokalen
+Schlüsselbund installiert, muss keine P12-Datei in die Shell geladen werden.
+Der lokale ARM64-Bau verwendet dann ausdrücklich die Schlüsselbundsuche:
+
+```bash
+APPLE_API_KEY=/sicherer/Pfad/AuthKey.p8 \
+APPLE_API_KEY_ID=KEY_ID \
+APPLE_API_ISSUER=ISSUER_UUID \
+pnpm --filter @privatura/desktop paket --release --keychain
+```
+
+Der P8-Schlüssel bleibt außerhalb des Arbeitsbaums. `--keychain` ist nur auf
+macOS, nur zusammen mit `--release` und nie für Store-Pakete zulässig. Der
+entstandene DMG muss anschließend mit `codesign`, Gatekeeper und `stapler`
+geprüft und über einen echten Browserdownload gestartet werden.
+
 ## Microsoft Store einrichten und Paket bauen
 
 1. Bei [Microsoft Store Developer](https://storedeveloper.microsoft.com/) über
