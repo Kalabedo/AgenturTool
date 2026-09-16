@@ -106,6 +106,7 @@ export function templateSnapshotFromSettings(settings: TemplateSettingsResponse)
     inkSoftColor: settings.inkSoftColor,
     ruleColor: settings.ruleColor,
     bandColor: settings.bandColor,
+    pageColor: settings.pageColor,
     density: settings.density,
     showLogo: settings.showLogo,
     showPaymentBlock: settings.showPaymentBlock,

@@ -1,6 +1,6 @@
 import { buildRenderModel, embeddedFontCss, listTemplates } from '@privatura/invoice-template';
 import type { TemplateSnapshot } from '@privatura/shared';
-import { TemplateFrame } from '../../components/TemplateFrame.js';
+import { A4_DOCUMENT_HEIGHT_PX, TemplateFrame } from '../../components/TemplateFrame.js';
 
 interface DesignPickerProps {
   value: string;
@@ -64,6 +64,10 @@ export function DesignPicker({
                   ${embeddedFontCss(template.fontFamily)}${design.css}
                 `}
                 title={`Miniatur: ${design.label}`}
+                // Alle Vorlagen sind A4. Der Inhalt darf die Miniatur nicht
+                // höher machen als ihre Nachbarn; ein möglicher Seitenumbruch
+                // gehört in die große Vorschau, nicht in die Auswahlkarte.
+                viewportHeight={A4_DOCUMENT_HEIGHT_PX}
               >
                 {design.render(model)}
               </TemplateFrame>

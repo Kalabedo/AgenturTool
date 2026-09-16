@@ -147,7 +147,7 @@ export function AppearanceFields({
 
       <p className="text-sm text-ink-subtle">
         Feinheiten — weitere Farben, Zeilendichte, Fußzeile und Standardtexte — stehen unter{' '}
-        <Link to="/design" className="underline">
+        <Link to="/invoices/design" className="underline">
           Design
         </Link>
         .

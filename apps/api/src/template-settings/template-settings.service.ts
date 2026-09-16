@@ -68,6 +68,7 @@ export class TemplateSettingsService {
       inkSoftColor: settings.inkSoftColor,
       ruleColor: settings.ruleColor,
       bandColor: settings.bandColor,
+      pageColor: settings.pageColor,
       density: this.oneOf(settings.density, TEMPLATE_DENSITY_VALUES, 'normal'),
       showLogo: settings.showLogo,
       showPaymentBlock: settings.showPaymentBlock,

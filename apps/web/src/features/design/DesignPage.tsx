@@ -51,6 +51,7 @@ const COLOR_DEFAULTS = {
   inkSoftColor: '#4b5563',
   ruleColor: '#e3e6ea',
   bandColor: '#f4f5f7',
+  pageColor: '#ffffff',
 } as const;
 
 function toFormValues(settings: TemplateSettingsResponse): FormValues {
@@ -63,6 +64,7 @@ function toFormValues(settings: TemplateSettingsResponse): FormValues {
     inkSoftColor: settings.inkSoftColor,
     ruleColor: settings.ruleColor,
     bandColor: settings.bandColor,
+    pageColor: settings.pageColor,
     density: settings.density,
     showLogo: settings.showLogo,
     showPaymentBlock: settings.showPaymentBlock,
@@ -98,7 +100,7 @@ function toFormValues(settings: TemplateSettingsResponse): FormValues {
  * hier Regler und kein freies CSS gibt.
  */
 export function DesignPage(): JSX.Element {
-  useDocumentTitle('Design');
+  useDocumentTitle('PDF-Design');
   const queryClient = useQueryClient();
   const [saved, setSaved] = useState(false);
 
@@ -173,6 +175,7 @@ export function DesignPage(): JSX.Element {
     inkSoftColor: watched.inkSoftColor ?? stored.inkSoftColor,
     ruleColor: watched.ruleColor ?? stored.ruleColor,
     bandColor: watched.bandColor ?? stored.bandColor,
+    pageColor: watched.pageColor ?? stored.pageColor,
     density: watched.density ?? stored.density,
     showLogo: watched.showLogo ?? stored.showLogo,
     showPaymentBlock: watched.showPaymentBlock ?? stored.showPaymentBlock,
@@ -198,6 +201,7 @@ export function DesignPage(): JSX.Element {
     inkSoftColor: values.inkSoftColor,
     ruleColor: values.ruleColor,
     bandColor: values.bandColor,
+    pageColor: values.pageColor,
     density: values.density,
     showLogo: values.showLogo,
     showPaymentBlock: values.showPaymentBlock,
@@ -221,7 +225,8 @@ export function DesignPage(): JSX.Element {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Design"
+        back={{ to: '/invoices', label: 'Rechnungen' }}
+        title="PDF-Design"
         description="Wie Ihre Rechnungen aussehen. Bereits ausgestellte Rechnungen bleiben davon unberührt — sie tragen das Aussehen vom Tag ihrer Ausstellung."
       />
 
@@ -302,6 +307,14 @@ export function DesignPage(): JSX.Element {
                   disabled={!colors.includes('band')}
                   onChange={(v) => form.setValue('bandColor', v, { shouldDirty: true })}
                   error={form.formState.errors.bandColor?.message}
+                />
+                <ColorField
+                  label="Seitenhintergrund"
+                  hint="Grundfarbe des PDF-Dokuments."
+                  value={values.pageColor}
+                  fallback={COLOR_DEFAULTS.pageColor}
+                  onChange={(v) => form.setValue('pageColor', v, { shouldDirty: true })}
+                  error={form.formState.errors.pageColor?.message}
                 />
               </div>
             </Card>
@@ -435,8 +448,9 @@ export function DesignPage(): JSX.Element {
         </div>
 
         {/* Die Vorschau scrollt für sich — lange Rechnungen erreicht man,
-            ohne die Regler anzurühren. */}
-        <div className="min-h-0 lg:h-[var(--pane-h)] lg:overflow-y-auto">
+            ohne die Regler anzurühren. Die abgesetzte Arbeitsfläche lässt
+            das mittig liegende weiße A4-Blatt als Papier erkennen. */}
+        <div className="min-h-0 rounded-xl border border-border bg-surface-raised p-4 sm:p-6 lg:h-[var(--pane-h)] lg:overflow-y-auto">
           <TemplateFrame
             css={`
               ${embeddedFontCss(preview.fontFamily)}${design.css}
@@ -445,7 +459,7 @@ export function DesignPage(): JSX.Element {
           >
             {design.render(model)}
           </TemplateFrame>
-          <p className="mt-3 text-xs text-ink-subtle">
+          <p className="mx-auto mt-3 max-w-[794px] text-xs text-ink-subtle">
             Eine Musterrechnung — Ihre echten Rechnungen erscheinen mit ihren eigenen Angaben. Der
             Seitenumbruch entsteht erst beim Export.
           </p>

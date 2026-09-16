@@ -20,6 +20,7 @@ export function templateStyleVars(template: TemplateSnapshot): Record<string, st
     '--ink-soft': template.inkSoftColor,
     '--rule': template.ruleColor,
     '--band': template.bandColor,
+    '--page-background': template.pageColor,
     /*
      * In Anführungszeichen, weil Schriftnamen Leerzeichen enthalten. Der
      * Wert stammt aus einer festen Auswahl — das Eingabeschema lässt nur

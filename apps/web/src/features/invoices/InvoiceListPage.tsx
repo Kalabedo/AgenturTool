@@ -24,7 +24,7 @@ import { queryKeys } from '../../lib/queryKeys.js';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js';
 import { useDebounced } from '../../lib/useDebounced.js';
 import { Badge } from '../../components/ui/Badge.js';
-import { Button } from '../../components/ui/Button.js';
+import { Button, buttonClassName } from '../../components/ui/Button.js';
 import { EmptyState } from '../../components/ui/EmptyState.js';
 import { ErrorNotice } from '../../components/ui/ErrorNotice.js';
 import { LoadingNote } from '../../components/ui/LoadingNote.js';
@@ -194,13 +194,18 @@ export function InvoiceListPage(): JSX.Element {
         title="Rechnungen"
         description="Entwürfe lassen sich frei bearbeiten; ausgestellte Rechnungen sind unveränderlich."
         actions={
-          <Button
-            onClick={() => create.mutate()}
-            pending={create.isPending}
-            pendingLabel="wird angelegt …"
-          >
-            Neue Rechnung
-          </Button>
+          <>
+            <Link to="/invoices/design" className={buttonClassName('secondary')}>
+              PDF-Design
+            </Link>
+            <Button
+              onClick={() => create.mutate()}
+              pending={create.isPending}
+              pendingLabel="wird angelegt …"
+            >
+              Neue Rechnung
+            </Button>
+          </>
         }
       />
 

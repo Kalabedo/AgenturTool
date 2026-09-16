@@ -229,6 +229,7 @@ describe('Nachgereichte Design-Felder im templateSnapshot', () => {
       inkSoftColor: '#4b5563',
       ruleColor: '#e3e6ea',
       bandColor: '#f4f5f7',
+      pageColor: '#ffffff',
       density: 'normal',
       showLogo: true,
       showPaymentBlock: true,

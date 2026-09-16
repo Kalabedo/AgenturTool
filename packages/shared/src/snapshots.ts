@@ -200,6 +200,7 @@ export const templateSnapshotSchema = upgraded(
     inkSoftColor: z.string().default('#4b5563'),
     ruleColor: z.string().default('#e3e6ea'),
     bandColor: z.string().default('#f4f5f7'),
+    pageColor: z.string().default('#ffffff'),
     density: z.string().default('normal'),
     showLogo: z.boolean().default(true),
     showPaymentBlock: z.boolean().default(true),

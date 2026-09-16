@@ -43,6 +43,7 @@ export async function seed(prisma: PrismaClient): Promise<SeedCounts> {
       id: 1,
       templateKey: 'classic',
       accentColor: '#1e293b',
+      pageColor: '#ffffff',
       fontFamily: 'Open Sans',
       logoWidthMm: 40,
       paymentNote: 'Bitte überweisen Sie den Rechnungsbetrag bis zum Fälligkeitsdatum.',

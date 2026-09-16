@@ -47,6 +47,7 @@ describe('TemplateSettingsService', () => {
       updateTemplateSettingsSchema.parse({
         templateKey: 'classic',
         accentColor: '#B91C1C',
+        pageColor: '#FFF7ED',
         fontFamily: 'Open Sans',
         logoWidthMm: '55,5',
         footerText: 'Amtsgericht Ulm HRB 12345',
@@ -56,6 +57,7 @@ describe('TemplateSettingsService', () => {
     );
 
     expect(updated.accentColor).toBe('#b91c1c');
+    expect(updated.pageColor).toBe('#fff7ed');
     expect(updated.logoWidthMm).toBe(55.5);
     expect(updated.footerText).toBe('Amtsgericht Ulm HRB 12345');
     // Ein leeres Feld wird zu null, nicht zu einem leeren String — sonst

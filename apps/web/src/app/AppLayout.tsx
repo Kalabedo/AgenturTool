@@ -11,7 +11,6 @@ const NAVIGATION = [
   { to: '/invoices', label: 'Rechnungen' },
   { to: '/customers', label: 'Kunden' },
   { to: '/time-tracking', label: 'Zeiterfassung' },
-  { to: '/design', label: 'Design' },
   { to: '/settings/company', label: 'Einstellungen' },
 ];
 
@@ -37,7 +36,7 @@ export function AppLayout({ error }: { error?: ReactNode }): JSX.Element {
    * A4-Blatt. `useMatch` ist ein Hook und muss deshalb unbedingt aufgerufen
    * werden — die Bedingung steht hinterher, nicht davor.
    */
-  const designer = useMatch('/design') !== null;
+  const designer = useMatch('/invoices/design') !== null;
   const wideLayout = invoiceEditor || designer;
 
   /**

@@ -405,7 +405,7 @@ Nest-spezifisch:
 | `Company`          | eigene Firmendaten (Singleton, `id = 1`)    | Name, Adresse, Kontakt, USt-ID, Steuernr., Kontoinhaber/IBAN/BIC, Logo-Ref, Standard-Zahlungsziel, Standard-Stundensatz, Fußzeilentexte |
 | `Customer`         | Rechnungsempfänger (Stammdaten)             | Nr., Firma, Ansprechpartner, Adresse, Land, E-Mail, USt-ID, Standard-Steuerprofil, Standard-Zahlungsziel, `archivedAt`                  |
 | `TaxProfile`       | konfigurierbare Steuerkonstellation         | Name, `kind`, Standardsatz, Hinweistext, Flags                                                                                          |
-| `TemplateSettings` | Aussehen (Singleton in V1)                  | Template-Key, Akzentfarbe, Schrift, Sichtbarkeits-Flags, Footer, Standardtexte                                                          |
+| `TemplateSettings` | Aussehen (Singleton in V1)                  | Template-Key, Dokumentfarben einschließlich Seitenhintergrund, Schrift, Sichtbarkeits-Flags, Footer, Standardtexte                      |
 | `Invoice`          | Rechnungskopf + Snapshots + Status          | siehe unten                                                                                                                             |
 | `InvoiceItem`      | Positionen                                  | Sortierung, Beschreibung, Menge, Einheit, Einzelpreis, Rabatt, Steuersatz, berechnete Beträge                                           |
 | `NumberSequence`   | Zählerstand je Jahr/Dokumenttyp             | `scope`, `year`, `nextValue`                                                                                                            |

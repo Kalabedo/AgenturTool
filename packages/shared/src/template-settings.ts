@@ -72,6 +72,7 @@ export const updateTemplateSettingsSchema = z.object({
   inkSoftColor: hexColorSchema.default('#4b5563'),
   ruleColor: hexColorSchema.default('#e3e6ea'),
   bandColor: hexColorSchema.default('#f4f5f7'),
+  pageColor: hexColorSchema.default('#ffffff'),
   density: z.enum(TEMPLATE_DENSITY_VALUES).default('normal'),
   showLogo: z.boolean().default(true),
   showPaymentBlock: z.boolean().default(true),

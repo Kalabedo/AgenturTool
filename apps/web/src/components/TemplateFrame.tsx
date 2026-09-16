@@ -1,6 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
+/** A4 bei Chromiums CSS-Auflösung von 96 dpi, auf ganze Pixel gerundet. */
+export const A4_DOCUMENT_WIDTH_PX = 794;
+export const A4_DOCUMENT_HEIGHT_PX = 1123;
+
 /**
  * Rendert Kinder in ein iframe und skaliert es auf die verfügbare Breite.
  *
@@ -20,19 +24,26 @@ export function TemplateFrame({
   css,
   title,
   /** Breite des dargestellten Dokuments in CSS-Pixeln (A4 = 794). */
-  documentWidth = 794,
+  documentWidth = A4_DOCUMENT_WIDTH_PX,
+  /**
+   * Feste sichtbare Dokumenthöhe, wenn nicht der ganze Inhalt wachsen soll.
+   * Die Vorlagenauswahl zeigt damit jedes Design als gleich großes A4-Blatt;
+   * vollständige Vorschauen lassen den Wert weg und wachsen weiterhin mit.
+   */
+  viewportHeight,
   children,
 }: {
   css: string;
   title: string;
   documentWidth?: number;
+  viewportHeight?: number;
   children: ReactNode;
 }): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [mountNode, setMountNode] = useState<HTMLElement | null>(null);
   const [availableWidth, setAvailableWidth] = useState(documentWidth);
-  const [contentHeight, setContentHeight] = useState(1123);
+  const [contentHeight, setContentHeight] = useState(A4_DOCUMENT_HEIGHT_PX);
 
   /**
    * Das Dokument des iframes vorbereiten.
@@ -52,6 +63,13 @@ export function TemplateFrame({
       const style = doc.head.firstElementChild;
       if (style !== null) style.textContent = css;
       doc.body.style.margin = '0';
+      // Gesetzt wird immer außerhalb des iframes. Bei einer vollständigen
+      // Vorschau wächst dessen Höhe mit dem Inhalt; bei einer festen
+      // A4-Miniatur wird Überstand abgeschnitten. Ein eigener Scrollbalken
+      // im Dokument würde in beiden Fällen nur eine zweite Scrollfläche
+      // innerhalb der eigentlichen Vorschau erzeugen.
+      doc.documentElement.style.overflow = 'hidden';
+      doc.body.style.overflow = 'hidden';
       /*
        * Fest weiß, auch im Dunkelmodus: Hier steht kein Stück Oberfläche,
        * sondern ein Blatt Papier. Es soll aussehen wie das, was später aus
@@ -102,25 +120,32 @@ export function TemplateFrame({
     return () => observer.disconnect();
   }, [mountNode]);
 
+  // Der Rahmen gehört um das Papier, nicht in dessen Maße. Zwei Pixel werden
+  // deshalb vor dem Skalieren abgezogen; so passt das Blatt samt 1-px-Rand
+  // auch in schmale Auswahlkarten, ohne seitlich abgeschnitten zu werden.
+  const borderWidth = 2;
   // Nur verkleinern: Ein hochskaliertes A4-Blatt wird unscharf und gewinnt nichts.
-  const scale = Math.min(1, availableWidth / documentWidth);
+  const scale = Math.min(1, Math.max(0, availableWidth - borderWidth) / documentWidth);
+  const renderedWidth = documentWidth * scale;
+  const frameHeight = viewportHeight ?? contentHeight;
 
   return (
     <div ref={containerRef} className="w-full">
       <div
-        className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm dark:ring-1 dark:ring-white/10"
-        style={{ height: contentHeight * scale }}
+        className="mx-auto box-content overflow-hidden rounded-sm border border-border-strong bg-white shadow-md dark:ring-1 dark:ring-white/10"
+        style={{ width: renderedWidth, height: frameHeight * scale }}
       >
         <iframe
           ref={frameRef}
           title={title}
+          scrolling="no"
           // Das iframe zeigt eigene Inhalte derselben Anwendung; ein Sandbox-
           // Attribut brächte hier nichts, würde aber den Portal-Zugriff auf
           // das Dokument verhindern.
           className="block border-0"
           style={{
             width: documentWidth,
-            height: contentHeight,
+            height: frameHeight,
             transform: `scale(${scale})`,
             transformOrigin: 'top left',
           }}

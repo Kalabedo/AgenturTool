@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppLayout } from './AppLayout';
 import { SettingsLayout } from '../features/settings/SettingsLayout';
 import { NotFoundPage } from './NotFoundPage';
@@ -75,10 +75,11 @@ export const router = createBrowserRouter([
     children: [
       { index: true, lazy: dashboardPage },
       { path: 'invoices', lazy: invoiceListPage },
+      { path: 'invoices/design', lazy: designPage },
       { path: 'invoices/:id', lazy: invoiceEditorPage },
       { path: 'time-tracking', lazy: timeTrackingPage },
       { path: 'onboarding', lazy: onboardingPage },
-      { path: 'design', lazy: designPage },
+      { path: 'design', element: <Navigate to="/invoices/design" replace /> },
       { path: 'customers', lazy: customerListPage },
       { path: 'customers/new', lazy: newCustomerPage },
       { path: 'customers/:id', lazy: editCustomerPage },

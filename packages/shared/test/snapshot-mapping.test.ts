@@ -52,6 +52,7 @@ const templateSettings: TemplateSettingsResponse = {
   inkSoftColor: '#4b5563',
   ruleColor: '#e3e6ea',
   bandColor: '#f4f5f7',
+  pageColor: '#ffffff',
   density: 'normal',
   showLogo: true,
   showPaymentBlock: true,
@@ -141,5 +142,6 @@ describe('templateSnapshotFromSettings', () => {
     expect(() => templateSnapshotSchema.parse(snapshot)).not.toThrow();
     expect(snapshot.footerText).toBeNull();
     expect(snapshot.paymentNote).toBe('Bitte bis zum Fälligkeitsdatum überweisen.');
+    expect(snapshot.pageColor).toBe('#ffffff');
   });
 });

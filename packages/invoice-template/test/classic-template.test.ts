@@ -192,13 +192,19 @@ describe('Classic-Template', () => {
     expect(html).toContain('white-space: pre-wrap');
   });
 
-  it('setzt Akzentfarbe und Logobreite aus den Template-Einstellungen', () => {
+  it('setzt Farben und Logobreite aus den Template-Einstellungen', () => {
     const html = render({
       ...REFERENCE_INVOICE,
-      template: { ...DEFAULT_TEMPLATE, accentColor: '#b91c1c', logoWidthMm: 55 },
+      template: {
+        ...DEFAULT_TEMPLATE,
+        accentColor: '#b91c1c',
+        pageColor: '#fff7ed',
+        logoWidthMm: 55,
+      },
     });
 
     expect(html).toContain('#b91c1c');
+    expect(html).toContain('--page-background:#fff7ed');
     expect(html).toContain('55mm');
   });
 

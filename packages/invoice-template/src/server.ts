@@ -28,6 +28,11 @@ function escapeHtml(value: string): string {
     .replace(/"/gu, '&quot;');
 }
 
+/** Nur validierte Farben dürfen in eine globale Druckregel gelangen. */
+function safePageColor(value: string): string {
+  return /^#[0-9a-fA-F]{6}$/u.test(value) ? value : '#ffffff';
+}
+
 /**
  * Rendert das Modell zu einem vollständigen HTML-Dokument für den Druck.
  *
@@ -44,6 +49,7 @@ export function renderInvoiceDocument(
   const template = resolveTemplate(model.template.templateKey);
   const body = renderToStaticMarkup(template.render(model));
   const title = options.title ?? `Rechnung ${model.number ?? 'Entwurf'}`;
+  const pageColor = safePageColor(model.template.pageColor);
 
   return [
     '<!doctype html>',
@@ -51,7 +57,7 @@ export function renderInvoiceDocument(
     '<head>',
     '<meta charset="utf-8">',
     `<title>${escapeHtml(title)}</title>`,
-    `<style>${embeddedFontCss(model.template.fontFamily)}${template.css}${options.extraCss ?? ''}</style>`,
+    `<style>:root{--page-background:${pageColor}}${embeddedFontCss(model.template.fontFamily)}${template.css}${options.extraCss ?? ''}</style>`,
     '</head>',
     '<body style="margin:0">',
     body,

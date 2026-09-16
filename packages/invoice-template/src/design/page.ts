@@ -58,6 +58,9 @@ export function pageCss(page: PageGeometry): string {
 @page {
   size: A4;
   margin: ${page.marginTopMm}mm ${page.marginSideMm}mm ${page.footerMm}mm;
+  /* Auch der Druckrand gehört zum Blatt. Nur die .page einzufärben ließe im
+     erzeugten PDF einen weißen Rahmen um den eigentlichen Inhalt stehen. */
+  background: var(--page-background, #ffffff);
 }
 
 /*
@@ -70,7 +73,7 @@ export function pageCss(page: PageGeometry): string {
   min-height: ${page.heightMm}mm;
   padding: ${page.marginTopMm}mm ${page.marginSideMm + page.edgeGapMm}mm ${page.footerMm}mm
     ${page.marginSideMm}mm;
-  background: #ffffff;
+  background: var(--page-background, #ffffff);
 }
 
 /*

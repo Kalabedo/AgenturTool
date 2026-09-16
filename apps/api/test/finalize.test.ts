@@ -277,6 +277,7 @@ describe('Finalisieren', () => {
       inkSoftColor: '#777777',
       ruleColor: '#cccccc',
       bandColor: '#eeeeee',
+      pageColor: '#fff7ed',
       density: 'luftig',
       showLogo: false,
       showPaymentBlock: false,
@@ -314,6 +315,7 @@ describe('Finalisieren', () => {
       inkSoftColor: '#4b5563',
       ruleColor: '#e3e6ea',
       bandColor: '#f4f5f7',
+      pageColor: '#f0fdfa',
       density: 'kompakt',
       showLogo: false,
       showPaymentBlock: true,
@@ -331,6 +333,7 @@ describe('Finalisieren', () => {
 
     expect(snapshot).toMatchObject({
       templateKey: 'kompakt',
+      pageColor: '#f0fdfa',
       density: 'kompakt',
       showLogo: false,
     });
