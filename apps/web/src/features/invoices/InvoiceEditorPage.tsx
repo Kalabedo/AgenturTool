@@ -126,7 +126,11 @@ export function InvoiceEditorPage(): JSX.Element {
   // useWatch statt form.watch: Es abonniert gezielt und liefert bei jeder
   // Eingabe neue Werte, statt das Array der Feldliste weiterzureichen.
   const watchedItems = useWatch({ control: form.control, name: 'items' });
+  const watchedTaxProfileId = useWatch({ control: form.control, name: 'taxProfileId' });
   const calculation = useInvoiceTotals(watchedItems ?? []);
+  const selectedTaxProfile = taxProfiles.data?.find(
+    (profile) => String(profile.id) === watchedTaxProfileId,
+  );
 
   /**
    * Alle Formularwerte für die Vorschau.
@@ -581,6 +585,7 @@ export function InvoiceEditorPage(): JSX.Element {
             fieldArray={fieldArray}
             calculation={calculation}
             fieldErrors={fieldErrors}
+            defaultTaxRateBasisPoints={selectedTaxProfile?.defaultRateBasisPoints}
           />
         </div>
 

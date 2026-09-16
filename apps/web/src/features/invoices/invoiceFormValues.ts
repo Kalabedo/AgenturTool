@@ -60,6 +60,26 @@ export interface InvoiceFormValues {
   items: InvoiceItemFormValues[];
 }
 
+/**
+ * Steuersatz für eine neu angelegte Position.
+ *
+ * Nach der ersten Zeile bleibt der zuletzt verwendete Satz der beste
+ * Vorschlag (eine Rechnung darf gemischte Sätze enthalten). Für die erste
+ * Zeile kommt der Vorschlag dagegen aus dem gewählten Steuerprofil. Ohne
+ * Profil bleibt das Feld leer, statt stillschweigend 19 % zu behaupten.
+ */
+export function taxRateForNewInvoiceItem(
+  items: readonly Pick<InvoiceItemFormValues, 'taxRateBasisPoints'>[],
+  profileDefaultRateBasisPoints: number | undefined,
+): string {
+  const previous = items.at(-1);
+  if (previous !== undefined) return previous.taxRateBasisPoints;
+
+  return profileDefaultRateBasisPoints === undefined
+    ? ''
+    : basisPointsToPercentInput(profileDefaultRateBasisPoints);
+}
+
 export function toInvoiceFormValues(invoice: InvoiceResponse): InvoiceFormValues {
   return {
     customerId: invoice.customerId === null ? '' : String(invoice.customerId),

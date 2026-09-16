@@ -11,13 +11,14 @@ import {
 import { Button } from '../../components/ui/Button.js';
 import { Input } from '../../components/ui/Input.js';
 import { Select } from '../../components/ui/Select.js';
-import type { InvoiceFormValues } from './invoiceFormValues.js';
+import { taxRateForNewInvoiceItem, type InvoiceFormValues } from './invoiceFormValues.js';
 
 interface InvoiceItemsTableProps {
   form: UseFormReturn<InvoiceFormValues, unknown, never>;
   fieldArray: UseFieldArrayReturn<InvoiceFormValues, 'items', 'id'>;
   calculation: InvoiceCalculation;
   fieldErrors?: Record<string, string>;
+  defaultTaxRateBasisPoints?: number;
 }
 
 export function InvoiceItemsTable({
@@ -25,6 +26,7 @@ export function InvoiceItemsTable({
   fieldArray,
   calculation,
   fieldErrors,
+  defaultTaxRateBasisPoints,
 }: InvoiceItemsTableProps): JSX.Element {
   const { fields, append, remove, move } = fieldArray;
   const errors = form.formState.errors.items;
@@ -211,8 +213,9 @@ export function InvoiceItemsTable({
           variant="secondary"
           onClick={() => {
             // Der Steuersatz der letzten Zeile ist der wahrscheinlichste für
-            // die nächste — sonst tippt man ihn bei jeder Position neu.
-            const previous = form.getValues('items').at(-1);
+            // die nächste. Die erste Zeile übernimmt dagegen den Vorschlag
+            // aus dem Steuerprofil der Rechnung.
+            const items = form.getValues('items');
             const index = fields.length;
             append({
               description: '',
@@ -222,7 +225,7 @@ export function InvoiceItemsTable({
               unitPriceCents: '',
               discountType: DISCOUNT_TYPE.PERCENT,
               discountValue: '',
-              taxRateBasisPoints: previous?.taxRateBasisPoints ?? '19',
+              taxRateBasisPoints: taxRateForNewInvoiceItem(items, defaultTaxRateBasisPoints),
             });
 
             // Der Cursor springt in die neue Zeile. Ohne das müsste man nach
