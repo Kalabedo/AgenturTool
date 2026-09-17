@@ -149,6 +149,100 @@ Deutschland und anschließend auf einer breiteren Nutzung in der EU.
   - Export dokumentieren, damit derselbe Zeitraum reproduzierbar erneut
     ausgegeben werden kann.
 
+- [ ] **E-Rechnungen empfangen und lesen**
+  - Seit dem 1. Januar 2025 muss jedes deutsche Unternehmen E-Rechnungen
+    **annehmen** können. Privatura kann heute nur senden; damit fehlt die
+    Hälfte der Pflicht, und zwar die, die bereits gilt.
+  - XRechnung und ZUGFeRD/Factur-X einlesen — die eigenständige XML-Datei
+    ebenso wie den Datensatz, der in einem fremden PDF steckt.
+  - Den Datensatz menschenlesbar anzeigen: Absender, Nummer, Datum,
+    Positionen, Steueraufteilung, Summen, Bankverbindung. Ein Empfänger
+    will die Rechnung sehen, nicht ihr XML.
+  - Eingegangene Belege mit Prüfsumme unverändert ablegen, so wie die
+    eigenen ausgestellten Dokumente. Die Originaldatei bleibt das
+    Original; Privatura erzeugt daraus keine neue Wahrheit.
+  - Widersprüche zwischen sichtbarem PDF und eingebettetem XML benennen,
+    statt stillschweigend einer Seite zu glauben.
+  - Der Lesepfad ist größtenteils vorhanden: `packages/einvoice` kennt
+    CII, die Profile und die Codelisten. Was fehlt, ist die Richtung —
+    aus XML ein Modell statt aus einem Modell XML.
+  - Zusammen mit „Ausgaben und Belege" ergibt das den vollständigen Weg:
+    empfangen, verstehen, ablegen, als Ausgabe verbuchen.
+
+- [ ] **Ausgaben und Belege**
+  - Ausgaben mit Datum, Lieferant, Betrag, Steuersatz und Kategorie
+    erfassen; Beleg als Datei daneben, mit Prüfsumme, wie bei den
+    Rechnungen.
+  - Vorsteuer je Ausgabe ausweisen, damit die Zahlen für die
+    Umsatzsteuer überhaupt entstehen können.
+  - Wenige feste Kategorien statt eines Kontenrahmens — die Zuordnung zu
+    Konten bleibt Sache der Kanzlei und des DATEV-Exports.
+  - Belege in den Steuerberater-Export aufnehmen; heute enthält das Paket
+    nur die Ausgangsseite.
+  - **Bewusst nicht:** Buchungssätze, Bankabgleich, doppelte
+    Buchführung. Die Grenze ist die Produktregel „kein großes ERP" — eine
+    Ausgabenliste mit Belegen ist die Grundlage für EÜR und
+    Voranmeldung, keine Buchhaltung.
+  - Vorher zu entscheiden: ob Privatura damit vom Rechnungswerkzeug zum
+    Buchhaltungswerkzeug wird. Das ist eine Produktentscheidung und keine
+    technische; alles Weitere in dieser Liste hängt daran.
+
+- [ ] **Kleinunternehmer-Grenzen im Blick behalten**
+  - Seit 2025 gelten 25.000 € für das Vorjahr und 100.000 € für das
+    laufende Jahr. Entscheidend ist die zweite Zahl: Wird sie überschritten,
+    endet die Kleinunternehmerregelung **sofort im laufenden Jahr** — die
+    nächste Rechnung trägt Umsatzsteuer, nicht erst die im Januar.
+  - Laufenden Jahresumsatz aus den ausgestellten Rechnungen ermitteln und
+    dem Grenzwert gegenüberstellen, solange das Steuerprofil
+    `SMALL_BUSINESS` aktiv ist.
+  - Rechtzeitig warnen, nicht erst beim Überschreiten: ein ruhiger
+    Hinweis auf dem Dashboard ab einem gut sichtbaren Anteil der Grenze.
+  - Beim Ausstellen einer Rechnung, die die Grenze reißen würde, vorher
+    darauf hinweisen — danach ist es zu spät.
+  - Den Wechsel des Steuerprofils erklären, nicht selbst vollziehen. Ob
+    und wann gewechselt wird, entscheidet der Steuerberater.
+  - Die Grenzwerte gehören in die Konfiguration, nicht in den Code —
+    dieselbe Regel wie bei den Steuerprofilen.
+
+- [ ] **Timer in der Zeiterfassung**
+  - Auf dem Dashboard eine laufende Uhr starten und stoppen, statt Beginn
+    und Ende hinterher einzutippen. Die Zeiterfassung ist die Stelle, an
+    der täglich Reibung entsteht.
+  - Beim Start ein kleiner Dialog mit genau einer Frage: für welchen
+    Kunden? Zuletzt benutzte Kunden oben, Tastatur genügt.
+  - Beim Beenden direkt die zweite Frage: was wurde gemacht? Der Text
+    landet in der Beschreibung des Eintrags. Beides zusammen ist der
+    ganze Ablauf — kein dritter Schritt.
+  - Der laufende Timer bleibt sichtbar, solange er läuft, und übersteht
+    einen Neustart der Anwendung. Eine vergessene Uhr, die über Nacht
+    weiterläuft, wird beim nächsten Start angesprochen, statt einen
+    Vierzehn-Stunden-Eintrag zu erzeugen.
+  - Aus der gestoppten Uhr entsteht ein gewöhnlicher Eintrag der
+    Zeiterfassung — dieselben offenen Zeiten, dasselbe Abrechnen,
+    derselbe Zeitnachweis.
+  - Zu klären: Die erfassten Minuten sind per CHECK auf Viertelstunden
+    festgenagelt. Eine echte Uhr liefert 37 Minuten. Entweder rundet der
+    Timer beim Beenden auf die nächste Viertelstunde — sichtbar, nicht
+    heimlich —, oder das Datenmodell lernt genaue Minuten und rundet erst
+    beim Abrechnen. Die zweite Fassung ist ehrlicher und die größere
+    Änderung.
+
+- [ ] **Kundenimport**
+  - Kunden aus einer CSV-Datei übernehmen, statt sie beim Umstieg von
+    Hand abzutippen. Wer fünfzig Kunden hat, entscheidet daran, ob der
+    Umstieg überhaupt stattfindet.
+  - Spalten der Datei den Feldern zuordnen, statt ein festes Format zu
+    verlangen. Jede Vorgängeranwendung exportiert anders.
+  - Vor dem Übernehmen zeigen, was entstehen wird: wie viele Kunden neu
+    sind, welche Zeilen unvollständig sind und welche auf einen
+    bestehenden Kunden passen.
+  - Doppelte erkennen — über Kundennummer, sonst über Name und Anschrift —
+    und die Wahl lassen zwischen Überspringen und Aktualisieren.
+  - Fehlerhafte Zeilen benennen und den Rest trotzdem übernehmen; ein
+    Import, der an einer Zeile ganz scheitert, ist kein Import.
+  - Der Weg zurück gehört dazu: Kunden auch als CSV ausgeben. Die Daten
+    gehören dem Benutzer, und das soll man merken.
+
 ## Danach
 
 - [ ] **Kleine Statistikseite**
@@ -186,6 +280,110 @@ Deutschland und anschließend auf einer breiteren Nutzung in der EU.
   - [x] Die Bezeichnung Factur-X berücksichtigen: Der Anhang heißt wie
         vorgeschrieben `factur-x.xml`, und die Metadaten nutzen den
         gemeinsamen Namensraum beider Standards.
+
+- [ ] **Steuertermine und Vorauszahlungen auf dem Dashboard**
+  - Eine Erinnerung, keine Steuererklärung: Privatura meldet den nächsten
+    Termin und die ungefähre Summe. Übermittelt wird nichts — kein
+    ELSTER, kein ERiC, keine Schnittstelle zum Finanzamt.
+  - Fälligkeitstermine der Umsatzsteuer-Voranmeldung anzeigen, je nach
+    eingestelltem Rhythmus monatlich oder vierteljährlich, samt
+    Dauerfristverlängerung.
+  - Die zu erwartende Zahllast aus den ausgestellten Rechnungen des
+    Zeitraums überschlagen — und sobald es Ausgaben gibt, abzüglich der
+    Vorsteuer. Solange nur die Ausgangsseite erfasst ist, sagt die Zahl
+    dazu, dass sie die Ausgangsseite ist.
+  - Termine der Einkommensteuer-Vorauszahlung (10. März, Juni, September,
+    Dezember) mit dem hinterlegten Bescheidbetrag erinnern. Die Höhe gibt
+    der Benutzer ein; sie steht in seinem Bescheid und lässt sich nicht
+    errechnen.
+  - Ein ruhiger Hinweis mit Vorlauf, keine roten Zähler. Der Termin ist
+    erledigt, wenn der Benutzer ihn abhakt.
+  - Zu klären: die Ist-Versteuerung nach § 20 UStG. Die meisten
+    Solo-Selbstständigen versteuern nach vereinnahmten Entgelten, die
+    Auswertungen rechnen heute implizit nach Soll. Ohne diese
+    Unterscheidung nennt die Vorschau den falschen Zeitraum.
+
+- [ ] **Zusammenfassende Meldung (ZM)**
+  - Reverse Charge gibt es bereits als Steuerprofil. Wer es benutzt, ist
+    zur Zusammenfassenden Meldung verpflichtet — sie fehlt vollständig.
+  - Für ein Quartal je EU-Kunde die USt-IdNr. und die Summe der
+    steuerfreien Leistungen auflisten, getrennt nach sonstiger Leistung
+    und Lieferung.
+  - Rechnungen ohne oder mit unplausibler USt-IdNr. vor der Meldung
+    benennen, statt sie stillschweigend wegzulassen.
+  - Als Auswertung zum Abtippen beziehungsweise als Datei für die
+    Kanzlei. Eine Übermittlung an das Bundeszentralamt findet nicht
+    statt — aus demselben Grund wie bei Peppol.
+  - Den Fristenlauf (25. Tag nach Quartalsende) beim Punkt oben mit
+    anzeigen.
+
+- [ ] **Qualifizierte Bestätigungsabfrage der USt-IdNr. beim BZSt**
+  - Heute prüft `isPlausibleVatId` nur das Format. Bei Reverse Charge
+    haftet der Rechnungssteller für die Steuer, wenn die Nummer des
+    Kunden nicht gültig war — die qualifizierte Abfrage ist der Nachweis,
+    dass man sie geprüft hat.
+  - **Zur Frage, ob das zur lokalen Anwendung passt: ja, nach demselben
+    Muster wie bisher.** Die Abfrage geht vom Hauptprozess aus an genau
+    einen festen Host des Bundeszentralamts, nur auf ausdrücklichen
+    Klick, nie von selbst und nie im Hintergrund. Das ist derselbe Weg,
+    den der Updatefeed und der SMTP-Versand schon gehen (D45): Eine
+    Verbindung, die es ohne Zutun des Benutzers gar nicht gibt, ist keine
+    Cloudanbindung.
+  - Übertragen wird, was die Abfrage braucht: die eigene und die fremde
+    USt-IdNr. sowie Name und Anschrift des Kunden. Der Dialog sagt das
+    vorher, statt es hinterher im Protokoll zu vermerken.
+  - Das amtliche Ergebnis samt Datum und Abfrageergebnis-Nummer beim
+    Kunden ablegen — das ist der eigentliche Zweck. Ein Nachweis, der
+    nicht aufbewahrt wird, ist keiner.
+  - Ohne Netz oder bei abgeschalteter Abfrage bleibt alles wie heute: Die
+    Rechnung entsteht, die Plausibilitätsprüfung greift, und der fehlende
+    Nachweis steht als Hinweis daneben. Die Funktion darf nie zur
+    Voraussetzung für das Ausstellen werden.
+  - Abschaltbar wie die Updateprüfung, mit demselben Versprechen: kein
+    Haken, keine Verbindung.
+
+- [ ] **Historische Stundensätze**
+  - `Company.defaultHourlyRateCents` ist heute ein einzelner Wert. Wer
+    ihn erhöht, bewertet damit auch alle noch nicht abgerechneten Zeiten
+    der Vergangenheit neu — lautlos.
+  - Einen Stundensatz mit Gültigkeitsdatum führen, statt ihn zu
+    überschreiben. Eine erfasste Stunde wird mit dem Satz bewertet, der
+    an ihrem Tag galt.
+  - Dieselbe Regel für kunden- und projektbezogene Sätze, sobald es
+    Projekte gibt: Der spezifischere Satz gewinnt, der historische Stand
+    bleibt.
+  - Beim Abrechnen zeigen, welcher Satz je Zeitraum angesetzt wurde,
+    wenn es mehr als einer ist — und ihn im Entwurf überschreibbar
+    halten.
+  - Der Satzwechsel ist ein eigener Vorgang mit Datum, kein Feld, das man
+    nebenbei ändert. Das ist derselbe Gedanke wie beim eingefrorenen
+    Rechnungsdokument.
+
+- [ ] **Verschlüsselung der Datenbank**
+  - `db.sqlite` liegt heute im Klartext im Benutzerordner. Darin stehen
+    sämtliche Kundendaten — auf einem Notebook, das verloren gehen kann.
+  - Die Datenbank im Ruhezustand verschlüsseln, mit einem Schlüssel im
+    Schlüsselbund des Betriebssystems. Das Vorbild steht schon im Haus:
+    `mail/secret-store.ts` macht genau das für das SMTP-Passwort.
+  - Die Sicherungen gehören dazu. Ein verschlüsseltes `db.sqlite` in
+    einem offenen ZIP-Archiv wäre die Verschlüsselung, die genau die
+    Datei ungeschützt lässt, die man aus dem Haus trägt.
+  - Der wunde Punkt ist die Wiederherstellung. Liegt der Schlüssel nur im
+    Schlüsselbund, ist ein Backup auf einem neuen Rechner unlesbar — und
+    zwar vollständig, nicht bloß ein Passwortfeld wie heute beim SMTP.
+    Es braucht deshalb ein vom Benutzer gewähltes Kennwort oder einen
+    ausdruckbaren Wiederherstellungsschlüssel, bevor die erste
+    verschlüsselte Sicherung entsteht.
+  - Technisch zu prüfen: Prisma spricht mit dem gewöhnlichen
+    SQLite-Treiber, und SQLCipher ist keine Einstellung, sondern ein
+    anderes Binärpaket. Der zweite Weg — die Verschlüsselung des
+    Betriebssystems (FileVault, BitLocker) prüfen und beim ersten Start
+    dazu raten — kostet nichts und deckt den häufigsten Fall ab.
+  - Vorher zu entscheiden: welchen Angriff das abwehren soll. Gegen das
+    verlorene Notebook hilft die Dateisystemverschlüsselung; eine
+    verschlüsselte Datenbank hilft zusätzlich gegen alles, was Zugriff
+    auf den laufenden Benutzerordner hat. Der Preis ist der Schlüssel,
+    den man verlieren kann.
 
 ## Produktregeln für diese Erweiterungen
 
