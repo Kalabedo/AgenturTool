@@ -3,9 +3,11 @@ import { defaultTaxCategoryForKind } from './einvoice/codes.js';
 import { ZERO_TAX_KINDS, type TaxProfileKind } from './enums.js';
 import {
   CURRENT_SNAPSHOT_VERSION,
+  type BuyerData,
   type SellerSnapshot,
   type TaxSnapshot,
   type TemplateSnapshot,
+  type TotalsSnapshot,
 } from './snapshots.js';
 import type { TaxProfileResponse } from './tax-profile.js';
 import type { TemplateSettingsResponse } from './template-settings.js';
@@ -124,3 +126,59 @@ export function effectiveTaxRateBasisPoints(snapshot: TaxSnapshot): number {
     ? 0
     : snapshot.defaultRateBasisPoints;
 }
+
+/**
+ * Die auswertbaren Spalten einer ausgestellten Rechnung.
+ *
+ * Netto, Steuer und Brutto liegen als JSON in `totalsSnapshot`, die Steuerart
+ * in `taxSnapshot`, Land und USt-IdNr. des Kunden in `buyerData`. SQLite kann
+ * in einem TEXT-Feld weder summieren noch filtern — jede Auswertung müsste
+ * sonst alle Zeilen des Zeitraums laden und selbst parsen.
+ *
+ * Deshalb werden diese sechs Werte beim Finalisieren zusätzlich als echte
+ * Spalten geschrieben. **Der Snapshot bleibt die Wahrheit; die Spalten sind
+ * eine Kopie fürs Rechnen.** Sie werden nie eigenständig fortgeschrieben,
+ * sondern immer hier aus denselben eingefrorenen Werten abgeleitet.
+ */
+export interface InvoiceTotalsColumns {
+  totalNetCents: number;
+  totalTaxCents: number;
+  totalGrossCents: number;
+  taxProfileKind: string;
+  buyerCountry: string | null;
+  buyerVatId: string | null;
+}
+
+export function invoiceTotalsColumns(sources: {
+  tax: TaxSnapshot;
+  totals: TotalsSnapshot;
+  buyer: BuyerData;
+}): InvoiceTotalsColumns {
+  return {
+    totalNetCents: sources.totals.netCents,
+    totalTaxCents: sources.totals.taxCents,
+    totalGrossCents: sources.totals.grossCents,
+    taxProfileKind: sources.tax.kind,
+    buyerCountry: emptyToNull(sources.buyer.address.country),
+    buyerVatId: emptyToNull(sources.buyer.vatId),
+  };
+}
+
+/**
+ * Derselbe Satz Spalten, geleert.
+ *
+ * „Finalisierung zurücknehmen" macht aus dem Dokument wieder einen Entwurf.
+ * Blieben die Spalten stehen, trüge ein Entwurf weiter Umsatz in jede
+ * Auswertung — NULL heißt hier „noch keine eingefrorenen Summen", und das
+ * ist ein anderer Zustand als null Euro.
+ */
+export const EMPTY_INVOICE_TOTALS_COLUMNS: {
+  [K in keyof InvoiceTotalsColumns]: null;
+} = {
+  totalNetCents: null,
+  totalTaxCents: null,
+  totalGrossCents: null,
+  taxProfileKind: null,
+  buyerCountry: null,
+  buyerVatId: null,
+};

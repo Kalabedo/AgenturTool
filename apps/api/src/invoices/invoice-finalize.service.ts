@@ -13,6 +13,8 @@ import {
   checkFinalizable,
   DOCUMENT_KIND,
   emptyBuyerData,
+  EMPTY_INVOICE_TOTALS_COLUMNS,
+  invoiceTotalsColumns,
   formatInvoiceNumber,
   isCancellable,
   isEditable,
@@ -314,6 +316,15 @@ export class InvoiceFinalizeService {
         templateSnapshot: JSON.stringify(frozen.template),
         totalsSnapshot: JSON.stringify(frozen.totals),
         snapshotVersion: frozen.seller.snapshotVersion,
+
+        // Dieselben Zahlen ein zweites Mal, als auswertbare Spalten. Nicht
+        // neu gerechnet, sondern aus genau diesen Snapshots abgeleitet — der
+        // Snapshot bleibt die Wahrheit (Abschnitt 30).
+        ...invoiceTotalsColumns({
+          tax: frozen.tax,
+          totals: frozen.totals,
+          buyer: frozen.buyer,
+        }),
       },
     });
 
@@ -708,6 +719,10 @@ export class InvoiceFinalizeService {
           templateSnapshot: null,
           totalsSnapshot: null,
           snapshotVersion: null,
+
+          // Die abgeleiteten Spalten gehen mit. Blieben sie stehen, trüge ein
+          // Entwurf weiter Umsatz in jede Auswertung.
+          ...EMPTY_INVOICE_TOTALS_COLUMNS,
         },
       });
 

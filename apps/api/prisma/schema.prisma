@@ -310,6 +310,22 @@ model Invoice {
   totalsSnapshot   String?
   snapshotVersion  Int?
 
+  /// Abgeleitete Auswertungsspalten, geschrieben beim Finalisieren aus
+  /// denselben eingefrorenen Werten wie die Snapshots darüber (Abschnitt 30).
+  ///
+  /// Sie sind eine Kopie fürs Rechnen, nicht die Wahrheit: SQLite kann in
+  /// einem JSON-TEXT-Feld weder summieren noch filtern, und jede Auswertung
+  /// müsste sonst alle Zeilen des Zeitraums selbst parsen. NULL heißt
+  /// „Entwurf" — ein anderer Zustand als null Euro.
+  totalNetCents   Int?
+  totalTaxCents   Int?
+  totalGrossCents Int?
+  /// STANDARD | ZERO_RATED | REVERSE_CHARGE | SMALL_BUSINESS, aus taxSnapshot.
+  taxProfileKind  String?
+  /// Aus buyerData; die Zusammenfassende Meldung filtert darüber.
+  buyerCountry String?
+  buyerVatId   String?
+
   issuedAt    DateTime?
   sentAt      DateTime?
   /// Kalenderdatum: du gibst es ein, nicht das System.
@@ -333,6 +349,8 @@ model Invoice {
   @@index([invoiceDate])
   @@index([customerId])
   @@index([numberYear, numberSeq])
+  /// Die Abfrage jeder Auswertung: eine Steuerart über einen Zeitraum.
+  @@index([taxProfileKind, invoiceDate])
 }
 
 /// Rechnungsposition. Bei nicht-Entwürfen per Trigger gesperrt.
