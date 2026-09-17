@@ -21,6 +21,7 @@ import { ErrorNotice } from '../../components/ui/ErrorNotice.js';
 import { LoadingNote } from '../../components/ui/LoadingNote.js';
 import { PageHeader } from '../../components/ui/PageHeader.js';
 import { OnboardingChecklist } from '../onboarding/OnboardingChecklist.js';
+import { SmallBusinessNotice } from '../small-business/SmallBusinessNotice.js';
 
 /**
  * Einstieg in die Anwendung.
@@ -103,6 +104,10 @@ export function DashboardPage(): JSX.Element {
           Einladung und keine Warnung. Sie verschwindet von selbst, sobald
           nichts mehr aussteht oder sie abgeschlossen wurde. */}
       <OnboardingChecklist />
+
+      {/* Danach, weil es die seltenere Meldung ist — und weil sie erst etwas
+          zu sagen hat, wenn schon Rechnungen geschrieben wurden. */}
+      <SmallBusinessNotice />
 
       {company.isSuccess && missing.length > 0 && (
         <div className="rounded-lg border border-attention-border bg-attention-surface p-5">

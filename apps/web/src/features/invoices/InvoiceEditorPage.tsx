@@ -23,6 +23,7 @@ import { Badge } from '../../components/ui/Badge.js';
 import { Button } from '../../components/ui/Button.js';
 import { Card } from '../../components/ui/Card.js';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog.js';
+import { SmallBusinessWarning } from '../small-business/SmallBusinessWarning.js';
 import { Dialog } from '../../components/ui/Dialog.js';
 import { Field } from '../../components/ui/Field.js';
 import { FormActions } from '../../components/ui/FormActions.js';
@@ -811,7 +812,12 @@ export function InvoiceEditorPage(): JSX.Element {
           finalize.mutate(form.getValues());
         }}
         onClose={() => setConfirming(null)}
-      />
+      >
+        {/* Die Kleinunternehmergrenze, solange sie sich noch ändern lässt.
+            Nach dem Ausstellen ist die Nummer gezogen und das Dokument
+            eingefroren — dann ist der Hinweis wertlos. */}
+        <SmallBusinessWarning invoiceId={invoiceId} open={confirming === 'finalize'} />
+      </ConfirmDialog>
 
       <ConfirmDialog
         open={confirming === 'unfinalize'}

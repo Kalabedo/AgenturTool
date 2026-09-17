@@ -17,6 +17,7 @@ import { BackupModule } from './backup/backup.module';
 import { AuthModule } from './auth/auth.module';
 import { WebModule } from './web/web.module';
 import { EinvoiceModule } from './einvoice/einvoice.module';
+import { SmallBusinessModule } from './small-business/small-business.module';
 import { TaxAdvisorExportModule } from './tax-advisor/tax-advisor-export.module';
 import { MailModule } from './mail/mail.module';
 
@@ -54,6 +55,7 @@ export class AppModule {
         InvoicesModule,
         TimeEntriesModule,
         BackupModule,
+        SmallBusinessModule,
         TaxAdvisorExportModule,
         MailModule,
         // Zuletzt: Der statische Ausliefer-Zweig darf erst greifen, wenn

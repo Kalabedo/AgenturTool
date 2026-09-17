@@ -20,6 +20,7 @@ export * from './finalization.js';
 export * from './assets.js';
 export * from './backup.js';
 export * from './auth.js';
+export * from './small-business.js';
 export * from './tax-advisor-export.js';
 export * from './mail.js';
 export * from './design-sample.js';
