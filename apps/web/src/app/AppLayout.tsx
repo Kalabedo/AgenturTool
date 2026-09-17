@@ -11,6 +11,7 @@ const NAVIGATION = [
   { to: '/invoices', label: 'Rechnungen' },
   { to: '/customers', label: 'Kunden' },
   { to: '/time-tracking', label: 'Zeiterfassung' },
+  { to: '/statistics', label: 'Auswertung' },
   { to: '/settings/company', label: 'Einstellungen' },
 ];
 

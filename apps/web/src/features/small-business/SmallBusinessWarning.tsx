@@ -43,9 +43,8 @@ export function SmallBusinessWarning({
       </p>
       <p className="mt-1 text-sm text-attention-ink">
         Der Jahresumsatz stiege von {formatCents(data.revenueBeforeCents)} auf{' '}
-        {formatCents(data.revenueAfterCents)} und läge damit{' '}
-        {formatCents(data.exceedsByCents)} über der Grenze von{' '}
-        {formatCents(data.limitCents)}.
+        {formatCents(data.revenueAfterCents)} und läge damit {formatCents(data.exceedsByCents)} über
+        der Grenze von {formatCents(data.limitCents)}.
       </p>
       <p className="mt-2 text-sm text-attention-ink">
         Die Regelung endet dann sofort im laufenden Jahr: Die nächste Rechnung trägt Umsatzsteuer.

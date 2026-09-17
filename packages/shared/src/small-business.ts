@@ -64,8 +64,7 @@ export const SMALL_BUSINESS_STATE = {
   /** Die Grenze ist gerissen; die Regelung endet im laufenden Jahr. */
   UEBERSCHRITTEN: 'ueberschritten',
 } as const;
-export type SmallBusinessState =
-  (typeof SMALL_BUSINESS_STATE)[keyof typeof SMALL_BUSINESS_STATE];
+export type SmallBusinessState = (typeof SMALL_BUSINESS_STATE)[keyof typeof SMALL_BUSINESS_STATE];
 
 export interface SmallBusinessYear {
   year: number;

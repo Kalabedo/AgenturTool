@@ -12,6 +12,9 @@ export const queryKeys = {
   templateSettings: ['template-settings'] as const,
   backup: ['backup'] as const,
   appUpdate: ['app', 'update'] as const,
+  statistics: {
+    summary: (query: string) => ['statistics', query] as const,
+  },
   smallBusiness: {
     status: ['small-business', 'status'] as const,
     warning: (invoiceId: number) => ['small-business', 'warning', invoiceId] as const,

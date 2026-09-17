@@ -1,10 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import {
-  SMALL_BUSINESS_STATE,
-  formatCents,
-  type SmallBusinessStatus,
-} from '@privatura/shared';
+import { SMALL_BUSINESS_STATE, formatCents, type SmallBusinessStatus } from '@privatura/shared';
 import { apiClient } from '../../lib/apiClient.js';
 import { queryKeys } from '../../lib/queryKeys.js';
 
@@ -56,8 +52,7 @@ export function SmallBusinessNotice(): JSX.Element | null {
       {previousExceeded && (
         <p className="mt-2 text-sm text-attention-ink">
           Auch der Vorjahresumsatz {data.previous.year} liegt mit{' '}
-          {formatCents(data.previous.revenueCents)} über{' '}
-          {formatCents(data.previous.limitCents)}.
+          {formatCents(data.previous.revenueCents)} über {formatCents(data.previous.limitCents)}.
         </p>
       )}
 

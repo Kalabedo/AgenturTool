@@ -20,6 +20,9 @@ const invoiceEditorPage = async () => ({
 const timeTrackingPage = async () => ({
   Component: (await import('../features/time-tracking/TimeTrackingPage')).TimeTrackingPage,
 });
+const statisticsPage = async () => ({
+  Component: (await import('../features/statistics/StatisticsPage')).StatisticsPage,
+});
 
 const onboardingPage = async () => ({
   Component: (await import('../features/onboarding/OnboardingPage')).OnboardingPage,
@@ -78,6 +81,7 @@ export const router = createBrowserRouter([
       { path: 'invoices/design', lazy: designPage },
       { path: 'invoices/:id', lazy: invoiceEditorPage },
       { path: 'time-tracking', lazy: timeTrackingPage },
+      { path: 'statistics', lazy: statisticsPage },
       { path: 'onboarding', lazy: onboardingPage },
       { path: 'design', element: <Navigate to="/invoices/design" replace /> },
       { path: 'customers', lazy: customerListPage },
