@@ -166,26 +166,10 @@ Deutschland und anschließend auf einer breiteren Nutzung in der EU.
   - Der Lesepfad ist größtenteils vorhanden: `packages/einvoice` kennt
     CII, die Profile und die Codelisten. Was fehlt, ist die Richtung —
     aus XML ein Modell statt aus einem Modell XML.
-  - Zusammen mit „Ausgaben und Belege" ergibt das den vollständigen Weg:
-    empfangen, verstehen, ablegen, als Ausgabe verbuchen.
-
-- [ ] **Ausgaben und Belege**
-  - Ausgaben mit Datum, Lieferant, Betrag, Steuersatz und Kategorie
-    erfassen; Beleg als Datei daneben, mit Prüfsumme, wie bei den
-    Rechnungen.
-  - Vorsteuer je Ausgabe ausweisen, damit die Zahlen für die
-    Umsatzsteuer überhaupt entstehen können.
-  - Wenige feste Kategorien statt eines Kontenrahmens — die Zuordnung zu
-    Konten bleibt Sache der Kanzlei und des DATEV-Exports.
-  - Belege in den Steuerberater-Export aufnehmen; heute enthält das Paket
-    nur die Ausgangsseite.
-  - **Bewusst nicht:** Buchungssätze, Bankabgleich, doppelte
-    Buchführung. Die Grenze ist die Produktregel „kein großes ERP" — eine
-    Ausgabenliste mit Belegen ist die Grundlage für EÜR und
-    Voranmeldung, keine Buchhaltung.
-  - Vorher zu entscheiden: ob Privatura damit vom Rechnungswerkzeug zum
-    Buchhaltungswerkzeug wird. Das ist eine Produktentscheidung und keine
-    technische; alles Weitere in dieser Liste hängt daran.
+  - Die Grenze ist ausdrücklich das Lesen und Ablegen. Eine eingegangene
+    Rechnung wird angenommen, angezeigt und aufbewahrt — sie wird nicht
+    verbucht, nicht mit Vorsteuer versehen und nicht ausgewertet. Das
+    bliebe Buchhaltung, und Privatura bleibt Rechnung und Zeiterfassung.
 
 - [ ] **Kleinunternehmer-Grenzen im Blick behalten**
   - Seit 2025 gelten 25.000 € für das Vorjahr und 100.000 € für das
@@ -288,10 +272,12 @@ Deutschland und anschließend auf einer breiteren Nutzung in der EU.
   - Fälligkeitstermine der Umsatzsteuer-Voranmeldung anzeigen, je nach
     eingestelltem Rhythmus monatlich oder vierteljährlich, samt
     Dauerfristverlängerung.
-  - Die zu erwartende Zahllast aus den ausgestellten Rechnungen des
-    Zeitraums überschlagen — und sobald es Ausgaben gibt, abzüglich der
-    Vorsteuer. Solange nur die Ausgangsseite erfasst ist, sagt die Zahl
-    dazu, dass sie die Ausgangsseite ist.
+  - Die vereinnahmte Umsatzsteuer des Zeitraums aus den ausgestellten
+    Rechnungen überschlagen. Die Vorsteuer kennt Privatura nicht und wird
+    sie auch nicht kennen — die Zahl sagt deshalb von sich aus, dass sie
+    nur die Ausgangsseite ist und die tatsächliche Zahllast niedriger
+    ausfällt. Eine Erinnerung an den Termin, keine Berechnung der
+    Voranmeldung.
   - Termine der Einkommensteuer-Vorauszahlung (10. März, Juni, September,
     Dezember) mit dem hinterlegten Bescheidbetrag erinnern. Die Höhe gibt
     der Benutzer ein; sie steht in seinem Bescheid und lässt sich nicht
@@ -389,6 +375,14 @@ Deutschland und anschließend auf einer breiteren Nutzung in der EU.
 
 - Funktionen müssen für eine einzelne Person ohne Buchhaltungsabteilung
   verständlich bleiben.
+- **Privatura ist Rechnungsstellung und Zeiterfassung und bleibt es.** Keine
+  Ausgaben, keine Belegerfassung, keine Vorsteuer, keine EÜR, keine
+  Buchhaltung. Auswertungen und Erinnerungen dürfen die Ausgangsseite
+  zusammenfassen; sobald eine Funktion die Eingangsseite erfassen müsste,
+  gehört sie nicht hierher, sondern zum Steuerberater oder in ein zweites
+  Werkzeug. Was trotzdem hereingehört, ist die gesetzliche Pflicht,
+  eingehende E-Rechnungen annehmen und lesen zu können — Annehmen ist
+  nicht Verbuchen.
 - **UX hat Vorrang vor dekorativer UI:** Abläufe müssen schnell,
   selbsterklärend und fehlerarm sein. Die Gestaltung unterstützt diese
   Abläufe, ohne selbst Aufmerksamkeit zu verlangen.
